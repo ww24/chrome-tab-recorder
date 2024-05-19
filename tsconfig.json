@@ -1,0 +1,35 @@
+{
+  "include": [
+    "src/**/*.ts",
+  ],
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "es2020",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "inlineSources": true,
+    "strict": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "moduleResolution": "node",
+    "lib": [
+      "es2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false,
+    "strictNullChecks": true,
+    "strictPropertyInitialization": true
+  },
+  "ts-node": {
+    "compilerOptions": {
+      "module": "CommonJS",
+      "target": "ESNext",
+      "esModuleInterop": true,
+      "moduleResolution": "node",
+      "verbatimModuleSyntax": false
+    }
+  }
+}
