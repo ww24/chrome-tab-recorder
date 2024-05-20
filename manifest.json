@@ -1,0 +1,18 @@
+{
+    "name": "Screen Recorder",
+    "description": "Screen recording extension",
+    "version": "1",
+    "manifest_version": 3,
+    "minimum_chrome_version": "116",
+    "action": {
+        "default_icon": "icons/not-recording.png"
+    },
+    "background": {
+        "service_worker": "dist/service_worker.js"
+    },
+    "permissions": [
+        "tabCapture",
+        "offscreen"
+    ],
+    "options_page": "option.html"
+}
