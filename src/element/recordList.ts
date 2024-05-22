@@ -9,6 +9,7 @@ import '@material/web/iconbutton/filled-icon-button';
 import '@material/web/button/filled-tonal-button';
 import { MdDialog } from '@material/web/dialog/dialog';
 import Confirm from './confirm';
+import { ShowDirectoryPickerOptions } from '../type';
 
 export interface Record {
     title: string;
@@ -124,7 +125,6 @@ export class RecordList extends LitElement {
         }
     }
     private deleteRecord(record: Record) {
-        const self = this;
         return () => {
             const dialogWrapper = document.getElementById('confirm-dialog') as Confirm;
             dialogWrapper.setRecord(record);
@@ -143,8 +143,8 @@ export class RecordList extends LitElement {
                     await opfsRoot.removeEntry(record.title);
 
                     // remove and update UI
-                    self.removeRecord(record);
-                    self.updateEstimate();
+                    this.removeRecord(record);
+                    this.updateEstimate();
                 }
             };
             dialog.addEventListener('close', listener);
@@ -152,19 +152,19 @@ export class RecordList extends LitElement {
         }
     }
     private async saveAll() {
-        const options = {
+        const options: ShowDirectoryPickerOptions = {
             id: 'save-directory',
             mode: 'readwrite',
             startIn: 'downloads',
         };
-        const dirHandle: FileSystemDirectoryHandle = await (window as any).showDirectoryPicker(options);
+        const dirHandle = await window.showDirectoryPicker(options);
         const permission = await checkFileHandlePermission(dirHandle);
         if (!permission) {
             throw new Error('permission denied');
         }
 
         const opfsRoot = await navigator.storage.getDirectory();
-        for await (const [name, handle] of (opfsRoot as any).entries()) {
+        for await (const [name, handle] of opfsRoot.entries()) {
             console.log('Copy:', name);
             const fileHandle = await dirHandle.getFileHandle(name, { create: true });
             const file = await handle.getFile();

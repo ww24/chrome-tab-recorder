@@ -1,8 +1,10 @@
+import { getMediaStreamId } from './type';
+
 type Message = AnyMessage | StopRecordingMessage | WindowMessage;
 interface AnyMessage {
     type: string;
     target: string;
-    data: any;
+    data: unknown;
 }
 interface BackgroundMessage {
     target: 'background';
@@ -50,7 +52,7 @@ chrome.action.onClicked.addListener(async (tab: chrome.tabs.Tab) => {
     }
 
     // Get a MediaStream for the active tab.
-    const streamId: string = await (chrome.tabCapture.getMediaStreamId as any)({
+    const streamId = await (chrome.tabCapture.getMediaStreamId as typeof getMediaStreamId)({
         targetTabId: tab.id
     });
 
@@ -70,7 +72,8 @@ chrome.runtime.onMessage.addListener(async (message: Message) => {
     }
     switch (message.type) {
         case 'resize-window':
-            await resizeWindow(message.data);
+            if (typeof message.data !== "object" || message.data == null) return;
+            await resizeWindow(message.data as WindowSize);
             return;
         case 'stop-recording':
             chrome.action.setIcon({ path: notRecordingIcon });
