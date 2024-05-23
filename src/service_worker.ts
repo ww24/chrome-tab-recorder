@@ -1,4 +1,4 @@
-import { getMediaStreamId } from './type';
+import type { getMediaStreamId } from './type';
 
 type Message = AnyMessage | StopRecordingMessage | WindowMessage;
 interface AnyMessage {

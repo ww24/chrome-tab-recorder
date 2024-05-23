@@ -9,7 +9,7 @@ import '@material/web/iconbutton/filled-icon-button';
 import '@material/web/button/filled-tonal-button';
 import { MdDialog } from '@material/web/dialog/dialog';
 import Confirm from './confirm';
-import { ShowDirectoryPickerOptions } from '../type';
+import type { ShowDirectoryPickerOptions } from '../type';
 
 export interface Record {
     title: string;

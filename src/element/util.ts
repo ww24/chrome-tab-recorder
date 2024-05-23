@@ -1,4 +1,4 @@
-import { FileSystemHandlePermissionDescriptor } from '../type';
+import type { FileSystemHandlePermissionDescriptor } from '../type';
 
 export function formatNum(num: number, dig: number) {
     return num.toLocaleString('ja-JP', {
