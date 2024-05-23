@@ -6,7 +6,7 @@ const timeslice = 1000; // 1s
 interface Message {
     type: string;
     target: string;
-    data?: string | any;
+    data?: string;
 }
 
 chrome.runtime.onMessage.addListener(async (message: Message) => {
@@ -15,6 +15,7 @@ chrome.runtime.onMessage.addListener(async (message: Message) => {
     }
     switch (message.type) {
         case 'start-recording':
+            if (message.data == null) return;
             startRecording(message.data);
             break;
         case 'stop-recording':
@@ -58,7 +59,7 @@ async function startRecording(streamId: string) {
                 minFrameRate: 30,
             }
         }
-    } as any);
+    });
 
     // Continue to play the captured audio to the user.
     const output = new AudioContext();

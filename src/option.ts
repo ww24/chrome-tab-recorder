@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
 async function listRecords() {
     const opfsRoot = await navigator.storage.getDirectory();
     let result: Array<Record> = [];
-    for await (const [name, handle] of (opfsRoot as any).entries()) {
+    for await (const [name, handle] of opfsRoot.entries()) {
         const file = await handle.getFile();
         result = result.concat({
             title: name,

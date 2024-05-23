@@ -1,3 +1,5 @@
+import { FileSystemHandlePermissionDescriptor } from '../type';
+
 export function formatNum(num: number, dig: number) {
     return num.toLocaleString('ja-JP', {
         maximumFractionDigits: dig,
@@ -14,7 +16,7 @@ export function formatRate(rate: number, dig: number) {
 }
 
 export async function checkFileHandlePermission(handle: FileSystemHandle) {
-    const options = { mode: 'readwrite' };
-    return (await (handle as any).queryPermission(options) === 'granted')
-        || (await (handle as any).requestPermission(options) === 'granted');
+    const options: FileSystemHandlePermissionDescriptor = { mode: 'readwrite' };
+    return (await handle.queryPermission(options) === 'granted')
+        || (await handle.requestPermission(options) === 'granted');
 }
