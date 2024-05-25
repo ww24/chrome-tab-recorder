@@ -82,7 +82,7 @@ async function startRecording(streamId: string) {
         const fixed = await fixWebmDuration(file, duration, { logger: false });
         const fixedFileHandle = await dirHandle.getFileHandle(`${fileBaseName}.fixed.webm`, { create: true });
         const fixedWritableStream = await fixedFileHandle.createWritable();
-        fixedWritableStream.write(fixed);
+        await fixedWritableStream.write(fixed);
         await fixedWritableStream.close();
 
         recorder = undefined;
