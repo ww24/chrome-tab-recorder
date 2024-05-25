@@ -8,10 +8,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     (async () => {
         const records = await listRecords();
-        records.forEach((record: Record) => {
+        records.forEach(record => {
             recordsElem.addRecord(record);
         });
-        recordsElem.updateEstimate();
+        await recordsElem.updateEstimate();
     })();
 });
 
