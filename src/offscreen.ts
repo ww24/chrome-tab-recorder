@@ -1,28 +1,18 @@
 import fixWebmDuration from 'fix-webm-duration';
 import { Settings } from './element/settings';
+import type { Message, BackgroundStopRecordingMessage } from './message';
 
 const timeslice = 1000; // 1s
 
-interface Message {
-    type: string;
-    target: string;
-    data?: string;
-}
-
 chrome.runtime.onMessage.addListener(async (message: Message) => {
-    if (message.target !== 'offscreen') {
-        return;
-    }
+    if (message.target !== 'offscreen') return;
     switch (message.type) {
         case 'start-recording':
-            if (message.data == null) return;
             startRecording(message.data);
-            break;
+            return;
         case 'stop-recording':
             stopRecording();
-            break;
-        default:
-            throw new Error(`Unrecognized message: ${message.type}`);
+            return;
     }
 });
 
@@ -97,10 +87,11 @@ async function startRecording(streamId: string) {
 
         recorder = undefined;
         window.location.hash = '';
-        await chrome.runtime.sendMessage({
+        const msg: BackgroundStopRecordingMessage = {
             type: 'stop-recording',
             target: 'background',
-        });
+        };
+        await chrome.runtime.sendMessage(msg);
     });
     recorder.start(timeslice);
 
