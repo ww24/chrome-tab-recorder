@@ -81,6 +81,12 @@ async function startRecording(streamId: string) {
     });
     const startTime = Date.now();
     recorder.addEventListener('stop', async () => {
+        if (media.active) {
+            console.log("recorder: unexpected stop, resuming");
+            recorder?.resume();
+            return;
+        }
+
         const duration = Date.now() - startTime;
         console.log(`stopped: duration=${duration / 1000}s`);
 
