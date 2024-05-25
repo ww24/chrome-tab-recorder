@@ -1,5 +1,6 @@
 import path from 'path';
 import webpack from 'webpack';
+import Dotenv from 'dotenv-webpack';
 
 const config: webpack.Configuration = {
     entry: {
@@ -23,7 +24,10 @@ const config: webpack.Configuration = {
         filename: '[name].js',
     },
     devtool: false,
-    plugins: [new webpack.SourceMapDevToolPlugin({})],
+    plugins: [
+        new webpack.SourceMapDevToolPlugin({}),
+        new Dotenv(),
+    ],
 };
 
 export default config;

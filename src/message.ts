@@ -1,5 +1,6 @@
 export type Message = OffscreenStartRecordingMessage
     | OffscreenStopRecordingMessage
+    | ExceptionMessage
     | BackgroundStopRecordingMessage
     | BackgroundWindowSizeMessage;
 
@@ -12,6 +13,10 @@ export interface OffscreenStartRecordingMessage extends OffscreenMessage {
 }
 export interface OffscreenStopRecordingMessage extends OffscreenMessage {
     type: 'stop-recording';
+}
+export interface ExceptionMessage extends OffscreenMessage {
+    type: 'exception';
+    data: unknown;
 }
 
 export interface BackgroundMessage {
