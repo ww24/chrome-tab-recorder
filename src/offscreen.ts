@@ -37,8 +37,9 @@ async function startRecording(streamId: string) {
 
     const dirHandle = await navigator.storage.getDirectory();
     const fileBaseName = `video-${Date.now()}`;
-    const fileHandle = await dirHandle.getFileHandle(`${fileBaseName}.webm`, { create: true });
-    const writableStream = await fileHandle.createWritable();
+    const backupFileName = `${fileBaseName}.bk.webm`;
+    const backupFileHandle = await dirHandle.getFileHandle(backupFileName, { create: true });
+    const writableStream = await backupFileHandle.createWritable();
 
     const size = Settings.getScreenRecordingSize();
     const media = await navigator.mediaDevices.getUserMedia({
@@ -80,6 +81,12 @@ async function startRecording(streamId: string) {
     });
     const startTime = Date.now();
     recorder.addEventListener('stop', async () => {
+        if (media.active) {
+            console.log("recorder: unexpected stop, resuming");
+            recorder?.resume();
+            return;
+        }
+
         const duration = Date.now() - startTime;
         console.log(`stopped: duration=${duration / 1000}s`);
 
@@ -96,13 +103,16 @@ async function startRecording(streamId: string) {
 
         await writableStream.close();
 
-        // fix video duration
-        const file = await fileHandle.getFile();
+        // workaround: fix video duration
+        const file = await backupFileHandle.getFile();
         const fixed = await fixWebmDuration(file, duration, { logger: false });
-        const fixedFileHandle = await dirHandle.getFileHandle(`${fileBaseName}.fixed.webm`, { create: true });
+        const fixedFileHandle = await dirHandle.getFileHandle(`${fileBaseName}.webm`, { create: true });
         const fixedWritableStream = await fixedFileHandle.createWritable();
         await fixedWritableStream.write(fixed);
         await fixedWritableStream.close();
+        if (fixed.size > file.size) {
+            await dirHandle.removeEntry(backupFileName);
+        }
 
         recorder = undefined;
         window.location.hash = '';
