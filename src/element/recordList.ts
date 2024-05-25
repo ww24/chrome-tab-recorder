@@ -90,16 +90,10 @@ export class RecordList extends LitElement {
     }
 
     public addRecord(record: Record) {
-        const oldVal = this.records;
         this.records = [record].concat(this.records);
-        this.requestUpdate('records', oldVal);
     }
     private removeRecord(record: Record) {
-        const idx = this.records.indexOf(record);
-        if (idx < 0) return;
-        const oldVal = this.records[idx];
-        delete this.records[idx];
-        this.requestUpdate(`records[${idx}]`, oldVal);
+        this.records = this.records.filter(r => r.title !== record.title);
     }
     public async updateEstimate() {
         const oldVal = this.estimate;
@@ -118,7 +112,7 @@ export class RecordList extends LitElement {
                 }
                 setTimeout(() => {
                     if (!win.closed) return;
-                    console.log('popup window is closed');
+                    console.debug('popup window is closed');
                     URL.revokeObjectURL(url);
                 }, 500);
             });
@@ -136,7 +130,7 @@ export class RecordList extends LitElement {
 
                 console.log('confirm-dialog:', dialog.returnValue);
                 if (dialog.returnValue === 'delete') {
-                    console.log('delete:', record.title);
+                    console.log('Delete:', record.title);
 
                     // remove entry from file system
                     const opfsRoot = await navigator.storage.getDirectory();

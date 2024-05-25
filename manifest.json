@@ -1,6 +1,6 @@
 {
-    "name": "Screen Recorder",
-    "description": "Screen recording extension",
+    "name": "Instant Tab Recorder",
+    "description": "Blazing simple tab recorder.",
     "version": "1",
     "manifest_version": 3,
     "minimum_chrome_version": "116",
