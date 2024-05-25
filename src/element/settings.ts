@@ -3,11 +3,7 @@ import { customElement, property } from 'lit/decorators.js';
 import '@material/web/icon/icon';
 import '@material/web/button/filled-tonal-button';
 import { MdFilledTextField } from '@material/web/textfield/filled-text-field';
-
-interface Resolution {
-    width: number;
-    height: number;
-}
+import type { Resolution, BackgroundWindowSizeMessage } from '../message';
 
 interface Configuration {
     windowSize: Resolution,
@@ -85,11 +81,12 @@ export class Settings extends LitElement {
     }
 
     private async resizeWindow() {
-        await chrome.runtime.sendMessage({
+        const msg: BackgroundWindowSizeMessage = {
             type: 'resize-window',
             target: 'background',
             data: this.windowSize,
-        });
+        };
+        await chrome.runtime.sendMessage(msg);
     }
     private updateProp(obj: Resolution, key: 'width' | 'height') {
         return (e: Event) => {

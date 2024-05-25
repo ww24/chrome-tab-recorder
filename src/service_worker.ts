@@ -1,25 +1,5 @@
 import type { getMediaStreamId } from './type';
-
-type Message = AnyMessage | StopRecordingMessage | WindowMessage;
-interface AnyMessage {
-    type: string;
-    target: string;
-    data: unknown;
-}
-interface BackgroundMessage {
-    target: 'background';
-}
-interface StopRecordingMessage extends BackgroundMessage {
-    type: 'stop-recording';
-}
-interface WindowMessage extends BackgroundMessage {
-    type: 'resize-window';
-    data: WindowSize;
-}
-interface WindowSize {
-    width: number;
-    height: number;
-}
+import type { Message, Resolution, OffscreenStartRecordingMessage, OffscreenStopRecordingMessage } from './message';
 
 const recordingIcon = '/icons/recording.png';
 const notRecordingIcon = '/icons/not-recording.png';
@@ -43,11 +23,12 @@ chrome.action.onClicked.addListener(async (tab: chrome.tabs.Tab) => {
     }
 
     if (recording) {
-        chrome.runtime.sendMessage({
+        const msg: OffscreenStopRecordingMessage = {
             type: 'stop-recording',
             target: 'offscreen'
-        });
-        chrome.action.setIcon({ path: notRecordingIcon });
+        };
+        await chrome.runtime.sendMessage(msg);
+        await chrome.action.setIcon({ path: notRecordingIcon });
         return;
     }
 
@@ -57,33 +38,30 @@ chrome.action.onClicked.addListener(async (tab: chrome.tabs.Tab) => {
     });
 
     // Send the stream ID to the offscreen document to start recording.
-    chrome.runtime.sendMessage({
+    const msg: OffscreenStartRecordingMessage = {
         type: 'start-recording',
         target: 'offscreen',
-        data: streamId
-    });
+        data: streamId,
+    };
+    await chrome.runtime.sendMessage(msg);
 
-    chrome.action.setIcon({ path: recordingIcon });
+    await chrome.action.setIcon({ path: recordingIcon });
 });
 
 chrome.runtime.onMessage.addListener(async (message: Message) => {
-    if (message.target !== 'background') {
-        return
-    }
+    if (message.target !== 'background') return;
     switch (message.type) {
         case 'resize-window':
             if (typeof message.data !== "object" || message.data == null) return;
-            await resizeWindow(message.data as WindowSize);
+            await resizeWindow(message.data);
             return;
         case 'stop-recording':
-            chrome.action.setIcon({ path: notRecordingIcon });
+            await chrome.action.setIcon({ path: notRecordingIcon });
             return;
-        default:
-            throw new Error(`Unrecognized message: ${message.type}`);
     }
 });
 
-async function resizeWindow({ width, height }: WindowSize) {
+async function resizeWindow({ width, height }: Resolution) {
     const window = await chrome.windows.getCurrent();
     if (window.id == null) return;
     const updateInfo: chrome.windows.UpdateInfo = {
