@@ -1,18 +1,26 @@
 import fixWebmDuration from 'fix-webm-duration';
 import { Settings } from './element/settings';
 import type { Message, BackgroundStopRecordingMessage } from './message';
+import { getScope, sendEvent } from './sentry';
 
 const timeslice = 1000; // 1s
 
 chrome.runtime.onMessage.addListener(async (message: Message) => {
-    if (message.target !== 'offscreen') return;
-    switch (message.type) {
-        case 'start-recording':
-            startRecording(message.data);
-            return;
-        case 'stop-recording':
-            stopRecording();
-            return;
+    try {
+        if (message.target !== 'offscreen') return;
+        switch (message.type) {
+            case 'start-recording':
+                await startRecording(message.data);
+                return;
+            case 'stop-recording':
+                await stopRecording();
+                return;
+            case 'exception':
+                throw message.data;
+        }
+    } catch (e) {
+        getScope()?.captureException(e);
+        throw e;
     }
 });
 
@@ -65,7 +73,7 @@ async function startRecording(streamId: string) {
     recorder = new MediaRecorder(media, {
         mimeType,
         audioBitsPerSecond: 256 * 1000, // 256Kbps
-        videoBitsPerSecond: 8 * 1000 * 1000, // 8Mbps
+        videoBitsPerSecond: 8 * size.width * size.height,
     });
     recorder.addEventListener('dataavailable', async event => {
         await writableStream.write(event.data);
@@ -74,6 +82,17 @@ async function startRecording(streamId: string) {
     recorder.addEventListener('stop', async () => {
         const duration = Date.now() - startTime;
         console.log(`stopped: duration=${duration / 1000}s`);
+
+        sendEvent({
+            type: 'stop_recording',
+            tags: {
+                duration: duration / 1000,
+                mimeType: recorder?.mimeType,
+                videoBitRate: recorder?.videoBitsPerSecond,
+                audioBitRate: recorder?.audioBitsPerSecond,
+                recordingResolution: `${size.width}x${size.height}`,
+            },
+        });
 
         await writableStream.close();
 

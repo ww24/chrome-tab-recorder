@@ -1,14 +1,29 @@
 import { html, css, LitElement } from 'lit';
+import { live } from 'lit/directives/live.js';
 import { customElement, property } from 'lit/decorators.js';
 import '@material/web/icon/icon';
 import '@material/web/button/filled-tonal-button';
+import '@material/web/switch/switch';
 import { MdFilledTextField } from '@material/web/textfield/filled-text-field';
 import type { Resolution, BackgroundWindowSizeMessage } from '../message';
+import { MdSwitch } from '@material/web/switch/switch';
 
-interface Configuration {
-    windowSize: Resolution,
-    screenRecordingSize: Resolution,
-}
+class Configuration {
+    windowSize: Resolution;
+    screenRecordingSize: Resolution;
+    enableBugTracking: boolean;
+    constructor() {
+        this.windowSize = {
+            width: 1920,
+            height: 1080,
+        };
+        this.screenRecordingSize = {
+            width: 1920,
+            height: 1080,
+        };
+        this.enableBugTracking = true;
+    }
+};
 
 @customElement('extension-settings')
 export class Settings extends LitElement {
@@ -16,21 +31,9 @@ export class Settings extends LitElement {
 
     private static getConfiguration(): Configuration {
         const config = localStorage.getItem(Settings.localStorageKey);
-        const defaultConfig = {
-            windowSize: {
-                width: 1600,
-                height: 900,
-            },
-            screenRecordingSize: {
-                width: 1600,
-                height: 900,
-            },
-        };
+        const defaultConfig = new Configuration();
         if (config == null) return defaultConfig;
-        const c = JSON.parse(config);
-        c.windowSize ??= defaultConfig.windowSize;
-        c.screenRecordingSize ??= defaultConfig.screenRecordingSize;
-        return c;
+        return { ...defaultConfig, ...JSON.parse(config) };
     }
 
     private static setConfiguration(config: Configuration) {
@@ -45,6 +48,10 @@ export class Settings extends LitElement {
         return Settings.getConfiguration().screenRecordingSize;
     }
 
+    public static getEnableBugTracking(): boolean {
+        return Settings.getConfiguration().enableBugTracking;
+    }
+
     static readonly styles = css`
     md-filled-tonal-button {
         height: 56px;
@@ -52,31 +59,31 @@ export class Settings extends LitElement {
     `;
 
     @property({ noAccessor: true })
-    private windowSize: Resolution;
-
-    @property({ noAccessor: true })
-    private screenRecordingSize: Resolution;
+    private config: Configuration;
 
     public constructor() {
         super();
-        const config = Settings.getConfiguration();
-        this.windowSize = config.windowSize;
-        this.screenRecordingSize = config.screenRecordingSize;
+        this.config = Settings.getConfiguration();
     }
 
     public render() {
         return html`
         <h2>Settings</h2>
         <h3>Window Size</h3>
-        <md-filled-text-field label="width" type="number" suffix-text="px" value="${this.windowSize.width}" @input="${this.updateProp(this.windowSize, "width")}"></md-filled-text-field>
-        <md-filled-text-field label="height" type="number" suffix-text="px" value="${this.windowSize.height}" @input="${this.updateProp(this.windowSize, "height")}"></md-filled-text-field>
+        <md-filled-text-field label="width" type="number" suffix-text="px" .value=${live(this.config.windowSize.width)} @input=${this.updateProp('windowSize', 'width')}></md-filled-text-field>
+        <md-filled-text-field label="height" type="number" suffix-text="px" .value=${live(this.config.windowSize.height)} @input=${this.updateProp('windowSize', 'height')}></md-filled-text-field>
         <md-filled-tonal-button @click="${this.resizeWindow}">
             Resize
             <md-icon slot="icon">resize</md-icon>
         </md-filled-tonal-button>
         <h3>Screen Recording Size</h3>
-        <md-filled-text-field label="width" type="number" suffix-text="px" value="${this.screenRecordingSize.width}" @input="${this.updateProp(this.screenRecordingSize, "width")}"></md-filled-text-field>
-        <md-filled-text-field label="height" type="number" suffix-text="px" value="${this.screenRecordingSize.height}" @input="${this.updateProp(this.screenRecordingSize, "height")}"></md-filled-text-field>
+        <md-filled-text-field label="width" type="number" suffix-text="px" .value=${live(this.config.screenRecordingSize.width)} @input=${this.updateProp('screenRecordingSize', 'width')}></md-filled-text-field>
+        <md-filled-text-field label="height" type="number" suffix-text="px" .value=${live(this.config.screenRecordingSize.height)} @input=${this.updateProp('screenRecordingSize', 'height')}></md-filled-text-field>
+        <h3>Privacy</h3>
+        <label style="line-height: 32px; font-size: 1.5em">
+            Bug Tracking
+            <md-switch ?selected=${this.config.enableBugTracking} @input=${this.updateProp('enableBugTracking')}></md-switch>
+        </label>
         `;
     }
 
@@ -84,26 +91,29 @@ export class Settings extends LitElement {
         const msg: BackgroundWindowSizeMessage = {
             type: 'resize-window',
             target: 'background',
-            data: this.windowSize,
+            data: this.config.windowSize,
         };
         await chrome.runtime.sendMessage(msg);
     }
-    private updateProp(obj: Resolution, key: 'width' | 'height') {
+    private updateProp(key1: 'windowSize' | 'screenRecordingSize' | 'enableBugTracking', key2?: 'width' | 'height') {
         return (e: Event) => {
-            if (!(e.target instanceof MdFilledTextField)) return;
-            switch (e.target?.type) {
-                case 'number':
-                    obj[key] = Number.parseInt(e.target.value, 10);
+            switch (key1) {
+                case 'windowSize':
+                    if (!(e.target instanceof MdFilledTextField) || key2 == null) return;
+                    this.config[key1][key2] = Number.parseInt(e.target.value, 10);
                     break;
-                default:
-                    throw new Error(`unexpected input type: ${e.target.type}`);
+                case 'screenRecordingSize':
+                    if (!(e.target instanceof MdFilledTextField) || key2 == null) return;
+                    this.config[key1][key2] = Number.parseInt(e.target.value, 10);
+                    break;
+                case 'enableBugTracking':
+                    if (!(e.target instanceof MdSwitch)) return;
+                    this.config[key1] = e.target.selected;
+                    break;
             }
 
-            Settings.setConfiguration({
-                windowSize: this.windowSize,
-                screenRecordingSize: this.screenRecordingSize,
-            });
-            console.log('updated:', obj);
+            Settings.setConfiguration(this.config);
+            console.debug('updated:', JSON.stringify(this.config));
         }
     }
 };
