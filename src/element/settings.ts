@@ -68,18 +68,17 @@ export class Settings extends LitElement {
 
     public render() {
         return html`
-        <h2>Settings</h2>
-        <h3>Window Size</h3>
+        <h2>Window Size</h2>
         <md-filled-text-field label="width" type="number" suffix-text="px" .value=${live(this.config.windowSize.width)} @input=${this.updateProp('windowSize', 'width')}></md-filled-text-field>
         <md-filled-text-field label="height" type="number" suffix-text="px" .value=${live(this.config.windowSize.height)} @input=${this.updateProp('windowSize', 'height')}></md-filled-text-field>
-        <md-filled-tonal-button @click="${this.resizeWindow}">
+        <md-filled-tonal-button @click=${this.resizeWindow}>
             Resize
             <md-icon slot="icon">resize</md-icon>
         </md-filled-tonal-button>
-        <h3>Screen Recording Size</h3>
+        <h2>Screen Recording Size</h2>
         <md-filled-text-field label="width" type="number" suffix-text="px" .value=${live(this.config.screenRecordingSize.width)} @input=${this.updateProp('screenRecordingSize', 'width')}></md-filled-text-field>
         <md-filled-text-field label="height" type="number" suffix-text="px" .value=${live(this.config.screenRecordingSize.height)} @input=${this.updateProp('screenRecordingSize', 'height')}></md-filled-text-field>
-        <h3>Privacy</h3>
+        <h2>Privacy</h2>
         <label style="line-height: 32px; font-size: 1.5em">
             Bug Tracking
             <md-switch ?selected=${this.config.enableBugTracking} @input=${this.updateProp('enableBugTracking')}></md-switch>

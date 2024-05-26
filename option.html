@@ -4,11 +4,26 @@
     <meta charset="utf-8">
     <title>Options</title>
     <link href="https://fonts.googleapis.com/icon?family=Material+Symbols+Outlined" rel="stylesheet">
+    <style>
+        .container {
+            width: 600px;
+            position: relative;
+            margin: auto;
+        }
+    </style>
 </head>
 
 <body>
     <script type="module" src="dist/option.js"></script>
-    <extension-settings></extension-settings>
-    <record-list id="records"></record-list>
-    <extension-confirm id="confirm-dialog"></extension-confirm>
+    <div class="container">
+        <option-tab>
+            <div slot="panel-main">
+                <record-list id="records"></record-list>
+            </div>
+            <div slot="panel-settings">
+                <extension-settings></extension-settings>
+            </div>
+        </option-tab>
+        <extension-confirm id="confirm-dialog"></extension-confirm>
+    </div>
 </body>

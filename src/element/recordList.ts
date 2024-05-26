@@ -65,10 +65,10 @@ export class RecordList extends LitElement {
                 <span>${idx + 1}. </span>
                 <a href="${uri}" download="${record.title}">${record.title}</a>
                 <span>(size: ${formatNum(record.size / 1024 / 1024, 2)} MB)</span>
-                <md-filled-icon-button slot="end" @click="${this.playRecord(record)}">
+                <md-filled-icon-button slot="end" @click=${this.playRecord(record)}>
                     <md-icon>play_arrow</md-icon>
                 </md-filled-icon-button>
-                <md-filled-icon-button slot="end" @click="${this.deleteRecord(record)}">
+                <md-filled-icon-button slot="end" @click=${this.deleteRecord(record)}>
                     <md-icon>delete</md-icon>
                 </md-filled-icon-button>
             </md-list-item><md-divider></md-divider>`;
@@ -79,7 +79,7 @@ export class RecordList extends LitElement {
         return html`
         <h2 class="storage-heading">
         Storage (total: ${formatNum(usage / 1024 / 1024, 2)} MB, ${formatRate(usage / quota, 2)})
-        <md-filled-tonal-button @click="${this.saveAll}">
+        <md-filled-tonal-button @click=${this.saveAll}>
             Save all records
             <md-icon slot="icon">save</md-icon>
         </md-filled-tonal-button>

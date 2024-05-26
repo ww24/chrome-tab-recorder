@@ -1,6 +1,7 @@
 import './element/confirm';
 import './element/settings';
 import './element/recordList';
+import './element/tab';
 import { RecordList, Record } from './element/recordList';
 
 document.addEventListener('DOMContentLoaded', () => {
