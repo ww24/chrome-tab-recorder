@@ -1,9 +1,9 @@
-import fixWebmDuration from 'fix-webm-duration';
+import { MediaRecorderWebMDurationWorkaround } from './fix_webm_duration';
 import { Settings } from './element/settings';
 import type { Message, BackgroundStopRecordingMessage } from './message';
 import { getScope, sendEvent } from './sentry';
 
-const timeslice = 1000; // 1s
+const timeslice = 3000; // 3s
 
 chrome.runtime.onMessage.addListener(async (message: Message) => {
     try {
@@ -20,7 +20,7 @@ chrome.runtime.onMessage.addListener(async (message: Message) => {
         }
     } catch (e) {
         getScope()?.captureException(e);
-        throw e;
+        console.error(e);
     }
 });
 
@@ -65,7 +65,7 @@ async function startRecording(streamId: string) {
     const source = output.createMediaStreamSource(media);
     source.connect(output.destination);
 
-    const mimeType = 'video/webm;codecs=av1';
+    const mimeType = 'video/webm;codecs="vp9,opus"';
     if (!MediaRecorder.isTypeSupported(mimeType)) {
         throw new Error('unsupported MIME type: ' + mimeType);
     }
@@ -76,51 +76,79 @@ async function startRecording(streamId: string) {
         audioBitsPerSecond: 256 * 1000, // 256Kbps
         videoBitsPerSecond: 8 * size.width * size.height,
     });
+    const fixWebM = new MediaRecorderWebMDurationWorkaround();
     recorder.addEventListener('dataavailable', async event => {
-        await writableStream.write(event.data);
+        try {
+            await writableStream.write(event.data);
+            await fixWebM.write(event.data);
+        } catch (e) {
+            getScope()?.captureException(e);
+            console.error(e);
+        }
     });
     const startTime = Date.now();
     recorder.addEventListener('stop', async () => {
-        if (media.active) {
-            console.log("recorder: unexpected stop, resuming");
-            recorder?.resume();
-            return;
-        }
-
         const duration = Date.now() - startTime;
         console.log(`stopped: duration=${duration / 1000}s`);
 
-        sendEvent({
-            type: 'stop_recording',
-            tags: {
-                duration: duration / 1000,
-                mimeType: recorder?.mimeType,
-                videoBitRate: recorder?.videoBitsPerSecond,
-                audioBitRate: recorder?.audioBitsPerSecond,
-                recordingResolution: `${size.width}x${size.height}`,
-            },
-        });
+        try {
+            if (media.active) {
+                console.log('recorder: unexpected stop, retrying');
+                recorder?.start(timeslice);
+                return;
+            }
 
-        await writableStream.close();
+            sendEvent({
+                type: 'stop_recording',
+                tags: {
+                    duration: duration / 1000,
+                    mimeType: recorder?.mimeType,
+                    videoBitRate: recorder?.videoBitsPerSecond,
+                    audioBitRate: recorder?.audioBitsPerSecond,
+                    recordingResolution: `${size.width}x${size.height}`,
+                },
+            });
 
-        // workaround: fix video duration
-        const file = await backupFileHandle.getFile();
-        const fixed = await fixWebmDuration(file, duration, { logger: false });
-        const fixedFileHandle = await dirHandle.getFileHandle(`${fileBaseName}.webm`, { create: true });
-        const fixedWritableStream = await fixedFileHandle.createWritable();
-        await fixedWritableStream.write(fixed);
-        await fixedWritableStream.close();
-        if (fixed.size > file.size) {
-            await dirHandle.removeEntry(backupFileName);
+            await writableStream.close();
+
+            // workaround: fix video duration
+            fixWebM.close();
+            const fixWebMDuration = fixWebM.duration();
+            console.debug(`fixWebM: duration=${fixWebMDuration / 1000}s`);
+
+            const fixedFileHandle = await dirHandle.getFileHandle(`${fileBaseName}.webm`, { create: true });
+            const fixedWritableStream = await fixedFileHandle.createWritable();
+            const file = await backupFileHandle.getFile();
+            const fixed = fixWebM.fixMetadata(file);
+
+            try {
+                await fixed.stream().pipeTo(fixedWritableStream);
+                if (fixed.size >= file.size && Math.abs(duration - fixWebMDuration) < 5000) {
+                    await dirHandle.removeEntry(backupFileName);
+                }
+            } catch (e) {
+                await fixedWritableStream.close();
+                throw e;
+            }
+        } catch (e) {
+            getScope()?.captureException(e);
+            console.error(e);
+
+            try {
+                // close backup file writable stream
+                await writableStream.close();
+            } catch (e) {
+                console.error(e);
+            }
+        } finally {
+            recorder = undefined;
+            window.location.hash = '';
+            const msg: BackgroundStopRecordingMessage = {
+                type: 'stop-recording',
+                target: 'background',
+            };
+            await chrome.runtime.sendMessage(msg);
         }
-
-        recorder = undefined;
-        window.location.hash = '';
-        const msg: BackgroundStopRecordingMessage = {
-            type: 'stop-recording',
-            target: 'background',
-        };
-        await chrome.runtime.sendMessage(msg);
     });
     recorder.start(timeslice);
 
