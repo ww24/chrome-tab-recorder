@@ -23,7 +23,7 @@ const config: webpack.Configuration = {
         }
     },
     output: {
-        path: path.join(__dirname, 'dist'),
+        path: path.join(__dirname, 'extension/dist'),
         filename: '[name].js',
     },
     devtool: false,
