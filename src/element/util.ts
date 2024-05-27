@@ -1,10 +1,10 @@
-import type { FileSystemHandlePermissionDescriptor } from '../type';
+import type { FileSystemHandlePermissionDescriptor } from '../type'
 
 export function formatNum(num: number, dig: number) {
     return num.toLocaleString('ja-JP', {
         maximumFractionDigits: dig,
         minimumFractionDigits: dig,
-    });
+    })
 }
 
 export function formatRate(rate: number, dig: number) {
@@ -12,11 +12,11 @@ export function formatRate(rate: number, dig: number) {
         style: 'percent',
         maximumFractionDigits: dig,
         minimumFractionDigits: dig,
-    });
+    })
 }
 
 export async function checkFileHandlePermission(handle: FileSystemHandle) {
-    const options: FileSystemHandlePermissionDescriptor = { mode: 'readwrite' };
+    const options: FileSystemHandlePermissionDescriptor = { mode: 'readwrite' }
     return (await handle.queryPermission(options) === 'granted')
-        || (await handle.requestPermission(options) === 'granted');
+        || (await handle.requestPermission(options) === 'granted')
 }

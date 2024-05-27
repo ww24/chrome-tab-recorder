@@ -1,15 +1,15 @@
-import { html, css, LitElement } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
-import { formatNum, formatRate, checkFileHandlePermission } from './util';
-import '@material/web/list/list';
-import '@material/web/list/list-item';
-import '@material/web/divider/divider';
-import '@material/web/icon/icon';
-import '@material/web/iconbutton/filled-icon-button';
-import '@material/web/button/filled-tonal-button';
-import { MdDialog } from '@material/web/dialog/dialog';
-import Confirm from './confirm';
-import type { ShowDirectoryPickerOptions } from '../type';
+import { html, css, LitElement } from 'lit'
+import { customElement, property } from 'lit/decorators.js'
+import { formatNum, formatRate, checkFileHandlePermission } from './util'
+import '@material/web/list/list'
+import '@material/web/list/list-item'
+import '@material/web/divider/divider'
+import '@material/web/icon/icon'
+import '@material/web/iconbutton/filled-icon-button'
+import '@material/web/button/filled-tonal-button'
+import { MdDialog } from '@material/web/dialog/dialog'
+import Confirm from './confirm'
+import type { ShowDirectoryPickerOptions } from '../type'
 
 export interface Record {
     title: string;
@@ -34,33 +34,33 @@ export class RecordList extends LitElement {
             height: 40px;
             line-height: 40px;
         }
-    `;
+    `
 
     @property({ noAccessor: true })
-    private estimate: StorageEstimate;
+    private estimate: StorageEstimate
 
     @property({ type: Array })
-    private records: Array<Record>;
+    private records: Array<Record>
 
     public constructor() {
-        super();
-        this.estimate = {};
-        this.records = [];
+        super()
+        this.estimate = {}
+        this.records = []
     }
 
     public render() {
-        let records = this.records;
+        let records = this.records
         if (records.length === 0) {
-            records = records.concat([{ title: 'no entry', size: 0 }]);
+            records = records.concat([{ title: 'no entry', size: 0 }])
         }
         const row = (record: Record, idx: number) => {
             if (record.file == null) {
                 return html`<md-list-item>
                     ${record.title}
-                </md-list-item><md-divider></md-divider>`;
+                </md-list-item><md-divider></md-divider>`
             }
 
-            const uri = URL.createObjectURL(record.file);
+            const uri = URL.createObjectURL(record.file)
             return html`<md-list-item>
                 <span>${idx + 1}. </span>
                 <a href="${uri}" download="${record.title}">${record.title}</a>
@@ -71,11 +71,11 @@ export class RecordList extends LitElement {
                 <md-filled-icon-button slot="end" @click=${this.deleteRecord(record)}>
                     <md-icon>delete</md-icon>
                 </md-filled-icon-button>
-            </md-list-item><md-divider></md-divider>`;
-        };
-        const est = this.estimate;
-        const usage = est.usage ?? 0;
-        const quota = est.quota ?? 1;
+            </md-list-item><md-divider></md-divider>`
+        }
+        const est = this.estimate
+        const usage = est.usage ?? 0
+        const quota = est.quota ?? 1
         return html`
         <h2 class="storage-heading">
         Storage (total: ${formatNum(usage / 1024 / 1024, 2)} MB, ${formatRate(usage / quota, 2)})
@@ -86,63 +86,63 @@ export class RecordList extends LitElement {
         </h2>
         <md-list style="max-width: 600px;">
             ${records.map(row)}
-        </md-list>`;
+        </md-list>`
     }
 
     public addRecord(record: Record) {
-        this.records = [record].concat(this.records);
+        this.records = [record].concat(this.records)
     }
     private removeRecord(record: Record) {
-        this.records = this.records.filter(r => r.title !== record.title);
+        this.records = this.records.filter(r => r.title !== record.title)
     }
     public async updateEstimate() {
-        const oldVal = this.estimate;
-        this.estimate = await navigator.storage.estimate();
-        this.requestUpdate(`estimate`, oldVal);
+        const oldVal = this.estimate
+        this.estimate = await navigator.storage.estimate()
+        this.requestUpdate('estimate', oldVal)
     }
     private playRecord(record: Record) {
         return async () => {
-            if (record.file == null) return;
-            const url = URL.createObjectURL(record.file);
-            const win = window.open(url, '_blank', 'popup=true');
-            if (win == null) return;
+            if (record.file == null) return
+            const url = URL.createObjectURL(record.file)
+            const win = window.open(url, '_blank', 'popup=true')
+            if (win == null) return
             win.addEventListener('visibilitychange', event => {
                 if (!event.isTrusted) {
-                    return;
+                    return
                 }
                 setTimeout(() => {
-                    if (!win.closed) return;
-                    console.debug('popup window is closed');
-                    URL.revokeObjectURL(url);
-                }, 500);
-            });
+                    if (!win.closed) return
+                    console.debug('popup window is closed')
+                    URL.revokeObjectURL(url)
+                }, 500)
+            })
         }
     }
     private deleteRecord(record: Record) {
         return () => {
-            const dialogWrapper = document.getElementById('confirm-dialog') as Confirm;
-            dialogWrapper.setRecord(record);
+            const dialogWrapper = document.getElementById('confirm-dialog') as Confirm
+            dialogWrapper.setRecord(record)
 
-            if (dialogWrapper.shadowRoot == null) return;
-            const dialog = dialogWrapper.shadowRoot.children[0] as MdDialog;
+            if (dialogWrapper.shadowRoot == null) return
+            const dialog = dialogWrapper.shadowRoot.children[0] as MdDialog
             const listener = async () => {
-                dialog.removeEventListener('close', listener);
+                dialog.removeEventListener('close', listener)
 
-                console.log('confirm-dialog:', dialog.returnValue);
+                console.log('confirm-dialog:', dialog.returnValue)
                 if (dialog.returnValue === 'delete') {
-                    console.log('Delete:', record.title);
+                    console.log('Delete:', record.title)
 
                     // remove entry from file system
-                    const opfsRoot = await navigator.storage.getDirectory();
-                    await opfsRoot.removeEntry(record.title);
+                    const opfsRoot = await navigator.storage.getDirectory()
+                    await opfsRoot.removeEntry(record.title)
 
                     // remove and update UI
-                    this.removeRecord(record);
-                    this.updateEstimate();
+                    this.removeRecord(record)
+                    this.updateEstimate()
                 }
-            };
-            dialog.addEventListener('close', listener);
-            dialog.show();
+            }
+            dialog.addEventListener('close', listener)
+            dialog.show()
         }
     }
     private async saveAll() {
@@ -150,30 +150,30 @@ export class RecordList extends LitElement {
             id: 'save-directory',
             mode: 'readwrite',
             startIn: 'downloads',
-        };
-        const dirHandle = await window.showDirectoryPicker(options);
-        const permission = await checkFileHandlePermission(dirHandle);
+        }
+        const dirHandle = await window.showDirectoryPicker(options)
+        const permission = await checkFileHandlePermission(dirHandle)
         if (!permission) {
-            throw new Error('permission denied');
+            throw new Error('permission denied')
         }
 
-        const opfsRoot = await navigator.storage.getDirectory();
+        const opfsRoot = await navigator.storage.getDirectory()
         for await (const [name, handle] of opfsRoot.entries()) {
-            console.log('Copy:', name);
-            const fileHandle = await dirHandle.getFileHandle(name, { create: true });
-            const file = await handle.getFile();
-            const writableStream = await fileHandle.createWritable();
+            console.log('Copy:', name)
+            const fileHandle = await dirHandle.getFileHandle(name, { create: true })
+            const file = await handle.getFile()
+            const writableStream = await fileHandle.createWritable()
             try {
-                await file.stream().pipeTo(writableStream);
+                await file.stream().pipeTo(writableStream)
             } catch (e) {
-                writableStream.close();
-                throw e;
+                writableStream.close()
+                throw e
             }
         }
     }
 };
 
-export default RecordList;
+export default RecordList
 
 declare global {
     interface HTMLElementTagNameMap {

@@ -1,69 +1,69 @@
-import { html, css, LitElement } from 'lit';
-import { live } from 'lit/directives/live.js';
-import { customElement, property } from 'lit/decorators.js';
-import '@material/web/icon/icon';
-import '@material/web/button/filled-tonal-button';
-import '@material/web/switch/switch';
-import { MdFilledTextField } from '@material/web/textfield/filled-text-field';
-import type { Resolution, BackgroundWindowSizeMessage } from '../message';
-import { MdSwitch } from '@material/web/switch/switch';
+import { html, css, LitElement } from 'lit'
+import { live } from 'lit/directives/live.js'
+import { customElement, property } from 'lit/decorators.js'
+import '@material/web/icon/icon'
+import '@material/web/button/filled-tonal-button'
+import '@material/web/switch/switch'
+import { MdFilledTextField } from '@material/web/textfield/filled-text-field'
+import type { Resolution, BackgroundWindowSizeMessage } from '../message'
+import { MdSwitch } from '@material/web/switch/switch'
 
 class Configuration {
-    windowSize: Resolution;
-    screenRecordingSize: Resolution;
-    enableBugTracking: boolean;
+    windowSize: Resolution
+    screenRecordingSize: Resolution
+    enableBugTracking: boolean
     constructor() {
         this.windowSize = {
             width: 1920,
             height: 1080,
-        };
+        }
         this.screenRecordingSize = {
             width: 1920,
             height: 1080,
-        };
-        this.enableBugTracking = true;
+        }
+        this.enableBugTracking = true
     }
 };
 
 @customElement('extension-settings')
 export class Settings extends LitElement {
-    private static readonly localStorageKey = 'settings';
+    private static readonly localStorageKey = 'settings'
 
     private static getConfiguration(): Configuration {
-        const config = localStorage.getItem(Settings.localStorageKey);
-        const defaultConfig = new Configuration();
-        if (config == null) return defaultConfig;
-        return { ...defaultConfig, ...JSON.parse(config) };
+        const config = localStorage.getItem(Settings.localStorageKey)
+        const defaultConfig = new Configuration()
+        if (config == null) return defaultConfig
+        return { ...defaultConfig, ...JSON.parse(config) }
     }
 
     private static setConfiguration(config: Configuration) {
         const c = JSON.stringify({
             windowSize: config.windowSize,
             screenRecordingSize: config.screenRecordingSize,
-        });
-        localStorage.setItem(Settings.localStorageKey, c);
+        })
+        localStorage.setItem(Settings.localStorageKey, c)
     }
 
     public static getScreenRecordingSize(): Resolution {
-        return Settings.getConfiguration().screenRecordingSize;
+        return Settings.getConfiguration().screenRecordingSize
     }
 
     public static getEnableBugTracking(): boolean {
-        return Settings.getConfiguration().enableBugTracking;
+        return Settings.getConfiguration().enableBugTracking
     }
 
     static readonly styles = css`
     md-filled-tonal-button {
         height: 56px;
     }
-    `;
+    `
 
     @property({ noAccessor: true })
-    private config: Configuration;
+    private config: Configuration
 
     public constructor() {
-        super();
-        this.config = Settings.getConfiguration();
+        super()
+        this.config = Settings.getConfiguration()
     }
 
     public render() {
@@ -83,7 +83,7 @@ export class Settings extends LitElement {
             Bug Tracking
             <md-switch ?selected=${this.config.enableBugTracking} @input=${this.updateProp('enableBugTracking')}></md-switch>
         </label>
-        `;
+        `
     }
 
     private async resizeWindow() {
@@ -91,33 +91,33 @@ export class Settings extends LitElement {
             type: 'resize-window',
             target: 'background',
             data: this.config.windowSize,
-        };
-        await chrome.runtime.sendMessage(msg);
+        }
+        await chrome.runtime.sendMessage(msg)
     }
     private updateProp(key1: 'windowSize' | 'screenRecordingSize' | 'enableBugTracking', key2?: 'width' | 'height') {
         return (e: Event) => {
             switch (key1) {
                 case 'windowSize':
-                    if (!(e.target instanceof MdFilledTextField) || key2 == null) return;
-                    this.config[key1][key2] = Number.parseInt(e.target.value, 10);
-                    break;
+                    if (!(e.target instanceof MdFilledTextField) || key2 == null) return
+                    this.config[key1][key2] = Number.parseInt(e.target.value, 10)
+                    break
                 case 'screenRecordingSize':
-                    if (!(e.target instanceof MdFilledTextField) || key2 == null) return;
-                    this.config[key1][key2] = Number.parseInt(e.target.value, 10);
-                    break;
+                    if (!(e.target instanceof MdFilledTextField) || key2 == null) return
+                    this.config[key1][key2] = Number.parseInt(e.target.value, 10)
+                    break
                 case 'enableBugTracking':
-                    if (!(e.target instanceof MdSwitch)) return;
-                    this.config[key1] = e.target.selected;
-                    break;
+                    if (!(e.target instanceof MdSwitch)) return
+                    this.config[key1] = e.target.selected
+                    break
             }
 
-            Settings.setConfiguration(this.config);
-            console.debug('updated:', JSON.stringify(this.config));
+            Settings.setConfiguration(this.config)
+            console.debug('updated:', JSON.stringify(this.config))
         }
     }
 };
 
-export default Settings;
+export default Settings
 
 declare global {
     interface HTMLElementTagNameMap {
