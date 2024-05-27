@@ -1,6 +1,6 @@
-import path from 'path';
-import webpack from 'webpack';
-import Dotenv from 'dotenv-webpack';
+import path from 'path'
+import webpack from 'webpack'
+import Dotenv from 'dotenv-webpack'
 
 const config: webpack.Configuration = {
     entry: {
@@ -31,6 +31,6 @@ const config: webpack.Configuration = {
         new webpack.SourceMapDevToolPlugin({}),
         new Dotenv(),
     ],
-};
+}
 
-export default config;
+export default config

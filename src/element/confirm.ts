@@ -1,23 +1,23 @@
-import { LitElement, html } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
-import '@material/web/icon/icon';
-import '@material/web/dialog/dialog';
-import '@material/web/button/text-button';
-import '@material/web/button/filled-tonal-button';
-import { formatNum } from './util';
-import { Record } from './recordList';
+import { LitElement, html } from 'lit'
+import { customElement, property } from 'lit/decorators.js'
+import '@material/web/icon/icon'
+import '@material/web/dialog/dialog'
+import '@material/web/button/text-button'
+import '@material/web/button/filled-tonal-button'
+import { formatNum } from './util'
+import { Record } from './recordList'
 
 @customElement('extension-confirm')
 export default class Confirm extends LitElement {
   @property({ noAccessor: true })
-  private record: Record;
+  private record: Record
 
   public constructor() {
-    super();
+    super()
     this.record = {
       title: '',
       size: 0,
-    };
+    }
   }
 
   public render() {
@@ -34,13 +34,13 @@ export default class Confirm extends LitElement {
             <md-filled-tonal-button form="form" value="cancel" autofocus>Cancel</md-filled-tonal-button>
           </div>
         </md-dialog>
-      `;
+      `
   }
 
   public setRecord(record: Record) {
-    const oldVal = this.record;
-    this.record = record;
-    this.requestUpdate(`record`, oldVal);
+    const oldVal = this.record
+    this.record = record
+    this.requestUpdate('record', oldVal)
   }
 };
 
