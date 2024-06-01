@@ -156,12 +156,7 @@ async function startRecording(streamId: string) {
     console.log('videoBitRate:', recorder.videoBitsPerSecond)
     console.log('audioBitRate:', recorder.audioBitsPerSecond)
 
-    // Record the current state in the URL. This provides a very low-bandwidth
-    // way of communicating with the service worker (the service worker can check
-    // the URL of the document and see the current recording state). We can't
-    // store that directly in the service worker as it may be terminated while
-    // recording is in progress. We could write it to storage but that slightly
-    // increases the risk of things getting out of sync.
+    // ref. https://github.com/GoogleChrome/chrome-extensions-samples/blob/137cf71b9b4d631191cedbf96343d5b6a51c9a74/functional-samples/sample.tabcapture-recorder/offscreen.js#L71-L77
     window.location.hash = 'recording'
 }
 
