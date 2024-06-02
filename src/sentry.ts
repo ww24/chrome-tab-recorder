@@ -26,7 +26,7 @@ scope.setClient(client)
 
 client.init() // initializing has to be done after setting the client on the scope
 
-export function getScope(): Scope | undefined {
+function getScope(): Scope | undefined {
     if (!Settings.getEnableBugTracking()) return
     return scope
 };
@@ -44,10 +44,14 @@ interface StopRecordingEvent {
     };
 };
 
+export function sendException(e: unknown) {
+    getScope()?.captureException(e)
+}
+
 export function sendEvent(e: Event) {
     getScope()?.captureEvent({
         message: e.type,
         level: 'info',
         tags: e.tags,
     })
-};
+}

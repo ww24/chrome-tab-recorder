@@ -157,6 +157,7 @@ export class RecordList extends LitElement {
             throw new Error('permission denied')
         }
 
+        // TODO: 書き出しに時間を要するので、Service Worker  に逃がすか、モーダルで進捗表示する
         const opfsRoot = await navigator.storage.getDirectory()
         for await (const [name, handle] of opfsRoot.entries()) {
             console.log('Copy:', name)

@@ -5,43 +5,36 @@ import '@material/web/icon/icon'
 import '@material/web/button/filled-tonal-button'
 import '@material/web/switch/switch'
 import { MdFilledTextField } from '@material/web/textfield/filled-text-field'
-import type { Resolution, BackgroundWindowSizeMessage } from '../message'
 import { MdSwitch } from '@material/web/switch/switch'
-
-class Configuration {
-    windowSize: Resolution
-    screenRecordingSize: Resolution
-    enableBugTracking: boolean
-    constructor() {
-        this.windowSize = {
-            width: 1920,
-            height: 1080,
-        }
-        this.screenRecordingSize = {
-            width: 1920,
-            height: 1080,
-        }
-        this.enableBugTracking = true
-    }
-};
+import type { BackgroundWindowSizeMessage, BackgroundSyncConfigMessage } from '../message'
+import { Configuration, Resolution } from '../configuration'
+import { WebLocalStorage } from '../storage'
+import type { Message, BackgroundFetchConfigMessage } from '../message'
+import { sendException } from '../sentry'
 
 @customElement('extension-settings')
 export class Settings extends LitElement {
-    private static readonly localStorageKey = 'settings'
+    private static readonly storage = new WebLocalStorage()
 
     private static getConfiguration(): Configuration {
-        const config = localStorage.getItem(Settings.localStorageKey)
+        const config = Settings.storage.get(Configuration.key)
         const defaultConfig = new Configuration()
         if (config == null) return defaultConfig
-        return { ...defaultConfig, ...JSON.parse(config) }
+        return { ...defaultConfig, ...config }
     }
 
     private static setConfiguration(config: Configuration) {
-        const c = JSON.stringify({
-            windowSize: config.windowSize,
-            screenRecordingSize: config.screenRecordingSize,
-        })
-        localStorage.setItem(Settings.localStorageKey, c)
+        config.updatedAt = Date.now()
+        Settings.storage.set(Configuration.key, config)
+    }
+
+    private static async syncConfiguration(config: Configuration) {
+        const msg: BackgroundSyncConfigMessage = {
+            type: 'sync-config',
+            target: 'background',
+            data: config,
+        }
+        await chrome.runtime.sendMessage(msg)
     }
 
     public static getScreenRecordingSize(): Resolution {
@@ -64,6 +57,23 @@ export class Settings extends LitElement {
     public constructor() {
         super()
         this.config = Settings.getConfiguration()
+
+        chrome.runtime.onMessage.addListener(async (message: Message) => {
+            try {
+                if (message.target !== 'option') return
+                switch (message.type) {
+                    case 'sync-config':
+                        const oldVal = this.config
+                        this.config = { ...this.config, ...message.data }
+                        this.requestUpdate('config', oldVal)
+                        Settings.setConfiguration(this.config)
+                        return
+                }
+            } catch (e) {
+                sendException(e)
+                console.error(e)
+            }
+        })
     }
 
     public render() {
@@ -83,6 +93,11 @@ export class Settings extends LitElement {
             Bug Tracking
             <md-switch ?selected=${this.config.enableBugTracking} @input=${this.updateProp('enableBugTracking')}></md-switch>
         </label>
+        <h2>Sync</h2>
+        <md-filled-tonal-button @click=${this.fetchConfig}>
+            Sync Settings
+            <md-icon slot="icon">sync</md-icon>
+        </md-filled-tonal-button>
         `
     }
 
@@ -95,7 +110,7 @@ export class Settings extends LitElement {
         await chrome.runtime.sendMessage(msg)
     }
     private updateProp(key1: 'windowSize' | 'screenRecordingSize' | 'enableBugTracking', key2?: 'width' | 'height') {
-        return (e: Event) => {
+        return async (e: Event) => {
             switch (key1) {
                 case 'windowSize':
                     if (!(e.target instanceof MdFilledTextField) || key2 == null) return
@@ -112,8 +127,15 @@ export class Settings extends LitElement {
             }
 
             Settings.setConfiguration(this.config)
-            console.debug('updated:', JSON.stringify(this.config))
+            await Settings.syncConfiguration(this.config)
         }
+    }
+    private async fetchConfig() {
+        const msg: BackgroundFetchConfigMessage = {
+            target: 'background',
+            type: 'fetch-config',
+        }
+        await chrome.runtime.sendMessage(msg)
     }
 };
 

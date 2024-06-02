@@ -1,7 +1,7 @@
 import { MediaRecorderWebMDurationWorkaround } from './fix_webm_duration'
 import { Settings } from './element/settings'
 import type { Message, BackgroundStopRecordingMessage } from './message'
-import { getScope, sendEvent } from './sentry'
+import { sendEvent, sendException } from './sentry'
 
 const timeslice = 3000 // 3s
 
@@ -19,7 +19,7 @@ chrome.runtime.onMessage.addListener(async (message: Message) => {
                 throw message.data
         }
     } catch (e) {
-        getScope()?.captureException(e)
+        sendException(e)
         console.error(e)
     }
 })
@@ -31,8 +31,8 @@ async function startRecording(streamId: string) {
         throw new Error('Called startRecording while recording is in progress.')
     }
 
-    if (! await navigator.storage.persist()) {
-        throw new Error('OPFS persist: permission denied')
+    if (! await navigator.storage.persisted()) {
+        console.warn('OPFS persist: permission denied')
     }
 
     const dirHandle = await navigator.storage.getDirectory()
@@ -82,7 +82,7 @@ async function startRecording(streamId: string) {
             await writableStream.write(event.data)
             await fixWebM.write(event.data)
         } catch (e) {
-            getScope()?.captureException(e)
+            sendException(e)
             console.error(e)
         }
     })
@@ -131,7 +131,7 @@ async function startRecording(streamId: string) {
                 throw e
             }
         } catch (e) {
-            getScope()?.captureException(e)
+            sendException(e)
             console.error(e)
 
             try {
@@ -144,8 +144,8 @@ async function startRecording(streamId: string) {
             recorder = undefined
             window.location.hash = ''
             const msg: BackgroundStopRecordingMessage = {
-                type: 'stop-recording',
                 target: 'background',
+                type: 'stop-recording',
             }
             await chrome.runtime.sendMessage(msg)
         }

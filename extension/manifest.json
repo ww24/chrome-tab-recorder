@@ -17,7 +17,9 @@
     },
     "permissions": [
         "tabCapture",
-        "offscreen"
+        "offscreen",
+        "storage",
+        "unlimitedStorage"
     ],
     "options_page": "option.html"
 }
