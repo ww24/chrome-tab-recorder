@@ -1,8 +1,11 @@
 import type { getMediaStreamId } from './type'
-import type { Message, Resolution, OffscreenStartRecordingMessage, OffscreenStopRecordingMessage, ExceptionMessage } from './message'
+import type { Message, OffscreenStartRecordingMessage, OffscreenStopRecordingMessage, OptionSyncConfigMessage, ExceptionMessage } from './message'
+import { Configuration, Resolution } from './configuration'
+import { ExtensionSyncStorage } from './storage'
 
 const recordingIcon = '/icons/recording.png'
 const notRecordingIcon = '/icons/not-recording.png'
+const storage = new ExtensionSyncStorage()
 
 chrome.action.onClicked.addListener(async (tab: chrome.tabs.Tab) => {
     try {
@@ -47,8 +50,8 @@ async function startRecording(tab: chrome.tabs.Tab) {
 
     // Send the stream ID to the offscreen document to start recording.
     const msg: OffscreenStartRecordingMessage = {
-        type: 'start-recording',
         target: 'offscreen',
+        type: 'start-recording',
         data: streamId,
     }
     await chrome.runtime.sendMessage(msg)
@@ -58,8 +61,8 @@ async function startRecording(tab: chrome.tabs.Tab) {
 
 async function stopRecording() {
     const msg: OffscreenStopRecordingMessage = {
+        target: 'offscreen',
         type: 'stop-recording',
-        target: 'offscreen'
     }
     await chrome.runtime.sendMessage(msg)
     await chrome.action.setIcon({ path: notRecordingIcon })
@@ -75,6 +78,20 @@ chrome.runtime.onMessage.addListener(async (message: Message) => {
                 return
             case 'stop-recording':
                 await chrome.action.setIcon({ path: notRecordingIcon })
+                return
+            case 'sync-config':
+                await storage.set(Configuration.key, message.data)
+                return
+            case 'fetch-config':
+                const data = await storage.get(Configuration.key)
+                if (data == null || !(Configuration.key in data)) return
+                console.debug('fetch:', data[Configuration.key])
+                const msg: OptionSyncConfigMessage = {
+                    target: 'option',
+                    type: 'sync-config',
+                    data: data[Configuration.key] as Configuration,
+                }
+                await chrome.runtime.sendMessage(msg)
                 return
         }
     } catch (e) {
@@ -97,3 +114,10 @@ async function resizeWindow({ width, height }: Resolution) {
     }
     await chrome.windows.update(window.id, updateInfo)
 };
+
+// remote configuration change log
+chrome.storage.onChanged.addListener((changes, namespace) => {
+    if (namespace !== 'sync' || changes[Configuration.key] == null) return
+    const { newValue } = changes[Configuration.key]
+    console.log('updated:', newValue)
+})

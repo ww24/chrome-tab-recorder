@@ -1,8 +1,13 @@
+import type { Resolution, Configuration } from './configuration'
+
 export type Message = OffscreenStartRecordingMessage
     | OffscreenStopRecordingMessage
     | ExceptionMessage
+    | OptionSyncConfigMessage
     | BackgroundStopRecordingMessage
-    | BackgroundWindowSizeMessage;
+    | BackgroundWindowSizeMessage
+    | BackgroundSyncConfigMessage
+    | BackgroundFetchConfigMessage;
 
 export interface OffscreenMessage {
     target: 'offscreen';
@@ -19,6 +24,14 @@ export interface ExceptionMessage extends OffscreenMessage {
     data: unknown;
 }
 
+export interface OptionMessage {
+    target: 'option';
+}
+export interface OptionSyncConfigMessage extends OptionMessage {
+    type: 'sync-config';
+    data: Configuration;
+}
+
 export interface BackgroundMessage {
     target: 'background';
 }
@@ -29,7 +42,10 @@ export interface BackgroundWindowSizeMessage extends BackgroundMessage {
     type: 'resize-window';
     data: Resolution;
 }
-export interface Resolution {
-    width: number;
-    height: number;
+export interface BackgroundSyncConfigMessage extends BackgroundMessage {
+    type: 'sync-config';
+    data: Configuration;
+}
+export interface BackgroundFetchConfigMessage extends BackgroundMessage {
+    type: 'fetch-config';
 }
