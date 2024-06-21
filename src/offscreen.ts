@@ -15,6 +15,9 @@ chrome.runtime.onMessage.addListener(async (message: Message) => {
             case 'stop-recording':
                 await stopRecording()
                 return
+            case 'sync-config':
+                Settings.setConfiguration(message.data)
+                return
             case 'exception':
                 throw message.data
         }
@@ -101,11 +104,13 @@ async function startRecording(streamId: string) {
             sendEvent({
                 type: 'stop_recording',
                 tags: {
-                    duration: duration / 1000,
                     mimeType: recorder?.mimeType,
                     videoBitRate: recorder?.videoBitsPerSecond,
                     audioBitRate: recorder?.audioBitsPerSecond,
                     recordingResolution: `${size.width}x${size.height}`,
+                },
+                metrics: {
+                    duration: duration / 1000,
                 },
             })
 

@@ -8,6 +8,7 @@ export class Configuration {
     screenRecordingSize: Resolution
     enableBugTracking: boolean
     updatedAt: number
+    userId: string
     constructor() {
         this.windowSize = {
             width: 1920,
@@ -19,5 +20,6 @@ export class Configuration {
         }
         this.enableBugTracking = true
         this.updatedAt = 0
+        this.userId = ''
     }
 };

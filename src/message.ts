@@ -2,6 +2,7 @@ import type { Resolution, Configuration } from './configuration'
 
 export type Message = OffscreenStartRecordingMessage
     | OffscreenStopRecordingMessage
+    | OffscreenSyncConfigMessage
     | ExceptionMessage
     | OptionSyncConfigMessage
     | BackgroundStopRecordingMessage
@@ -18,6 +19,10 @@ export interface OffscreenStartRecordingMessage extends OffscreenMessage {
 }
 export interface OffscreenStopRecordingMessage extends OffscreenMessage {
     type: 'stop-recording';
+}
+export interface OffscreenSyncConfigMessage extends OffscreenMessage {
+    type: 'sync-config';
+    data: Configuration;
 }
 export interface ExceptionMessage extends OffscreenMessage {
     type: 'exception';
