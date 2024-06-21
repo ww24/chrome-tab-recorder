@@ -54,7 +54,7 @@ export function sendException(e: unknown) {
 
 export function sendEvent(e: Event) {
     const scope = getScope()
-    if (scope == null) return;
+    if (scope == null) return
 
     scope.captureEvent({
         message: e.type,
