@@ -4,6 +4,7 @@ import {
     getDefaultIntegrations,
     makeFetchTransport,
     Scope,
+    metrics,
 } from '@sentry/browser'
 import { Settings } from './element/settings'
 
@@ -28,19 +29,22 @@ client.init() // initializing has to be done after setting the client on the sco
 
 function getScope(): Scope | undefined {
     if (!Settings.getEnableBugTracking()) return
+    scope.setUser({ id: Settings.getUserId() })
     return scope
-};
+}
 
 type Event = StopRecordingEvent;
 
 interface StopRecordingEvent {
     type: 'stop_recording';
     tags: {
-        duration?: number;
         mimeType?: string;
         videoBitRate?: number;
         audioBitRate?: number;
         recordingResolution?: string;
+    };
+    metrics: {
+        duration?: number;
     };
 };
 
@@ -54,4 +58,17 @@ export function sendEvent(e: Event) {
         level: 'info',
         tags: e.tags,
     })
+
+    const userId = Settings.getUserId()
+    const tags = { ...e.tags, userId }
+    metrics.increment(e.type, 1, {
+        tags,
+        client,
+    })
+    if (e.metrics.duration != null) {
+        metrics.distribution(e.type + '_duration', e.metrics.duration, {
+            tags,
+            client,
+        })
+    }
 }

@@ -1,5 +1,7 @@
+import { v7 as uuidv7 } from 'uuid'
+
 import type { getMediaStreamId } from './type'
-import type { Message, OffscreenStartRecordingMessage, OffscreenStopRecordingMessage, OptionSyncConfigMessage, ExceptionMessage } from './message'
+import type { Message, OffscreenStartRecordingMessage, OffscreenStopRecordingMessage, OffscreenSyncConfigMessage, OptionSyncConfigMessage, ExceptionMessage } from './message'
 import { Configuration, Resolution } from './configuration'
 import { ExtensionSyncStorage } from './storage'
 
@@ -7,30 +9,52 @@ const recordingIcon = '/icons/recording.png'
 const notRecordingIcon = '/icons/not-recording.png'
 const storage = new ExtensionSyncStorage()
 
+chrome.runtime.onInstalled.addListener(async () => {
+    await getOrCreateOffscreenDocument()
+
+    const remoteConfig = await storage.get(Configuration.key)
+    const defaultConfig = new Configuration()
+    const config = { ...defaultConfig, ...remoteConfig }
+    if (config.userId === '') {
+        config.userId = uuidv7()
+    }
+    console.debug('config:', config)
+
+    const msg: OffscreenSyncConfigMessage = {
+        target: 'offscreen',
+        type: 'sync-config',
+        data: config as Configuration,
+    }
+    await chrome.runtime.sendMessage(msg)
+})
+
+async function getOrCreateOffscreenDocument(): Promise<boolean> {
+    const existingContexts = await chrome.runtime.getContexts({})
+    const offscreenDocument = existingContexts.find(
+        c => c.contextType === 'OFFSCREEN_DOCUMENT'
+    )
+
+    // If an offscreen document is not already open, create one.
+    let recording = false
+    if (!offscreenDocument) {
+        await chrome.offscreen.createDocument({
+            url: 'offscreen.html',
+            reasons: [chrome.offscreen.Reason.USER_MEDIA],
+            justification: 'Recording from chrome.tabCapture API'
+        })
+    } else {
+        recording = (offscreenDocument.documentUrl?.endsWith('#recording') ?? false)
+    }
+    return recording
+}
+
 chrome.action.onClicked.addListener(async (tab: chrome.tabs.Tab) => {
     try {
-        const existingContexts = await chrome.runtime.getContexts({})
-        const offscreenDocument = existingContexts.find(
-            c => c.contextType === 'OFFSCREEN_DOCUMENT'
-        )
-
-        // If an offscreen document is not already open, create one.
-        let recording = false
-        if (!offscreenDocument) {
-            await chrome.offscreen.createDocument({
-                url: 'offscreen.html',
-                reasons: [chrome.offscreen.Reason.USER_MEDIA],
-                justification: 'Recording from chrome.tabCapture API'
-            })
-        } else {
-            recording = (offscreenDocument.documentUrl?.endsWith('#recording') ?? false)
-        }
-
+        const recording = await getOrCreateOffscreenDocument()
         if (recording) {
             await stopRecording()
             return
         }
-
         await startRecording(tab)
     } catch (e) {
         const msg: ExceptionMessage = {

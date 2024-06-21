@@ -23,7 +23,7 @@ export class Settings extends LitElement {
         return { ...defaultConfig, ...config }
     }
 
-    private static setConfiguration(config: Configuration) {
+    public static setConfiguration(config: Configuration) {
         config.updatedAt = Date.now()
         Settings.storage.set(Configuration.key, config)
     }
@@ -45,6 +45,10 @@ export class Settings extends LitElement {
         return Settings.getConfiguration().enableBugTracking
     }
 
+    public static getUserId(): string {
+        return Settings.getConfiguration().userId
+    }
+
     static readonly styles = css`
     md-filled-tonal-button {
         height: 56px;
@@ -64,7 +68,7 @@ export class Settings extends LitElement {
                 switch (message.type) {
                     case 'sync-config':
                         const oldVal = this.config
-                        this.config = { ...this.config, ...message.data }
+                        this.config = { ...oldVal, ...message.data }
                         this.requestUpdate('config', oldVal)
                         Settings.setConfiguration(this.config)
                         return
