@@ -4,6 +4,7 @@
   "description": "Google Chrome Extensions Screen Recorder",
   "scripts": {
     "build": "webpack --mode=production",
+    "archive": "rm extension.zip && zip -r extension.zip extension",
     "watch": "webpack --mode=development -w",
     "lint": "eslint {src,*.{mjs,ts}}",
     "test": "echo \"Error: no test specified\" && exit 1"
