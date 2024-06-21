@@ -53,7 +53,10 @@ export function sendException(e: unknown) {
 }
 
 export function sendEvent(e: Event) {
-    getScope()?.captureEvent({
+    const scope = getScope()
+    if (scope == null) return;
+
+    scope.captureEvent({
         message: e.type,
         level: 'info',
         tags: e.tags,
@@ -61,10 +64,6 @@ export function sendEvent(e: Event) {
 
     const userId = Settings.getUserId()
     const tags = { ...e.tags, userId }
-    metrics.increment(e.type, 1, {
-        tags,
-        client,
-    })
     if (e.metrics.duration != null) {
         metrics.distribution(e.type + '_duration', e.metrics.duration, {
             tags,
