@@ -106,10 +106,12 @@ export class Settings extends LitElement {
     }
 
     private async resizeWindow() {
+        const width = this.config.windowSize.width + (window.outerWidth - window.innerWidth)
+        const height = this.config.windowSize.height + (window.outerHeight - window.innerHeight)
         const msg: BackgroundWindowSizeMessage = {
             type: 'resize-window',
             target: 'background',
-            data: this.config.windowSize,
+            data: { width, height },
         }
         await chrome.runtime.sendMessage(msg)
     }
