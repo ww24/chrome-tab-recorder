@@ -21,5 +21,9 @@
         "storage",
         "unlimitedStorage"
     ],
-    "options_page": "option.html"
+    "options_page": "option.html",
+    "content_security_policy": {
+        "extension_pages": "default-src 'self'; style-src 'unsafe-inline';",
+        "sandbox": "sandbox allow-scripts allow-forms allow-popups allow-modals; script-src 'self' 'unsafe-inline' 'unsafe-eval'; child-src 'self';"
+    }
 }
