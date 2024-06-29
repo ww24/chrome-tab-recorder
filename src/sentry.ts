@@ -42,6 +42,7 @@ interface StopRecordingEvent {
         videoBitRate?: number;
         audioBitRate?: number;
         recordingResolution?: string;
+        version?: string;
     };
     metrics: {
         duration?: number;
@@ -49,13 +50,20 @@ interface StopRecordingEvent {
 };
 
 export function sendException(e: unknown) {
-    getScope()?.captureException(e)
+    getScope()?.captureException(e, {
+        captureContext: {
+            tags: {
+                version: process.env.VERSION,
+            },
+        },
+    })
 }
 
 export function sendEvent(e: Event) {
     const scope = getScope()
     if (scope == null) return
 
+    e.tags.version = process.env.VERSION
     scope.captureEvent({
         message: e.type,
         level: 'info',
