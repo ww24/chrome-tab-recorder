@@ -29,7 +29,8 @@
       "target": "ESNext",
       "esModuleInterop": true,
       "moduleResolution": "node",
-      "verbatimModuleSyntax": false
+      "verbatimModuleSyntax": false,
+      "resolveJsonModule": true
     }
   }
 }
