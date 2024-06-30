@@ -20,3 +20,17 @@ export async function checkFileHandlePermission(handle: FileSystemHandle) {
     return (await handle.queryPermission(options) === 'granted')
         || (await handle.requestPermission(options) === 'granted')
 }
+
+/* eslint @typescript-eslint/no-explicit-any: 0 */
+export function deepMerge<T>(obj1: T, obj2: T): T {
+    const res = { ...obj1 }
+    for (const k in obj2) {
+        if (!Object.hasOwn(obj2 as object, k)) continue
+        if (obj1[k] instanceof Object && obj2[k] instanceof Object) {
+            res[k] = deepMerge(obj1[k], obj2[k])
+        } else {
+            res[k] = obj2[k]
+        }
+    }
+    return res
+}

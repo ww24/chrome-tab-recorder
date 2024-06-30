@@ -4,6 +4,7 @@ import type { getMediaStreamId } from './type'
 import type { Message, OffscreenStartRecordingMessage, OffscreenStopRecordingMessage, OffscreenSyncConfigMessage, OptionSyncConfigMessage, ExceptionMessage } from './message'
 import { Configuration, Resolution } from './configuration'
 import { ExtensionSyncStorage } from './storage'
+import { deepMerge } from './element/util'
 
 const recordingIcon = '/icons/recording.png'
 const notRecordingIcon = '/icons/not-recording.png'
@@ -12,9 +13,9 @@ const storage = new ExtensionSyncStorage()
 chrome.runtime.onInstalled.addListener(async () => {
     await getOrCreateOffscreenDocument()
 
-    const remoteConfig = await storage.get(Configuration.key)
     const defaultConfig = new Configuration()
-    const config = { ...defaultConfig, ...remoteConfig }
+    const remoteConfig = (await storage.get(Configuration.key)) as Configuration
+    const config = deepMerge(defaultConfig, remoteConfig)
     if (config.userId === '') {
         config.userId = uuidv7()
     }
