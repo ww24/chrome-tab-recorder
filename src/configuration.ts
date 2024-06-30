@@ -33,6 +33,10 @@ export class Configuration {
         this.updatedAt = 0
         this.userId = ''
     }
+    static restoreDefault({ userId }: Configuration): Configuration {
+        const config = new Configuration()
+        return { ...config, userId }
+    }
     static videoFormat(config: Configuration): VideoFormat {
         if (config.videoFormat.videoBitrate === 0) {
             return {
