@@ -1,6 +1,7 @@
 import path from 'path'
 import webpack from 'webpack'
 import Dotenv from 'dotenv-webpack'
+import { version } from './package.json'
 
 const config: webpack.Configuration = {
     entry: {
@@ -30,6 +31,9 @@ const config: webpack.Configuration = {
     plugins: [
         new webpack.SourceMapDevToolPlugin({}),
         new Dotenv(),
+        new webpack.DefinePlugin({
+            'process.env.VERSION': `"${version}"`,
+        }),
     ],
 }
 
