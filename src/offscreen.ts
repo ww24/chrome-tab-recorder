@@ -68,16 +68,16 @@ async function startRecording(streamId: string) {
     const source = output.createMediaStreamSource(media)
     source.connect(output.destination)
 
-    const mimeType = 'video/webm;codecs="vp9,opus"'
-    if (!MediaRecorder.isTypeSupported(mimeType)) {
-        throw new Error('unsupported MIME type: ' + mimeType)
+    const videoFormat = Settings.getVideoFormat()
+    if (!MediaRecorder.isTypeSupported(videoFormat.mimeType)) {
+        throw new Error('unsupported MIME type: ' + videoFormat.mimeType)
     }
 
     // Start recording.
     recorder = new MediaRecorder(media, {
-        mimeType,
-        audioBitsPerSecond: 256 * 1000, // 256Kbps
-        videoBitsPerSecond: 8 * size.width * size.height,
+        mimeType: videoFormat.mimeType,
+        audioBitsPerSecond: videoFormat.audioBitrate,
+        videoBitsPerSecond: videoFormat.videoBitrate,
     })
     const fixWebM = new MediaRecorderWebMDurationWorkaround()
     recorder.addEventListener('dataavailable', async event => {
