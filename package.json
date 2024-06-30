@@ -42,5 +42,8 @@
     "webpack": "^5.92.1",
     "webpack-cli": "^5.1.4"
   },
-  "private": true
+  "private": true,
+  "engines": {
+    "node": ">=22.0.0"
+  }
 }
