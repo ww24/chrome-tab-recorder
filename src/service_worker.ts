@@ -19,6 +19,7 @@ chrome.runtime.onInstalled.addListener(async () => {
     if (config.userId === '') {
         config.userId = uuidv7()
     }
+    await storage.set(Configuration.key, config)
     console.debug('config:', config)
 
     const msg: OffscreenSyncConfigMessage = {
