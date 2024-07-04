@@ -37,8 +37,9 @@ export class Settings extends LitElement {
         await chrome.runtime.sendMessage(msg)
     }
 
-    public static getScreenRecordingSize(): Resolution {
-        return Settings.getConfiguration().screenRecordingSize
+    public static getScreenRecordingSize(base: Resolution): Resolution {
+        const config = Settings.getConfiguration()
+        return Configuration.screenRecordingSize(config, base)
     }
 
     public static getVideoFormat(): VideoFormat {
@@ -104,8 +105,15 @@ export class Settings extends LitElement {
             <md-icon slot="icon">resize</md-icon>
         </md-filled-tonal-button>
         <h2>Screen Recording Size</h2>
-        <md-filled-text-field label="width" type="number" suffix-text="px" .value=${live(this.config.screenRecordingSize.width)} @input=${this.updateProp('screenRecordingSize', 'width')}></md-filled-text-field>
-        <md-filled-text-field label="height" type="number" suffix-text="px" .value=${live(this.config.screenRecordingSize.height)} @input=${this.updateProp('screenRecordingSize', 'height')}></md-filled-text-field>
+        <div>
+            <label style="line-height: 32px; font-size: 1.5em">
+                Auto (Use tab size if available)
+                <md-switch ?selected=${live(this.config.screenRecordingSize.auto)} @input=${this.updateProp('screenRecordingSize', 'auto')}></md-switch>
+            </label>
+        </div>
+        <md-filled-text-field label="width" type="number" suffix-text="px" ?disabled=${live(this.config.screenRecordingSize.auto)} .value=${live(this.config.screenRecordingSize.width)} @input=${this.updateProp('screenRecordingSize', 'width')}></md-filled-text-field>
+        <md-filled-text-field label="height" type="number" suffix-text="px" ?disabled=${live(this.config.screenRecordingSize.auto)} .value=${live(this.config.screenRecordingSize.height)} @input=${this.updateProp('screenRecordingSize', 'height')}></md-filled-text-field>
+        <md-filled-text-field label="recording scale" type="number" min="1" suffix-text="x" ?disabled=${live(!this.config.screenRecordingSize.auto)} .value=${live(this.config.screenRecordingSize.scale)} @input=${this.updateProp('screenRecordingSize', 'scale')}></md-filled-text-field>
         <h2>Video Format</h2>
         <md-filled-text-field class="video-format-input" label="audio bitrate" type="number" min="1" suffix-text="Kbps" .value=${live(this.config.videoFormat.audioBitrate / 1024)} @input=${this.updateProp('videoFormat', 'audioBitrate')}></md-filled-text-field>
         <md-filled-text-field class="video-format-input" label="video bitrate" type="number" min="0" step="0.1" supporting-text="0 means auto (number of pixels * 8 bps)" suffix-text="Mbps" .value=${live(this.config.videoFormat.videoBitrate / 1024 / 1024)} @input=${this.updateProp('videoFormat', 'videoBitrate')}></md-filled-text-field>
@@ -139,14 +147,27 @@ export class Settings extends LitElement {
     }
     private updateProp(key1: 'windowSize' | 'screenRecordingSize' | 'videoFormat' | 'enableBugTracking', key2?: string) {
         return async (e: Event) => {
+            const oldVal = { ...this.config }
+
             switch (key1) {
                 case 'windowSize':
                     if (!(e.target instanceof MdFilledTextField) || key2 == null || (key2 != 'width' && key2 != 'height')) return
                     this.config[key1][key2] = Number.parseInt(e.target.value, 10)
                     break
                 case 'screenRecordingSize':
-                    if (!(e.target instanceof MdFilledTextField) || key2 == null || (key2 != 'width' && key2 != 'height')) return
-                    this.config[key1][key2] = Number.parseInt(e.target.value, 10)
+                    if (key2 == null) return
+                    switch (key2) {
+                        case 'width':
+                        case 'height':
+                        case 'scale':
+                            if (!(e.target instanceof MdFilledTextField)) return
+                            this.config[key1][key2] = Number.parseInt(e.target.value, 10)
+                            break
+                        case 'auto':
+                            if (!(e.target instanceof MdSwitch)) return
+                            this.config[key1][key2] = e.target.selected
+                            break
+                    }
                     break
                 case 'videoFormat':
                     if (!(e.target instanceof MdFilledTextField) || key2 == null) return
@@ -176,6 +197,7 @@ export class Settings extends LitElement {
                     break
             }
 
+            this.requestUpdate('config', oldVal)
             Settings.setConfiguration(this.config)
             await Settings.syncConfiguration(this.config)
         }

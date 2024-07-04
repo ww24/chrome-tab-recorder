@@ -15,6 +15,10 @@ chrome.runtime.onInstalled.addListener(async () => {
 
     const defaultConfig = new Configuration()
     const remoteConfig = (await storage.get(Configuration.key)) as Configuration
+    // for backward compatibility
+    if (remoteConfig != null && remoteConfig.screenRecordingSize.auto != true) {
+        remoteConfig.screenRecordingSize.auto = false
+    }
     const config = deepMerge(defaultConfig, remoteConfig)
     if (config.userId === '') {
         config.userId = uuidv7()
@@ -78,7 +82,10 @@ async function startRecording(tab: chrome.tabs.Tab) {
     const msg: OffscreenStartRecordingMessage = {
         target: 'offscreen',
         type: 'start-recording',
-        data: streamId,
+        data: {
+            tabSize: { width: tab.width ?? 0, height: tab.height ?? 0 },
+            streamId,
+        },
     }
     await chrome.runtime.sendMessage(msg)
 
