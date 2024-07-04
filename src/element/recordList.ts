@@ -21,6 +21,7 @@ export interface Record {
 export class RecordList extends LitElement {
     static readonly styles = css`
         md-list {
+            max-width: 600px;
             --md-list-container-color: #f4fbfa;
             --md-list-item-label-text-color: #161d1d;
             --md-list-item-supporting-text-color: #3f4948;
@@ -33,6 +34,10 @@ export class RecordList extends LitElement {
         .storage-heading {
             height: 40px;
             line-height: 40px;
+        }
+        .storage-heading > md-filled-tonal-button {
+            position: absolute;
+            right: 0;
         }
     `
 
@@ -78,13 +83,13 @@ export class RecordList extends LitElement {
         const quota = est.quota ?? 1
         return html`
         <h2 class="storage-heading">
-        Storage (total: ${formatNum(usage / 1024 / 1024, 2)} MB, ${formatRate(usage / quota, 2)})
+        Storage (total: ${formatNum(usage / 1024 / 1024, 1)} MB, ${formatRate(usage / quota, 1)})
         <md-filled-tonal-button @click=${this.saveAll}>
             Save all records
             <md-icon slot="icon">save</md-icon>
         </md-filled-tonal-button>
         </h2>
-        <md-list style="max-width: 600px;">
+        <md-list>
             ${records.map(row)}
         </md-list>`
     }

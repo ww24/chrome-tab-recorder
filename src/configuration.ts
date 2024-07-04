@@ -7,10 +7,14 @@ export interface VideoFormat {
     videoBitrate: number; // bps
     mimeType: string;
 }
+export interface ScreenRecordingSize extends Resolution {
+    auto: boolean;
+    scale: number;
+}
 export class Configuration {
     public static readonly key = 'settings'
     windowSize: Resolution
-    screenRecordingSize: Resolution
+    screenRecordingSize: ScreenRecordingSize
     videoFormat: VideoFormat
     enableBugTracking: boolean
     updatedAt: number
@@ -23,6 +27,8 @@ export class Configuration {
         this.screenRecordingSize = {
             width: 1920,
             height: 1080,
+            auto: true,
+            scale: 2,
         }
         this.videoFormat = {
             audioBitrate: 256 * 1024, // 256Kbps
@@ -36,6 +42,15 @@ export class Configuration {
     static restoreDefault({ userId }: Configuration): Configuration {
         const config = new Configuration()
         return { ...config, userId }
+    }
+    static screenRecordingSize(config: Configuration, base: Resolution): Resolution {
+        if (config.screenRecordingSize.auto && base.width > 0 && base.height > 0) {
+            return {
+                width: base.width * config.screenRecordingSize.scale,
+                height: base.height * config.screenRecordingSize.scale,
+            }
+        }
+        return config.screenRecordingSize
     }
     static videoFormat(config: Configuration): VideoFormat {
         if (config.videoFormat.videoBitrate === 0) {

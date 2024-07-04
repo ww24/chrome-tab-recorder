@@ -15,7 +15,7 @@ export interface OffscreenMessage {
 }
 export interface OffscreenStartRecordingMessage extends OffscreenMessage {
     type: 'start-recording';
-    data: string;
+    data: StartRecording;
 }
 export interface OffscreenStopRecordingMessage extends OffscreenMessage {
     type: 'stop-recording';
@@ -53,4 +53,9 @@ export interface BackgroundSyncConfigMessage extends BackgroundMessage {
 }
 export interface BackgroundFetchConfigMessage extends BackgroundMessage {
     type: 'fetch-config';
+}
+
+export interface StartRecording {
+    tabSize: Resolution;
+    streamId: string;
 }

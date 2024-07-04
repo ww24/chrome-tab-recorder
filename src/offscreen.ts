@@ -1,6 +1,6 @@
 import { MediaRecorderWebMDurationWorkaround } from './fix_webm_duration'
 import { Settings } from './element/settings'
-import type { Message, BackgroundStopRecordingMessage } from './message'
+import type { Message, BackgroundStopRecordingMessage, StartRecording } from './message'
 import { sendEvent, sendException } from './sentry'
 
 const timeslice = 3000 // 3s
@@ -29,7 +29,7 @@ chrome.runtime.onMessage.addListener(async (message: Message) => {
 
 let recorder: MediaRecorder | undefined
 
-async function startRecording(streamId: string) {
+async function startRecording(startRecording: StartRecording) {
     if (recorder?.state === 'recording') {
         throw new Error('Called startRecording while recording is in progress.')
     }
@@ -44,18 +44,18 @@ async function startRecording(streamId: string) {
     const backupFileHandle = await dirHandle.getFileHandle(backupFileName, { create: true })
     const writableStream = await backupFileHandle.createWritable()
 
-    const size = Settings.getScreenRecordingSize()
+    const size = Settings.getScreenRecordingSize(startRecording.tabSize)
     const media = await navigator.mediaDevices.getUserMedia({
         audio: {
             mandatory: {
                 chromeMediaSource: 'tab',
-                chromeMediaSourceId: streamId,
+                chromeMediaSourceId: startRecording.streamId,
             }
         },
         video: {
             mandatory: {
                 chromeMediaSource: 'tab',
-                chromeMediaSourceId: streamId,
+                chromeMediaSourceId: startRecording.streamId,
                 maxWidth: size.width,
                 maxHeight: size.height,
                 minFrameRate: 30,
