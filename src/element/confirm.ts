@@ -4,20 +4,20 @@ import '@material/web/icon/icon'
 import '@material/web/dialog/dialog'
 import '@material/web/button/text-button'
 import '@material/web/button/filled-tonal-button'
+import '@material/web/list/list'
+import '@material/web/list/list-item'
+import '@material/web/divider/divider'
 import { formatNum } from './util'
 import { Record } from './recordList'
 
 @customElement('extension-confirm')
 export default class Confirm extends LitElement {
   @property({ noAccessor: true })
-  private record: Record
+  private records: Array<Record>
 
   public constructor() {
     super()
-    this.record = {
-      title: '',
-      size: 0,
-    }
+    this.records = []
   }
 
   public render() {
@@ -27,7 +27,13 @@ export default class Confirm extends LitElement {
           <md-icon slot="icon">delete_outline</md-icon>
           <form id="form" slot="content" method="dialog">
             Deleting the selected record will remove permanently.<br>
-            record: ${this.record.title} (size: ${formatNum(this.record.size / 1024 / 1024, 2)} MB)
+            record(s):
+            <md-list>
+              ${this.records.map((record, i) => html`
+                  ${i > 0 ? html`<md-divider></md-divider>` : html``}
+                  <md-list-item>${record.title} <div slot="end">(size: ${formatNum(record.size / 1024 / 1024, 2)} MB)</div></md-list-item>
+              `)}
+            </md-list>
           </form>
           <div slot="actions">
             <md-text-button form="form" value="delete">Delete</md-text-button>
@@ -37,10 +43,10 @@ export default class Confirm extends LitElement {
       `
   }
 
-  public setRecord(record: Record) {
-    const oldVal = this.record
-    this.record = record
-    this.requestUpdate('record', oldVal)
+  public setRecords(records: Array<Record>) {
+    const oldVal = [...this.records]
+    this.records = records
+    this.requestUpdate('records', oldVal)
   }
 };
 

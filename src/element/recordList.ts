@@ -7,7 +7,12 @@ import '@material/web/divider/divider'
 import '@material/web/icon/icon'
 import '@material/web/iconbutton/filled-icon-button'
 import '@material/web/button/filled-tonal-button'
+import '@material/web/chips/chip-set'
+import '@material/web/chips/assist-chip'
+import '@material/web/chips/filter-chip'
 import { MdDialog } from '@material/web/dialog/dialog'
+import { MdCheckbox } from '@material/web/checkbox/checkbox'
+import { MdFilterChip } from '@material/web/chips/filter-chip'
 import Confirm from './confirm'
 import type { ShowDirectoryPickerOptions } from '../type'
 
@@ -15,6 +20,11 @@ export interface Record {
     title: string;
     size: number;
     file?: File;
+    selected: boolean;
+}
+
+function selected(record: Record): boolean {
+    return record.selected
 }
 
 @customElement('record-list')
@@ -35,9 +45,8 @@ export class RecordList extends LitElement {
             height: 40px;
             line-height: 40px;
         }
-        .storage-heading > md-filled-tonal-button {
-            position: absolute;
-            right: 0;
+        .selected-actions {
+            margin: 1em 0;
         }
     `
 
@@ -54,29 +63,21 @@ export class RecordList extends LitElement {
     }
 
     public render() {
-        let records = this.records
-        if (records.length === 0) {
-            records = records.concat([{ title: 'no entry', size: 0 }])
-        }
         const row = (record: Record, idx: number) => {
-            if (record.file == null) {
-                return html`<md-list-item>
-                    ${record.title}
-                </md-list-item><md-divider></md-divider>`
-            }
+            if (record.file == null) return
 
             const uri = URL.createObjectURL(record.file)
-            return html`<md-list-item>
+            return html`
+            ${idx > 0 ? html`<md-divider></md-divider>` : html``}
+            <md-list-item>
                 <span>${idx + 1}. </span>
                 <a href="${uri}" download="${record.title}">${record.title}</a>
-                <span>(size: ${formatNum(record.size / 1024 / 1024, 2)} MB)</span>
+                <div slot="end">(size: ${formatNum(record.size / 1024 / 1024, 2)} MB)</div>
+                <md-checkbox touch-target="wrapper" slot="start" ?checked=${record.selected} @input=${this.selectRecord(record)}></md-checkbox>
                 <md-filled-icon-button slot="end" @click=${this.playRecord(record)}>
                     <md-icon>play_arrow</md-icon>
                 </md-filled-icon-button>
-                <md-filled-icon-button slot="end" @click=${this.deleteRecord(record)}>
-                    <md-icon>delete</md-icon>
-                </md-filled-icon-button>
-            </md-list-item><md-divider></md-divider>`
+            </md-list-item>`
         }
         const est = this.estimate
         const usage = est.usage ?? 0
@@ -84,13 +85,20 @@ export class RecordList extends LitElement {
         return html`
         <h2 class="storage-heading">
         Storage (total: ${formatNum(usage / 1024 / 1024, 1)} MB, ${formatRate(usage / quota, 1)})
-        <md-filled-tonal-button @click=${this.saveAll}>
-            Save all records
-            <md-icon slot="icon">save</md-icon>
-        </md-filled-tonal-button>
         </h2>
+        <md-chip-set class="selected-actions">
+            <md-filter-chip label="Select all" has-icon="true" ?disabled=${this.records.length === 0} ?selected=${this.records.length > 0 && this.records.every(selected)} @click=${this.selectAll}>
+                <md-icon slot="icon">check_box_outline_blank</md-icon>
+            </md-filter-chip>
+            <md-assist-chip label="Save" ?disabled=${!this.records.some(selected)} @click=${this.saveSelectedRecords}>
+                <md-icon slot="icon">save</md-icon>
+            </md-assist-chip>
+            <md-assist-chip label="Delete" ?disabled=${!this.records.some(selected)} @click=${this.deleteSelectedRecords}>
+                <md-icon slot="icon">delete</md-icon>
+            </md-assist-chip>
+        </md-chip-set>
         <md-list>
-            ${records.map(row)}
+            ${this.records.length === 0 ? html`<md-list-item>no entry</md-list-item>` : this.records.map(row)}
         </md-list>`
     }
 
@@ -123,34 +131,25 @@ export class RecordList extends LitElement {
             })
         }
     }
-    private deleteRecord(record: Record) {
-        return () => {
-            const dialogWrapper = document.getElementById('confirm-dialog') as Confirm
-            dialogWrapper.setRecord(record)
-
-            if (dialogWrapper.shadowRoot == null) return
-            const dialog = dialogWrapper.shadowRoot.children[0] as MdDialog
-            const listener = async () => {
-                dialog.removeEventListener('close', listener)
-
-                console.log('confirm-dialog:', dialog.returnValue)
-                if (dialog.returnValue === 'delete') {
-                    console.log('Delete:', record.title)
-
-                    // remove entry from file system
-                    const opfsRoot = await navigator.storage.getDirectory()
-                    await opfsRoot.removeEntry(record.title)
-
-                    // remove and update UI
-                    this.removeRecord(record)
-                    this.updateEstimate()
-                }
-            }
-            dialog.addEventListener('close', listener)
-            dialog.show()
+    private selectRecord(record: Record) {
+        return (e: Event) => {
+            if (!(e.target instanceof MdCheckbox)) return
+            const oldVal = [...this.records]
+            record.selected = e.target.checked
+            this.requestUpdate('records', oldVal)
         }
     }
-    private async saveAll() {
+    private selectAll(e: Event) {
+        if (!(e.target instanceof MdFilterChip)) return
+        const selected = e.target.selected
+        const oldVal = [...this.records]
+        this.records = this.records.map(record => {
+            record.selected = selected
+            return record
+        })
+        this.requestUpdate('records', oldVal)
+    }
+    private async saveSelectedRecords() {
         const options: ShowDirectoryPickerOptions = {
             id: 'save-directory',
             mode: 'readwrite',
@@ -162,9 +161,16 @@ export class RecordList extends LitElement {
             throw new Error('permission denied')
         }
 
-        // TODO: 書き出しに時間を要するので、Service Worker  に逃がすか、モーダルで進捗表示する
+        const recordsMap = new Map<string, boolean>()
+        this.records.filter(selected).forEach(record => {
+            recordsMap.set(record.title, true)
+        })
+
         const opfsRoot = await navigator.storage.getDirectory()
         for await (const [name, handle] of opfsRoot.entries()) {
+            if (!recordsMap.get(name)) {
+                continue
+            }
             console.log('Copy:', name)
             const fileHandle = await dirHandle.getFileHandle(name, { create: true })
             const file = await handle.getFile()
@@ -176,8 +182,38 @@ export class RecordList extends LitElement {
                 throw e
             }
         }
+        console.log('done')
     }
-};
+    private deleteSelectedRecords() {
+        const dialogWrapper = document.getElementById('confirm-dialog') as Confirm
+        const selectedRecords = this.records.filter(selected)
+        dialogWrapper.setRecords(selectedRecords)
+
+        if (dialogWrapper.shadowRoot == null) return
+        const dialog = dialogWrapper.shadowRoot.children[0] as MdDialog
+        const listener = async () => {
+            dialog.removeEventListener('close', listener)
+
+            console.log('confirm-dialog:', dialog.returnValue)
+            if (dialog.returnValue === 'delete') {
+                const opfsRoot = await navigator.storage.getDirectory()
+                await Promise.all(selectedRecords.map(async record => {
+                    console.log('Delete:', record.title)
+
+                    // remove entry from file system
+                    await opfsRoot.removeEntry(record.title)
+                    // remove from UI
+                    this.removeRecord(record)
+                }))
+
+                // update UI
+                this.updateEstimate()
+            }
+        }
+        dialog.addEventListener('close', listener)
+        dialog.show()
+    }
+}
 
 export default RecordList
 

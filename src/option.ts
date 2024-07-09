@@ -25,6 +25,7 @@ async function listRecords() {
             title: name,
             file: await handle.getFile(),
             size: file.size,
+            selected: false,
         })
     }
     return result
