@@ -1,6 +1,6 @@
 {
   "name": "recorder",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Google Chrome Extensions Screen Recorder",
   "scripts": {
     "build": "webpack --mode=production",
