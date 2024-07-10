@@ -1,6 +1,6 @@
 {
-  "name": "recorder",
-  "version": "1.0.2",
+  "name": "chrome-tab-recorder",
+  "version": "1.0.3",
   "description": "Google Chrome Extensions Screen Recorder",
   "scripts": {
     "build": "webpack --mode=production",
@@ -11,8 +11,9 @@
   },
   "repository": {
     "type": "git",
-    "url": "github.com/ww24/recorder"
+    "url": "github.com/ww24/chrome-tab-recorder"
   },
+  "homepage": "https://recorder.appcloud.info/",
   "author": "ww24",
   "license": "MIT",
   "dependencies": {
