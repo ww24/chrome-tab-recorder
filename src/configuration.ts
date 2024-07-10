@@ -19,6 +19,7 @@ export class Configuration {
     enableBugTracking: boolean
     updatedAt: number
     userId: string
+    openOptionPage: boolean
     constructor() {
         this.windowSize = {
             width: 1920,
@@ -38,6 +39,7 @@ export class Configuration {
         this.enableBugTracking = true
         this.updatedAt = 0
         this.userId = ''
+        this.openOptionPage = true
     }
     static restoreDefault({ userId }: Configuration): Configuration {
         const config = new Configuration()

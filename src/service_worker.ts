@@ -14,12 +14,12 @@ chrome.runtime.onInstalled.addListener(async () => {
     await getOrCreateOffscreenDocument()
 
     const defaultConfig = new Configuration()
-    const remoteConfig = (await storage.get(Configuration.key)) as Configuration
+    const remoteConfig = await getRemoteConfiguration()
     // for backward compatibility
     if (remoteConfig != null && remoteConfig.screenRecordingSize.auto != true) {
         remoteConfig.screenRecordingSize.auto = false
     }
-    const config = deepMerge(defaultConfig, remoteConfig)
+    const config = remoteConfig == null ? defaultConfig : deepMerge(defaultConfig, remoteConfig)
     if (config.userId === '') {
         config.userId = uuidv7()
     }
@@ -90,7 +90,7 @@ async function startRecording(tab: chrome.tabs.Tab) {
     await chrome.runtime.sendMessage(msg)
 
     await chrome.action.setIcon({ path: recordingIcon })
-};
+}
 
 async function stopRecording() {
     const msg: OffscreenStopRecordingMessage = {
@@ -99,7 +99,10 @@ async function stopRecording() {
     }
     await chrome.runtime.sendMessage(msg)
     await chrome.action.setIcon({ path: notRecordingIcon })
-};
+
+    const config = await getConfiguration()
+    if (config.openOptionPage) await chrome.runtime.openOptionsPage()
+}
 
 chrome.runtime.onMessage.addListener(async (message: Message) => {
     try {
@@ -116,13 +119,15 @@ chrome.runtime.onMessage.addListener(async (message: Message) => {
                 await storage.set(Configuration.key, message.data)
                 return
             case 'fetch-config':
-                const data = await storage.get(Configuration.key)
-                if (data == null || !(Configuration.key in data)) return
-                console.debug('fetch:', data[Configuration.key])
+                const defaultConfig = new Configuration()
+                const remoteConfig = await getRemoteConfiguration()
+                if (remoteConfig == null) return
+                const config = deepMerge(defaultConfig, remoteConfig)
+                console.debug('fetch:', config)
                 const msg: OptionSyncConfigMessage = {
                     target: 'option',
                     type: 'sync-config',
-                    data: data[Configuration.key] as Configuration,
+                    data: config,
                 }
                 await chrome.runtime.sendMessage(msg)
                 return
@@ -146,7 +151,17 @@ async function resizeWindow({ width, height }: Resolution) {
         state: 'normal',
     }
     await chrome.windows.update(window.id, updateInfo)
-};
+}
+
+async function getRemoteConfiguration(): Promise<Configuration | null> {
+    return (await storage.get(Configuration.key)) as Configuration | null
+}
+
+async function getConfiguration(): Promise<Configuration> {
+    const defaultConfig = new Configuration()
+    const remoteConfig = await getRemoteConfiguration()
+    return remoteConfig == null ? defaultConfig : deepMerge(defaultConfig, remoteConfig)
+}
 
 // remote configuration change log
 chrome.storage.onChanged.addListener((changes, namespace) => {
