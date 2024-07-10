@@ -118,6 +118,11 @@ export class Settings extends LitElement {
         <md-filled-text-field class="video-format-input" label="audio bitrate" type="number" min="1" suffix-text="Kbps" .value=${live(this.config.videoFormat.audioBitrate / 1024)} @input=${this.updateProp('videoFormat', 'audioBitrate')}></md-filled-text-field>
         <md-filled-text-field class="video-format-input" label="video bitrate" type="number" min="0" step="0.1" supporting-text="0 means auto (number of pixels * 8 bps)" suffix-text="Mbps" .value=${live(this.config.videoFormat.videoBitrate / 1024 / 1024)} @input=${this.updateProp('videoFormat', 'videoBitrate')}></md-filled-text-field>
         <md-filled-text-field class="mime-type-input" label="MIME type" type="text" .value=${live(this.config.videoFormat.mimeType)} @input=${this.updateProp('videoFormat', 'mimeType')}></md-filled-text-field>
+        <h2>Option</h2>
+        <label style="line-height: 32px; font-size: 1.5em">
+            Open the option page after recording
+            <md-switch ?selected=${live(this.config.openOptionPage)} @input=${this.updateProp('openOptionPage')}></md-switch>
+        </label>
         <h2>Privacy</h2>
         <label style="line-height: 32px; font-size: 1.5em">
             Bug Tracking
@@ -145,7 +150,7 @@ export class Settings extends LitElement {
         }
         await chrome.runtime.sendMessage(msg)
     }
-    private updateProp(key1: 'windowSize' | 'screenRecordingSize' | 'videoFormat' | 'enableBugTracking', key2?: string) {
+    private updateProp(key1: 'windowSize' | 'screenRecordingSize' | 'videoFormat' | 'enableBugTracking' | 'openOptionPage', key2?: string) {
         return async (e: Event) => {
             const oldVal = { ...this.config }
 
@@ -192,6 +197,7 @@ export class Settings extends LitElement {
                     }
                     break
                 case 'enableBugTracking':
+                case 'openOptionPage':
                     if (!(e.target instanceof MdSwitch)) return
                     this.config[key1] = e.target.selected
                     break
