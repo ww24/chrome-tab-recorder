@@ -31,6 +31,8 @@ chrome.runtime.onInstalled.addListener(async () => {
         data: config as Configuration,
     }
     await chrome.runtime.sendMessage(msg)
+
+    await chrome.offscreen.closeDocument()
 })
 
 async function getOrCreateOffscreenDocument(): Promise<boolean> {
@@ -110,6 +112,7 @@ chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.M
                     return
                 case 'complete-recording':
                     await chrome.action.setIcon({ path: notRecordingIcon })
+                    await chrome.offscreen.closeDocument()
                     return
                 case 'save-config-sync':
                     await storage.set(Configuration.key, message.data)

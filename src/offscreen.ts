@@ -6,25 +6,30 @@ import { MIMEType } from './mime'
 
 const timeslice = 3000 // 3s
 
-chrome.runtime.onMessage.addListener(async (message: Message) => {
-    try {
-        switch (message.type) {
-            case 'start-recording':
-                await startRecording(message.data)
-                return
-            case 'stop-recording':
-                await stopRecording()
-                return
-            case 'save-config-local':
-                Settings.setConfiguration(message.data)
-                return
-            case 'exception':
-                throw message.data
+chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.MessageSender, sendResponse: () => void) => {
+    (async () => {
+        try {
+            switch (message.type) {
+                case 'start-recording':
+                    await startRecording(message.data)
+                    return
+                case 'stop-recording':
+                    await stopRecording()
+                    return
+                case 'save-config-local':
+                    Settings.setConfiguration(message.data)
+                    return
+                case 'exception':
+                    throw message.data
+            }
+        } catch (e) {
+            sendException(e)
+            console.error(e)
+        } finally {
+            sendResponse()
         }
-    } catch (e) {
-        sendException(e)
-        console.error(e)
-    }
+    })()
+    return true // asynchronous flag
 })
 
 let recorder: MediaRecorder | undefined
