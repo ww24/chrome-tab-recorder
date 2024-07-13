@@ -2,6 +2,7 @@ import { MediaRecorderWebMDurationWorkaround } from './fix_webm_duration'
 import { Settings } from './element/settings'
 import type { Message, BackgroundStopRecordingMessage, StartRecording } from './message'
 import { sendEvent, sendException } from './sentry'
+import { MIMEType } from './mime'
 
 const timeslice = 3000 // 3s
 
@@ -38,11 +39,19 @@ async function startRecording(startRecording: StartRecording) {
         console.warn('OPFS persist: permission denied')
     }
 
+    const videoFormat = Settings.getVideoFormat()
+    if (!MediaRecorder.isTypeSupported(videoFormat.mimeType)) {
+        throw new Error('unsupported MIME type: ' + videoFormat.mimeType)
+    }
+    const mimeType = new MIMEType(videoFormat.mimeType)
+
     const dirHandle = await navigator.storage.getDirectory()
     const fileBaseName = `video-${Date.now()}`
-    const backupFileName = `${fileBaseName}.bk.webm`
-    const backupFileHandle = await dirHandle.getFileHandle(backupFileName, { create: true })
-    const writableStream = await backupFileHandle.createWritable()
+    const backupFileName = `${fileBaseName}.bk${mimeType.extension()}`
+    const regularFileName = `${fileBaseName}${mimeType.extension()}`
+    const recordFileName = mimeType.is(MIMEType.webm) ? backupFileName : regularFileName
+    const recordFileHandle = await dirHandle.getFileHandle(recordFileName, { create: true })
+    const writableStream = await recordFileHandle.createWritable()
 
     const size = Settings.getScreenRecordingSize(startRecording.tabSize)
     const media = await navigator.mediaDevices.getUserMedia({
@@ -68,22 +77,23 @@ async function startRecording(startRecording: StartRecording) {
     const source = output.createMediaStreamSource(media)
     source.connect(output.destination)
 
-    const videoFormat = Settings.getVideoFormat()
-    if (!MediaRecorder.isTypeSupported(videoFormat.mimeType)) {
-        throw new Error('unsupported MIME type: ' + videoFormat.mimeType)
-    }
-
     // Start recording.
     recorder = new MediaRecorder(media, {
         mimeType: videoFormat.mimeType,
         audioBitsPerSecond: videoFormat.audioBitrate,
         videoBitsPerSecond: videoFormat.videoBitrate,
     })
-    const fixWebM = new MediaRecorderWebMDurationWorkaround()
+
+    let fixWebM: MediaRecorderWebMDurationWorkaround | undefined
+    if (mimeType.is(MIMEType.webm)) {
+        fixWebM = new MediaRecorderWebMDurationWorkaround()
+    }
     recorder.addEventListener('dataavailable', async event => {
         try {
             await writableStream.write(event.data)
-            await fixWebM.write(event.data)
+            if (fixWebM != null) {
+                await fixWebM.write(event.data)
+            }
         } catch (e) {
             sendException(e)
             console.error(e)
@@ -116,24 +126,28 @@ async function startRecording(startRecording: StartRecording) {
 
             await writableStream.close()
 
-            // workaround: fix video duration
-            fixWebM.close()
-            const fixWebMDuration = fixWebM.duration()
-            console.debug(`fixWebM: duration=${fixWebMDuration / 1000}s`)
+            if (fixWebM != null) {
+                // workaround: fix video duration
+                fixWebM.close()
+                const fixWebMDuration = fixWebM.duration()
+                console.debug(`fixWebM: duration=${fixWebMDuration / 1000}s`)
 
-            const fixedFileHandle = await dirHandle.getFileHandle(`${fileBaseName}.webm`, { create: true })
-            const fixedWritableStream = await fixedFileHandle.createWritable()
-            const file = await backupFileHandle.getFile()
-            const fixed = fixWebM.fixMetadata(file)
+                const fixedFileHandle = await dirHandle.getFileHandle(regularFileName, { create: true })
+                const fixedWritableStream = await fixedFileHandle.createWritable()
+                const file = await recordFileHandle.getFile()
+                const fixed = fixWebM.fixMetadata(file)
 
-            try {
-                await fixed.stream().pipeTo(fixedWritableStream)
-                if (fixed.size >= file.size && Math.abs(duration - fixWebMDuration) < 5000) {
-                    await dirHandle.removeEntry(backupFileName)
+                try {
+                    await fixed.stream().pipeTo(fixedWritableStream)
+                    if (fixed.size >= file.size && Math.abs(duration - fixWebMDuration) < 5000) {
+                        await dirHandle.removeEntry(recordFileName)
+                    }
+                } catch (e) {
+                    await fixedWritableStream.close()
+                    throw e
+                } finally {
+                    fixWebM = undefined
                 }
-            } catch (e) {
-                await fixedWritableStream.close()
-                throw e
             }
         } catch (e) {
             sendException(e)
