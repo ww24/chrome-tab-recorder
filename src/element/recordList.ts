@@ -15,6 +15,8 @@ import { MdCheckbox } from '@material/web/checkbox/checkbox'
 import { MdFilterChip } from '@material/web/chips/filter-chip'
 import Confirm from './confirm'
 import type { ShowDirectoryPickerOptions } from '../type'
+import { Message } from '../message'
+import { sendException } from '../sentry'
 
 export interface Record {
     title: string;
@@ -60,6 +62,22 @@ export class RecordList extends LitElement {
         super()
         this.estimate = {}
         this.records = []
+        this.updateRecord()
+        this.updateEstimate()
+
+        chrome.runtime.onMessage.addListener(async (message: Message) => {
+            try {
+                switch (message.type) {
+                    case 'complete-recording':
+                        await this.updateRecord()
+                        await this.updateEstimate()
+                        return
+                }
+            } catch (e) {
+                sendException(e)
+                console.error(e)
+            }
+        })
     }
 
     public render() {
@@ -102,13 +120,26 @@ export class RecordList extends LitElement {
         </md-list>`
     }
 
-    public addRecord(record: Record) {
-        this.records = [record].concat(this.records)
-    }
     private removeRecord(record: Record) {
         this.records = this.records.filter(r => r.title !== record.title)
     }
-    public async updateEstimate() {
+    private async updateRecord() {
+        const opfsRoot = await navigator.storage.getDirectory()
+        const result: Array<Record> = []
+        for await (const [name, handle] of opfsRoot.entries()) {
+            const file = await handle.getFile()
+            result.unshift({
+                title: name,
+                file: await handle.getFile(),
+                size: file.size,
+                selected: false,
+            })
+        }
+        const oldVal = [...this.records]
+        this.records = result
+        this.requestUpdate('records', oldVal)
+    }
+    private async updateEstimate() {
         const oldVal = this.estimate
         this.estimate = await navigator.storage.estimate()
         this.requestUpdate('estimate', oldVal)

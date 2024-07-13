@@ -6,10 +6,10 @@ import '@material/web/button/filled-tonal-button'
 import '@material/web/switch/switch'
 import { MdFilledTextField } from '@material/web/textfield/filled-text-field'
 import { MdSwitch } from '@material/web/switch/switch'
-import type { BackgroundWindowSizeMessage, BackgroundSyncConfigMessage } from '../message'
+import type { ResizeWindowMessage, SaveConfigSyncMessage } from '../message'
 import { Configuration, Resolution, VideoFormat } from '../configuration'
 import { WebLocalStorage } from '../storage'
-import type { Message, BackgroundFetchConfigMessage } from '../message'
+import type { Message, FetchConfigReqMessage } from '../message'
 import { sendException } from '../sentry'
 import { deepMerge } from './util'
 
@@ -29,9 +29,8 @@ export class Settings extends LitElement {
     }
 
     private static async syncConfiguration(config: Configuration) {
-        const msg: BackgroundSyncConfigMessage = {
-            type: 'sync-config',
-            target: 'background',
+        const msg: SaveConfigSyncMessage = {
+            type: 'save-config-sync',
             data: config,
         }
         await chrome.runtime.sendMessage(msg)
@@ -79,9 +78,8 @@ export class Settings extends LitElement {
 
         chrome.runtime.onMessage.addListener(async (message: Message) => {
             try {
-                if (message.target !== 'option') return
                 switch (message.type) {
-                    case 'sync-config':
+                    case 'fetch-config-res':
                         const oldVal = this.config
                         this.config = deepMerge(oldVal, message.data)
                         this.requestUpdate('config', oldVal)
@@ -143,9 +141,8 @@ export class Settings extends LitElement {
     private async resizeWindow() {
         const width = this.config.windowSize.width + (window.outerWidth - window.innerWidth)
         const height = this.config.windowSize.height + (window.outerHeight - window.innerHeight)
-        const msg: BackgroundWindowSizeMessage = {
+        const msg: ResizeWindowMessage = {
             type: 'resize-window',
-            target: 'background',
             data: { width, height },
         }
         await chrome.runtime.sendMessage(msg)
@@ -209,9 +206,8 @@ export class Settings extends LitElement {
         }
     }
     private async sync() {
-        const msg: BackgroundFetchConfigMessage = {
-            target: 'background',
-            type: 'fetch-config',
+        const msg: FetchConfigReqMessage = {
+            type: 'fetch-config-req',
         }
         await chrome.runtime.sendMessage(msg)
     }

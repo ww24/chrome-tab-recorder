@@ -1,61 +1,58 @@
 import type { Resolution, Configuration } from './configuration'
 
-export type Message = OffscreenStartRecordingMessage
-    | OffscreenStopRecordingMessage
-    | OffscreenSyncConfigMessage
+export type Message =
     | ExceptionMessage
-    | OptionSyncConfigMessage
-    | BackgroundStopRecordingMessage
-    | BackgroundWindowSizeMessage
-    | BackgroundSyncConfigMessage
-    | BackgroundFetchConfigMessage;
+    | StartRecordingMessage
+    | StopRecordingMessage
+    | CompleteRecordingMessage
+    | ResizeWindowMessage
+    | FetchConfigReqMessage
+    | FetchConfigResMessage
+    | SaveConfigLocalMessage
+    | SaveConfigSyncMessage
+    ;
 
-export interface OffscreenMessage {
-    target: 'offscreen';
-}
-export interface OffscreenStartRecordingMessage extends OffscreenMessage {
-    type: 'start-recording';
-    data: StartRecording;
-}
-export interface OffscreenStopRecordingMessage extends OffscreenMessage {
-    type: 'stop-recording';
-}
-export interface OffscreenSyncConfigMessage extends OffscreenMessage {
-    type: 'sync-config';
-    data: Configuration;
-}
-export interface ExceptionMessage extends OffscreenMessage {
+export interface ExceptionMessage {
     type: 'exception';
     data: unknown;
 }
 
-export interface OptionMessage {
-    target: 'option';
+export interface StartRecordingMessage {
+    type: 'start-recording';
+    data: StartRecording;
 }
-export interface OptionSyncConfigMessage extends OptionMessage {
-    type: 'sync-config';
-    data: Configuration;
-}
-
-export interface BackgroundMessage {
-    target: 'background';
-}
-export interface BackgroundStopRecordingMessage extends BackgroundMessage {
-    type: 'stop-recording';
-}
-export interface BackgroundWindowSizeMessage extends BackgroundMessage {
-    type: 'resize-window';
-    data: Resolution;
-}
-export interface BackgroundSyncConfigMessage extends BackgroundMessage {
-    type: 'sync-config';
-    data: Configuration;
-}
-export interface BackgroundFetchConfigMessage extends BackgroundMessage {
-    type: 'fetch-config';
-}
-
 export interface StartRecording {
     tabSize: Resolution;
     streamId: string;
+}
+
+export interface StopRecordingMessage {
+    type: 'stop-recording';
+}
+
+export interface CompleteRecordingMessage {
+    type: 'complete-recording';
+}
+
+export interface ResizeWindowMessage {
+    type: 'resize-window';
+    data: Resolution;
+}
+
+export interface FetchConfigReqMessage {
+    type: 'fetch-config-req';
+}
+export interface FetchConfigResMessage {
+    type: 'fetch-config-res';
+    data: Configuration;
+}
+
+export interface SaveConfigLocalMessage {
+    type: 'save-config-local';
+    data: Configuration;
+}
+
+export interface SaveConfigSyncMessage {
+    type: 'save-config-sync';
+    data: Configuration;
 }

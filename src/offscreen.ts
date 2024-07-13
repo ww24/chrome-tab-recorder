@@ -1,6 +1,6 @@
 import { MediaRecorderWebMDurationWorkaround } from './fix_webm_duration'
 import { Settings } from './element/settings'
-import type { Message, BackgroundStopRecordingMessage, StartRecording } from './message'
+import type { Message, StartRecording, CompleteRecordingMessage } from './message'
 import { sendEvent, sendException } from './sentry'
 import { MIMEType } from './mime'
 
@@ -8,7 +8,6 @@ const timeslice = 3000 // 3s
 
 chrome.runtime.onMessage.addListener(async (message: Message) => {
     try {
-        if (message.target !== 'offscreen') return
         switch (message.type) {
             case 'start-recording':
                 await startRecording(message.data)
@@ -16,7 +15,7 @@ chrome.runtime.onMessage.addListener(async (message: Message) => {
             case 'stop-recording':
                 await stopRecording()
                 return
-            case 'sync-config':
+            case 'save-config-local':
                 Settings.setConfiguration(message.data)
                 return
             case 'exception':
@@ -162,9 +161,8 @@ async function startRecording(startRecording: StartRecording) {
         } finally {
             recorder = undefined
             window.location.hash = ''
-            const msg: BackgroundStopRecordingMessage = {
-                target: 'background',
-                type: 'stop-recording',
+            const msg: CompleteRecordingMessage = {
+                type: 'complete-recording',
             }
             await chrome.runtime.sendMessage(msg)
         }
