@@ -6,8 +6,7 @@ export type Message =
     | StopRecordingMessage
     | CompleteRecordingMessage
     | ResizeWindowMessage
-    | FetchConfigReqMessage
-    | FetchConfigResMessage
+    | FetchConfigMessage
     | SaveConfigLocalMessage
     | SaveConfigSyncMessage
     ;
@@ -39,12 +38,8 @@ export interface ResizeWindowMessage {
     data: Resolution;
 }
 
-export interface FetchConfigReqMessage {
-    type: 'fetch-config-req';
-}
-export interface FetchConfigResMessage {
-    type: 'fetch-config-res';
-    data: Configuration;
+export interface FetchConfigMessage {
+    type: 'fetch-config';
 }
 
 export interface SaveConfigLocalMessage {

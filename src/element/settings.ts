@@ -9,8 +9,7 @@ import { MdSwitch } from '@material/web/switch/switch'
 import type { ResizeWindowMessage, SaveConfigSyncMessage } from '../message'
 import { Configuration, Resolution, VideoFormat } from '../configuration'
 import { WebLocalStorage } from '../storage'
-import type { Message, FetchConfigReqMessage } from '../message'
-import { sendException } from '../sentry'
+import type { FetchConfigMessage } from '../message'
 import { deepMerge } from './util'
 
 @customElement('extension-settings')
@@ -75,22 +74,6 @@ export class Settings extends LitElement {
     public constructor() {
         super()
         this.config = Settings.getConfiguration()
-
-        chrome.runtime.onMessage.addListener(async (message: Message) => {
-            try {
-                switch (message.type) {
-                    case 'fetch-config-res':
-                        const oldVal = this.config
-                        this.config = deepMerge(oldVal, message.data)
-                        this.requestUpdate('config', oldVal)
-                        Settings.setConfiguration(this.config)
-                        return
-                }
-            } catch (e) {
-                sendException(e)
-                console.error(e)
-            }
-        })
     }
 
     public render() {
@@ -206,10 +189,15 @@ export class Settings extends LitElement {
         }
     }
     private async sync() {
-        const msg: FetchConfigReqMessage = {
-            type: 'fetch-config-req',
+        const msg: FetchConfigMessage = {
+            type: 'fetch-config',
         }
-        await chrome.runtime.sendMessage(msg)
+        const config = await chrome.runtime.sendMessage<FetchConfigMessage, Configuration | null>(msg)
+        if (config == null) return
+        const oldVal = this.config
+        this.config = deepMerge(oldVal, config)
+        this.requestUpdate('config', oldVal)
+        Settings.setConfiguration(this.config)
     }
     private async restore() {
         const oldVal = this.config
