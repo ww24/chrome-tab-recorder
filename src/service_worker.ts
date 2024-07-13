@@ -1,7 +1,7 @@
 import { v7 as uuidv7 } from 'uuid'
 
 import type { getMediaStreamId } from './type'
-import type { Message, OffscreenStartRecordingMessage, OffscreenStopRecordingMessage, OffscreenSyncConfigMessage, OptionSyncConfigMessage, ExceptionMessage } from './message'
+import type { Message, StartRecordingMessage, StopRecordingMessage, SaveConfigLocalMessage, ExceptionMessage } from './message'
 import { Configuration, Resolution } from './configuration'
 import { ExtensionSyncStorage } from './storage'
 import { deepMerge } from './element/util'
@@ -26,9 +26,8 @@ chrome.runtime.onInstalled.addListener(async () => {
     await storage.set(Configuration.key, config)
     console.debug('config:', config)
 
-    const msg: OffscreenSyncConfigMessage = {
-        target: 'offscreen',
-        type: 'sync-config',
+    const msg: SaveConfigLocalMessage = {
+        type: 'save-config-local',
         data: config as Configuration,
     }
     await chrome.runtime.sendMessage(msg)
@@ -64,7 +63,6 @@ chrome.action.onClicked.addListener(async (tab: chrome.tabs.Tab) => {
         await startRecording(tab)
     } catch (e) {
         const msg: ExceptionMessage = {
-            target: 'offscreen',
             type: 'exception',
             data: e,
         }
@@ -79,8 +77,7 @@ async function startRecording(tab: chrome.tabs.Tab) {
     })
 
     // Send the stream ID to the offscreen document to start recording.
-    const msg: OffscreenStartRecordingMessage = {
-        target: 'offscreen',
+    const msg: StartRecordingMessage = {
         type: 'start-recording',
         data: {
             tabSize: { width: tab.width ?? 0, height: tab.height ?? 0 },
@@ -93,8 +90,7 @@ async function startRecording(tab: chrome.tabs.Tab) {
 }
 
 async function stopRecording() {
-    const msg: OffscreenStopRecordingMessage = {
-        target: 'offscreen',
+    const msg: StopRecordingMessage = {
         type: 'stop-recording',
     }
     await chrome.runtime.sendMessage(msg)
@@ -104,42 +100,40 @@ async function stopRecording() {
     if (config.openOptionPage) await chrome.runtime.openOptionsPage()
 }
 
-chrome.runtime.onMessage.addListener(async (message: Message) => {
-    try {
-        if (message.target !== 'background') return
-        switch (message.type) {
-            case 'resize-window':
-                if (typeof message.data !== 'object' || message.data == null) return
-                await resizeWindow(message.data)
-                return
-            case 'stop-recording':
-                await chrome.action.setIcon({ path: notRecordingIcon })
-                return
-            case 'sync-config':
-                await storage.set(Configuration.key, message.data)
-                return
-            case 'fetch-config':
-                const defaultConfig = new Configuration()
-                const remoteConfig = await getRemoteConfiguration()
-                if (remoteConfig == null) return
-                const config = deepMerge(defaultConfig, remoteConfig)
-                console.debug('fetch:', config)
-                const msg: OptionSyncConfigMessage = {
-                    target: 'option',
-                    type: 'sync-config',
-                    data: config,
-                }
-                await chrome.runtime.sendMessage(msg)
-                return
+chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.MessageSender, sendResponse: (response?: Configuration) => void) => {
+    (async () => {
+        try {
+            switch (message.type) {
+                case 'resize-window':
+                    if (typeof message.data !== 'object' || message.data == null) return
+                    await resizeWindow(message.data)
+                    return
+                case 'complete-recording':
+                    await chrome.action.setIcon({ path: notRecordingIcon })
+                    return
+                case 'save-config-sync':
+                    await storage.set(Configuration.key, message.data)
+                    return
+                case 'fetch-config':
+                    const defaultConfig = new Configuration()
+                    const remoteConfig = await getRemoteConfiguration()
+                    if (remoteConfig == null) return
+                    const config = deepMerge(defaultConfig, remoteConfig)
+                    console.debug('fetch:', config)
+                    sendResponse(config)
+                    return
+            }
+        } catch (e) {
+            const msg: ExceptionMessage = {
+                type: 'exception',
+                data: e,
+            }
+            await chrome.runtime.sendMessage(msg)
+        } finally {
+            sendResponse()
         }
-    } catch (e) {
-        const msg: ExceptionMessage = {
-            target: 'offscreen',
-            type: 'exception',
-            data: e,
-        }
-        await chrome.runtime.sendMessage(msg)
-    }
+    })()
+    return true // asynchronous flag
 })
 
 async function resizeWindow({ width, height }: Resolution) {
