@@ -130,7 +130,7 @@ export class RecordList extends LitElement {
             const file = await handle.getFile()
             result.unshift({
                 title: name,
-                file: await handle.getFile(),
+                file: file,
                 size: file.size,
                 selected: false,
             })
@@ -240,6 +240,7 @@ export class RecordList extends LitElement {
                 // update UI
                 this.updateEstimate()
             }
+            dialog.returnValue = ''
         }
         dialog.addEventListener('close', listener)
         dialog.show()
