@@ -1,4 +1,4 @@
-import { LitElement, html } from 'lit'
+import { LitElement, css, html } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 import '@material/web/icon/icon'
 import '@material/web/dialog/dialog'
@@ -12,6 +12,12 @@ import { Record } from './recordList'
 
 @customElement('extension-confirm')
 export default class Confirm extends LitElement {
+  static readonly styles = css`
+    md-dialog {
+      width: 520px;
+    }
+  `
+
   @property({ noAccessor: true })
   private records: Array<Record>
 
@@ -22,7 +28,7 @@ export default class Confirm extends LitElement {
 
   public render() {
     return html`
-        <md-dialog style="max-width: 480px;">
+        <md-dialog>
           <div slot="headline">Permanently delete?</div>
           <md-icon slot="icon">delete_outline</md-icon>
           <form id="form" slot="content" method="dialog">

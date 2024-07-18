@@ -23,6 +23,7 @@ export interface Record {
     size: number;
     file?: File;
     selected: boolean;
+    recordedAt?: Date;
 }
 
 function selected(record: Record): boolean {
@@ -33,7 +34,6 @@ function selected(record: Record): boolean {
 export class RecordList extends LitElement {
     static readonly styles = css`
         md-list {
-            max-width: 600px;
             --md-list-container-color: #f4fbfa;
             --md-list-item-label-text-color: #161d1d;
             --md-list-item-supporting-text-color: #3f4948;
@@ -41,6 +41,13 @@ export class RecordList extends LitElement {
             --md-list-item-label-text-font: system-ui;
             --md-list-item-supporting-text-font: system-ui;
             --md-list-item-trailing-supporting-text-font: system-ui;
+        }
+        .meta {
+            display: flex;
+            align-items: center;
+        }
+        .meta > md-icon {
+            padding: 1px 2px 1px 0;
         }
 
         .storage-heading {
@@ -51,6 +58,15 @@ export class RecordList extends LitElement {
             margin: 1em 0;
         }
     `
+
+    private static readonly dateTimeFormat = new Intl.DateTimeFormat(undefined, {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+    })
 
     @property({ noAccessor: true })
     private estimate: StorageEstimate
@@ -86,12 +102,12 @@ export class RecordList extends LitElement {
 
             const uri = URL.createObjectURL(record.file)
             return html`
-            ${idx > 0 ? html`<md-divider></md-divider>` : html``}
-            <md-list-item>
-                <span>${idx + 1}. </span>
-                <a href="${uri}" download="${record.title}">${record.title}</a>
-                <div slot="end">(size: ${formatNum(record.size / 1024 / 1024, 2)} MB)</div>
+            ${idx > 0 ? html`<md-divider></md-divider>` : ''}
+            <md-list-item class="list-item">
                 <md-checkbox touch-target="wrapper" slot="start" ?checked=${record.selected} @input=${this.selectRecord(record)}></md-checkbox>
+                <a href="${uri}" download="${record.title}">${record.title}</a>
+                <div class="meta" title="file size"><md-icon>storage</md-icon> ${formatNum(record.size / 1024 / 1024, 2)} MB</div>
+                ${record.recordedAt != null ? html`<div class="meta" title="recorded at"><md-icon>schedule</md-icon> ${RecordList.dateTimeFormat.format(record.recordedAt)}</div>` : ''}
                 <md-filled-icon-button slot="end" @click=${this.playRecord(record)}>
                     <md-icon>play_arrow</md-icon>
                 </md-filled-icon-button>
@@ -126,14 +142,23 @@ export class RecordList extends LitElement {
     private async updateRecord() {
         const opfsRoot = await navigator.storage.getDirectory()
         const result: Array<Record> = []
+        const timestampRegex = /^video-([0-9]+)\./
         for await (const [name, handle] of opfsRoot.entries()) {
             const file = await handle.getFile()
-            result.unshift({
+
+            let recordedAt: Date | undefined
+            const matched = name.match(timestampRegex)
+            if (matched != null && matched.length >= 2) {
+                recordedAt = new Date(Number.parseInt(matched[1], 10))
+            }
+            const record: Record = {
                 title: name,
                 file: file,
                 size: file.size,
                 selected: false,
-            })
+                recordedAt,
+            }
+            result.unshift(record)
         }
         const oldVal = [...this.records]
         this.records = result
