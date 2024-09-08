@@ -6,10 +6,16 @@ export interface VideoFormat {
     audioBitrate: number; // bps
     videoBitrate: number; // bps
     mimeType: string;
+    recordingMode: VideoRecordingMode;
 }
 export interface ScreenRecordingSize extends Resolution {
     auto: boolean;
     scale: number;
+}
+const videoRecordingMode = ['video-and-audio', 'video-only', 'audio-only'] as const
+export type VideoRecordingMode = (typeof videoRecordingMode)[number];
+export function isVideoRecordingMode(v: unknown): v is VideoRecordingMode {
+    return videoRecordingMode.some(m => v === m)
 }
 export class Configuration {
     public static readonly key = 'settings'
@@ -35,6 +41,7 @@ export class Configuration {
             audioBitrate: 256 * 1024, // 256Kbps
             videoBitrate: 0, // auto
             mimeType: 'video/webm;codecs="vp9,opus"',
+            recordingMode: 'video-and-audio',
         }
         this.enableBugTracking = true
         this.updatedAt = 0

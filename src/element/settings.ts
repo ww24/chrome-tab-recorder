@@ -4,10 +4,13 @@ import { customElement, property } from 'lit/decorators.js'
 import '@material/web/icon/icon'
 import '@material/web/button/filled-tonal-button'
 import '@material/web/switch/switch'
+import '@material/web/select/filled-select'
+import '@material/web/select/select-option'
+import { MdFilledSelect } from '@material/web/select/filled-select'
 import { MdFilledTextField } from '@material/web/textfield/filled-text-field'
 import { MdSwitch } from '@material/web/switch/switch'
 import type { ResizeWindowMessage, SaveConfigSyncMessage } from '../message'
-import { Configuration, Resolution, VideoFormat } from '../configuration'
+import { Configuration, Resolution, VideoFormat, isVideoRecordingMode } from '../configuration'
 import { WebLocalStorage } from '../storage'
 import type { FetchConfigMessage } from '../message'
 import { deepMerge } from './util'
@@ -89,16 +92,27 @@ export class Settings extends LitElement {
         <div>
             <label style="line-height: 32px; font-size: 1.5em">
                 Auto (Use tab size if available)
-                <md-switch ?selected=${live(this.config.screenRecordingSize.auto)} @input=${this.updateProp('screenRecordingSize', 'auto')}></md-switch>
+                <md-switch ?disabled=${live(this.config.videoFormat.recordingMode === 'audio-only')} ?selected=${live(this.config.screenRecordingSize.auto)} @input=${this.updateProp('screenRecordingSize', 'auto')}></md-switch>
             </label>
         </div>
-        <md-filled-text-field label="width" type="number" suffix-text="px" ?disabled=${live(this.config.screenRecordingSize.auto)} .value=${live(this.config.screenRecordingSize.width)} @input=${this.updateProp('screenRecordingSize', 'width')}></md-filled-text-field>
-        <md-filled-text-field label="height" type="number" suffix-text="px" ?disabled=${live(this.config.screenRecordingSize.auto)} .value=${live(this.config.screenRecordingSize.height)} @input=${this.updateProp('screenRecordingSize', 'height')}></md-filled-text-field>
-        <md-filled-text-field label="recording scale" type="number" min="1" suffix-text="x" ?disabled=${live(!this.config.screenRecordingSize.auto)} .value=${live(this.config.screenRecordingSize.scale)} @input=${this.updateProp('screenRecordingSize', 'scale')}></md-filled-text-field>
+        <md-filled-text-field label="width" type="number" suffix-text="px" ?disabled=${live(this.config.screenRecordingSize.auto || this.config.videoFormat.recordingMode === 'audio-only')} .value=${live(this.config.screenRecordingSize.width)} @input=${this.updateProp('screenRecordingSize', 'width')}></md-filled-text-field>
+        <md-filled-text-field label="height" type="number" suffix-text="px" ?disabled=${live(this.config.screenRecordingSize.auto || this.config.videoFormat.recordingMode === 'audio-only')} .value=${live(this.config.screenRecordingSize.height)} @input=${this.updateProp('screenRecordingSize', 'height')}></md-filled-text-field>
+        <md-filled-text-field label="recording scale" type="number" min="1" suffix-text="x" ?disabled=${live(!this.config.screenRecordingSize.auto || this.config.videoFormat.recordingMode === 'audio-only')} .value=${live(this.config.screenRecordingSize.scale)} @input=${this.updateProp('screenRecordingSize', 'scale')}></md-filled-text-field>
         <h2>Video Format</h2>
-        <md-filled-text-field class="video-format-input" label="audio bitrate" type="number" min="1" suffix-text="Kbps" .value=${live(this.config.videoFormat.audioBitrate / 1024)} @input=${this.updateProp('videoFormat', 'audioBitrate')}></md-filled-text-field>
-        <md-filled-text-field class="video-format-input" label="video bitrate" type="number" min="0" step="0.1" supporting-text="0 means auto (number of pixels * 8 bps)" suffix-text="Mbps" .value=${live(this.config.videoFormat.videoBitrate / 1024 / 1024)} @input=${this.updateProp('videoFormat', 'videoBitrate')}></md-filled-text-field>
+        <md-filled-text-field class="video-format-input" label="audio bitrate" type="number" min="1" suffix-text="Kbps" ?disabled=${live(this.config.videoFormat.recordingMode === 'video-only')} .value=${live(this.config.videoFormat.audioBitrate / 1024)} @input=${this.updateProp('videoFormat', 'audioBitrate')}></md-filled-text-field>
+        <md-filled-text-field class="video-format-input" label="video bitrate" type="number" min="0" step="0.1" supporting-text="0 means auto (number of pixels * 8 bps)" suffix-text="Mbps" ?disabled=${live(this.config.videoFormat.recordingMode === 'audio-only')} .value=${live(this.config.videoFormat.videoBitrate / 1024 / 1024)} @input=${this.updateProp('videoFormat', 'videoBitrate')}></md-filled-text-field>
         <md-filled-text-field class="mime-type-input" label="MIME type" type="text" .value=${live(this.config.videoFormat.mimeType)} @input=${this.updateProp('videoFormat', 'mimeType')}></md-filled-text-field>
+        <md-filled-select label="recording mode" .value=${live(this.config.videoFormat.recordingMode)} @input=${this.updateProp('videoFormat', 'recordingMode')}>
+            <md-select-option value="video-and-audio">
+                <div slot="headline">Video and Audio</div>
+            </md-select-option>
+            <md-select-option value="video-only">
+                <div slot="headline">Video only</div>
+            </md-select-option>
+            <md-select-option value="audio-only">
+                <div slot="headline">Audio only</div>
+            </md-select-option>
+        </md-filled-select>
         <h2>Option</h2>
         <label style="line-height: 32px; font-size: 1.5em">
             Open the option page after recording
@@ -155,7 +169,7 @@ export class Settings extends LitElement {
                     }
                     break
                 case 'videoFormat':
-                    if (!(e.target instanceof MdFilledTextField) || key2 == null) return
+                    if (!(e.target instanceof MdFilledTextField || e.target instanceof MdFilledSelect) || key2 == null) return
                     switch (key2) {
                         case 'audioBitrate':
                             this.config[key1][key2] = Number.parseInt(e.target.value, 10) * 1024
@@ -172,6 +186,10 @@ export class Settings extends LitElement {
                             }
                             e.target.setCustomValidity('')
                             e.target.reportValidity()
+                            this.config[key1][key2] = e.target.value
+                            break
+                        case 'recordingMode':
+                            if (!isVideoRecordingMode(e.target.value)) return
                             this.config[key1][key2] = e.target.value
                             break
                     }
