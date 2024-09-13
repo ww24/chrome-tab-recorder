@@ -7,6 +7,7 @@ import {
     metrics,
 } from '@sentry/browser'
 import { Settings } from './element/settings'
+import { VideoRecordingMode } from './configuration'
 
 // filter integrations that use the global variable
 const integrations = getDefaultIntegrations({}).filter(defaultIntegration => {
@@ -42,6 +43,7 @@ interface StopRecordingEvent {
         videoBitRate?: number;
         audioBitRate?: number;
         recordingResolution?: string;
+        recordingMode?: VideoRecordingMode;
         version?: string;
     };
     metrics: {

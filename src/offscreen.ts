@@ -59,13 +59,13 @@ async function startRecording(startRecording: StartRecording) {
 
     const size = Settings.getScreenRecordingSize(startRecording.tabSize)
     const media = await navigator.mediaDevices.getUserMedia({
-        audio: {
+        audio: videoFormat.recordingMode === 'video-only' ? undefined : {
             mandatory: {
                 chromeMediaSource: 'tab',
                 chromeMediaSourceId: startRecording.streamId,
             }
         },
-        video: {
+        video: videoFormat.recordingMode === 'audio-only' ? undefined : {
             mandatory: {
                 chromeMediaSource: 'tab',
                 chromeMediaSourceId: startRecording.streamId,
@@ -76,16 +76,18 @@ async function startRecording(startRecording: StartRecording) {
         }
     })
 
-    // Continue to play the captured audio to the user.
-    const output = new AudioContext()
-    const source = output.createMediaStreamSource(media)
-    source.connect(output.destination)
+    if (media.getAudioTracks().length > 0) {
+        // Continue to play the captured audio to the user.
+        const output = new AudioContext()
+        const source = output.createMediaStreamSource(media)
+        source.connect(output.destination)
+    }
 
     // Start recording.
     recorder = new MediaRecorder(media, {
         mimeType: videoFormat.mimeType,
-        audioBitsPerSecond: videoFormat.audioBitrate,
-        videoBitsPerSecond: videoFormat.videoBitrate,
+        audioBitsPerSecond: videoFormat.recordingMode === 'video-only' ? undefined : videoFormat.audioBitrate,
+        videoBitsPerSecond: videoFormat.recordingMode === 'audio-only' ? undefined : videoFormat.videoBitrate,
     })
 
     let fixWebM: MediaRecorderWebMDurationWorkaround | undefined
@@ -122,6 +124,7 @@ async function startRecording(startRecording: StartRecording) {
                     videoBitRate: recorder?.videoBitsPerSecond,
                     audioBitRate: recorder?.audioBitsPerSecond,
                     recordingResolution: `${size.width}x${size.height}`,
+                    recordingMode: videoFormat.recordingMode,
                 },
                 metrics: {
                     duration: duration / 1000,
