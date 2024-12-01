@@ -1,6 +1,6 @@
 import { MediaRecorderWebMDurationWorkaround } from './fix_webm_duration'
 import { Settings } from './element/settings'
-import type { Message, StartRecording, CompleteRecordingMessage } from './message'
+import type { Message, StartRecording, UpdateRecordingIconMessage, CompleteRecordingMessage } from './message'
 import { sendEvent, sendException } from './sentry'
 import { MIMEType } from './mime'
 
@@ -48,6 +48,13 @@ async function startRecording(startRecording: StartRecording) {
         throw new Error('unsupported MIME type: ' + videoFormat.mimeType)
     }
     const mimeType = new MIMEType(videoFormat.mimeType)
+
+    // update recording icon
+    const msg: UpdateRecordingIconMessage = {
+        type: 'update-recording-icon',
+        icon: videoFormat.recordingMode,
+    }
+    await chrome.runtime.sendMessage(msg)
 
     const dirHandle = await navigator.storage.getDirectory()
     const fileBaseName = `video-${Date.now()}`

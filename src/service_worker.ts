@@ -7,6 +7,8 @@ import { ExtensionSyncStorage } from './storage'
 import { deepMerge } from './element/util'
 
 const recordingIcon = '/icons/recording.png'
+const recordingVideoOnlyIcon = '/icons/recording-video-only.png'
+const recordingAudioOnlyIcon = '/icons/recording-audio-only.png'
 const notRecordingIcon = '/icons/not-recording.png'
 const storage = new ExtensionSyncStorage()
 
@@ -87,8 +89,6 @@ async function startRecording(tab: chrome.tabs.Tab) {
         },
     }
     await chrome.runtime.sendMessage(msg)
-
-    await chrome.action.setIcon({ path: recordingIcon })
 }
 
 async function stopRecording() {
@@ -109,6 +109,18 @@ chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.M
                 case 'resize-window':
                     if (typeof message.data !== 'object' || message.data == null) return
                     await resizeWindow(message.data)
+                    return
+                case 'update-recording-icon':
+                    let path = recordingIcon
+                    switch (message.icon) {
+                        case 'video-only':
+                            path = recordingVideoOnlyIcon
+                            break
+                        case 'audio-only':
+                            path = recordingAudioOnlyIcon
+                            break
+                    }
+                    await chrome.action.setIcon({ path })
                     return
                 case 'complete-recording':
                     await chrome.action.setIcon({ path: notRecordingIcon })

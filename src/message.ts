@@ -3,6 +3,7 @@ import type { Resolution, Configuration } from './configuration'
 export type Message =
     | ExceptionMessage
     | StartRecordingMessage
+    | UpdateRecordingIconMessage
     | StopRecordingMessage
     | CompleteRecordingMessage
     | ResizeWindowMessage
@@ -23,6 +24,11 @@ export interface StartRecordingMessage {
 export interface StartRecording {
     tabSize: Resolution;
     streamId: string;
+}
+
+export interface UpdateRecordingIconMessage {
+    type: 'update-recording-icon';
+    icon: 'video-and-audio' | 'audio-only' | 'video-only';
 }
 
 export interface StopRecordingMessage {
