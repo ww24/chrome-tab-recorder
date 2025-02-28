@@ -5,6 +5,7 @@ export interface Resolution {
 export interface VideoFormat {
     audioBitrate: number; // bps
     videoBitrate: number; // bps
+    frameRate: number; // fps
     mimeType: string;
     recordingMode: VideoRecordingMode;
 }
@@ -40,6 +41,7 @@ export class Configuration {
         this.videoFormat = {
             audioBitrate: 256 * 1024, // 256Kbps
             videoBitrate: 0, // auto
+            frameRate: 30, // 30fps
             mimeType: 'video/webm;codecs="vp9,opus"',
             recordingMode: 'video-and-audio',
         }
