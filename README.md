@@ -12,7 +12,7 @@ Google Chrome Extensions Tab Recorder
 
 ```sh
 npm install
-npm build
+npm run build
 ```
 
 ### Directory structure
