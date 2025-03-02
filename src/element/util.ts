@@ -28,7 +28,7 @@ export function deepMerge<T>(obj1: T, obj2: T): T {
         if (!Object.hasOwn(obj2 as object, k)) continue
         if (obj1[k] instanceof Object && obj2[k] instanceof Object) {
             res[k] = deepMerge(obj1[k], obj2[k])
-        } else {
+        } else if (obj2[k] != null) {
             res[k] = obj2[k]
         }
     }
