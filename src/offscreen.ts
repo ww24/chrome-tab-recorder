@@ -78,8 +78,8 @@ async function startRecording(startRecording: StartRecording) {
                 chromeMediaSourceId: startRecording.streamId,
                 maxWidth: size.width,
                 maxHeight: size.height,
-                minFrameRate: videoFormat.frameRate,
-            }
+                maxFrameRate: videoFormat.frameRate,
+            },
         }
     })
 
