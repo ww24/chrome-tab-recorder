@@ -21,6 +21,7 @@ declare global {
         chromeMediaSourceId: string;
         maxWidth?: number;
         maxHeight?: number;
+        maxFrameRate?: number;
         minWidth?: number;
         minHeight?: number;
         minFrameRate?: number;

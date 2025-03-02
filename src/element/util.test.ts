@@ -26,4 +26,15 @@ describe('deepMerge', () => {
             a: { a1: 1, a2: 2 }, c: { c1: 4 }, d: {}
         })
     })
+
+    test('null behavior', () => {
+        const actual = deepMerge({
+            a: { a1: 1 }, c: { c1: 3 }, d: 'd',
+        }, {
+            a: { a1: null, a2: null }, c: null, d: null
+        })
+        expect(actual).toStrictEqual({
+            a: { a1: 1 }, c: { c1: 3 }, d: 'd'
+        })
+    })
 })
