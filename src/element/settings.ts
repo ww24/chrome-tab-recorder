@@ -119,7 +119,7 @@ export class Settings extends LitElement {
             Open the option page after recording
             <md-switch ?selected=${live(this.config.openOptionPage)} @input=${this.updateProp('openOptionPage')}></md-switch>
         </label>
-        <label style="line-height: 32px; font-size: 1.5em">
+        <label style="line-height: 32px; font-size: 1.5em; margin-top: 1em; display: block;">
             Mute tab audio when recording starts
             <md-switch ?selected=${live(this.config.muteOnRecording)} @input=${this.updateProp('muteOnRecording')}></md-switch>
         </label>
