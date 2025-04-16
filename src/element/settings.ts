@@ -19,7 +19,7 @@ import { deepMerge } from './util'
 export class Settings extends LitElement {
     private static readonly storage = new WebLocalStorage()
 
-    private static getConfiguration(): Configuration {
+    public static getConfiguration(): Configuration {
         const defaultConfig = new Configuration()
         const config = Settings.storage.get(Configuration.key) as Configuration
         return deepMerge(defaultConfig, config)
@@ -119,6 +119,10 @@ export class Settings extends LitElement {
             Open the option page after recording
             <md-switch ?selected=${live(this.config.openOptionPage)} @input=${this.updateProp('openOptionPage')}></md-switch>
         </label>
+        <label style="line-height: 32px; font-size: 1.5em">
+            Mute tab audio when recording starts
+            <md-switch ?selected=${live(this.config.muteOnRecording)} @input=${this.updateProp('muteOnRecording')}></md-switch>
+        </label>
         <h2>Privacy</h2>
         <label style="line-height: 32px; font-size: 1.5em">
             Bug Tracking
@@ -145,7 +149,7 @@ export class Settings extends LitElement {
         }
         await chrome.runtime.sendMessage(msg)
     }
-    private updateProp(key1: 'windowSize' | 'screenRecordingSize' | 'videoFormat' | 'enableBugTracking' | 'openOptionPage', key2?: string) {
+    private updateProp(key1: 'windowSize' | 'screenRecordingSize' | 'videoFormat' | 'enableBugTracking' | 'openOptionPage' | 'muteOnRecording', key2?: string) {
         return async (e: Event) => {
             const oldVal = { ...this.config }
 
@@ -200,6 +204,7 @@ export class Settings extends LitElement {
                     break
                 case 'enableBugTracking':
                 case 'openOptionPage':
+                case 'muteOnRecording':
                     if (!(e.target instanceof MdSwitch)) return
                     this.config[key1] = e.target.selected
                     break
