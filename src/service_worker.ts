@@ -12,6 +12,9 @@ const recordingAudioOnlyIcon = '/icons/recording-audio-only.png'
 const notRecordingIcon = '/icons/not-recording.png'
 const storage = new ExtensionSyncStorage()
 
+// Add a Map to track all recording tasks
+const recordingTasks = new Map<string, number>(); // taskId -> tabId
+
 chrome.runtime.onInstalled.addListener(async () => {
     await getOrCreateOffscreenDocument()
 
@@ -59,11 +62,20 @@ async function getOrCreateOffscreenDocument(): Promise<boolean> {
 
 chrome.action.onClicked.addListener(async (tab: chrome.tabs.Tab) => {
     try {
-        const recording = await getOrCreateOffscreenDocument()
-        if (recording) {
-            await stopRecording()
-            return
+        // Check if the current tab is already being recorded
+        if (tab.id && Array.from(recordingTasks.values()).includes(tab.id)) {
+            // If the current tab is being recorded, stop this specific tab's recording
+            const taskId = Array.from(recordingTasks.entries())
+                .find(([_, tabId]) => tabId === tab.id)?.[0];
+            
+            if (taskId) {
+                await stopRecording(taskId);
+                return;
+            }
         }
+        
+        // Start a new recording, regardless of whether other recording tasks are in progress
+        await getOrCreateOffscreenDocument()
         await startRecording(tab)
     } catch (e) {
         const msg: ExceptionMessage = {
@@ -75,31 +87,68 @@ chrome.action.onClicked.addListener(async (tab: chrome.tabs.Tab) => {
 })
 
 async function startRecording(tab: chrome.tabs.Tab) {
-    // Get a MediaStream for the active tab.
+    if (!tab.id) {
+        throw new Error('Tab ID is undefined.')
+    }
+    
+    // Generate unique task ID
+    const taskId = uuidv7();
+    
+    // Get media stream ID
     const streamId = await (chrome.tabCapture.getMediaStreamId as typeof getMediaStreamId)({
         targetTabId: tab.id
     })
 
-    // Send the stream ID to the offscreen document to start recording.
+    // Add task to tracking list
+    recordingTasks.set(taskId, tab.id);
+    
+    // Send start recording message to offscreen page
     const msg: StartRecordingMessage = {
         type: 'start-recording',
+        taskId,
         data: {
             tabSize: { width: tab.width ?? 0, height: tab.height ?? 0 },
             streamId,
+            tabId: tab.id
         },
     }
     await chrome.runtime.sendMessage(msg)
+    
+    console.log(`Started recording task ${taskId} for tab ${tab.id}`);
 }
 
-async function stopRecording() {
+async function stopRecording(taskId?: string) {
+    if (!taskId) {
+        // If no taskId specified, stop all recordings
+        const allTaskIds = Array.from(recordingTasks.keys());
+        for (const id of allTaskIds) {
+            await stopRecordingTask(id);
+        }
+        return;
+    }
+    
+    await stopRecordingTask(taskId);
+}
+
+async function stopRecordingTask(taskId: string) {
+    const tabId = recordingTasks.get(taskId);
+    if (!tabId) {
+        console.warn(`Task ${taskId} not found in recording tasks.`);
+        return;
+    }
+    
     const msg: StopRecordingMessage = {
         type: 'stop-recording',
+        taskId
     }
     await chrome.runtime.sendMessage(msg)
-    await chrome.action.setIcon({ path: notRecordingIcon })
-
-    const config = await getConfiguration()
-    if (config.openOptionPage) await chrome.runtime.openOptionsPage()
+    
+    // If all tasks have stopped, update the icon
+    if (recordingTasks.size === 0) {
+        await chrome.action.setIcon({ path: notRecordingIcon })
+    }
+    
+    console.log(`Stopped recording task ${taskId} for tab ${tabId}`);
 }
 
 chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.MessageSender, sendResponse: (response?: Configuration) => void) => {
@@ -123,8 +172,17 @@ chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.M
                     await chrome.action.setIcon({ path })
                     return
                 case 'complete-recording':
-                    await chrome.action.setIcon({ path: notRecordingIcon })
-                    await chrome.offscreen.closeDocument()
+                    // Remove completed task from task list
+                    if (message.taskId) {
+                        recordingTasks.delete(message.taskId);
+                        console.log(`Removed completed task ${message.taskId}, remaining tasks: ${recordingTasks.size}`);
+                    }
+                    
+                    // Only close the offscreen document when all tasks are completed
+                    if (recordingTasks.size === 0) {
+                        await chrome.action.setIcon({ path: notRecordingIcon })
+                        await chrome.offscreen.closeDocument()
+                    }
                     return
                 case 'save-config-sync':
                     await storage.set(Configuration.key, message.data)

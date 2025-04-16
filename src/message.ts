@@ -20,23 +20,28 @@ export interface ExceptionMessage {
 export interface StartRecordingMessage {
     type: 'start-recording';
     data: StartRecording;
+    taskId: string;
 }
 export interface StartRecording {
     tabSize: Resolution;
     streamId: string;
+    tabId: number;
 }
 
 export interface UpdateRecordingIconMessage {
     type: 'update-recording-icon';
     icon: 'video-and-audio' | 'audio-only' | 'video-only';
+    tabId?: number;
 }
 
 export interface StopRecordingMessage {
     type: 'stop-recording';
+    taskId?: string;
 }
 
 export interface CompleteRecordingMessage {
     type: 'complete-recording';
+    taskId: string;
 }
 
 export interface ResizeWindowMessage {
