@@ -288,28 +288,28 @@ export class Settings extends LitElement {
                 startIn: 'downloads'
             });
             
-            // 确认权限
+            // Confirm permissions
             const permission = await dirHandle.requestPermission({ mode: 'readwrite' });
             if (permission !== 'granted') {
-                throw new Error('权限被拒绝');
+                throw new Error('Permission denied');
             }
             
-            // 存储目录句柄
+            // Store directory handle
             const oldVal = { ...this.config };
             this.config.defaultSavePath = dirHandle.name;
             
-            // 将目录句柄保存到IndexedDB中，以便后续使用
+            // Save directory handle to IndexedDB for future use
             await this.storeDirHandle(dirHandle);
             
             this.requestUpdate('config', oldVal);
             Settings.setConfiguration(this.config);
             await Settings.syncConfiguration(this.config);
             
-            // 显示成功消息
-            this.showToast('默认保存路径设置成功', '#4caf50');
+            // Show success message
+            this.showToast('Default save path set successfully', '#4caf50');
         } catch (error) {
             console.error('Failed to select directory:', error);
-            this.showToast('选择文件夹失败: ' + (error as Error).message, '#d32f2f');
+            this.showToast('Failed to select folder: ' + (error as Error).message, '#d32f2f');
         }
     }
     
@@ -372,7 +372,7 @@ export class Settings extends LitElement {
         });
     }
 
-    // 显示提示消息
+    // Display toast message
     private showToast(message: string, backgroundColor: string) {
         const toast = document.createElement('div');
         toast.textContent = message;
