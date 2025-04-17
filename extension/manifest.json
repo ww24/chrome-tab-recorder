@@ -19,7 +19,8 @@
         "tabCapture",
         "offscreen",
         "storage",
-        "unlimitedStorage"
+        "unlimitedStorage",
+        "tabs"
     ],
     "options_page": "option.html",
     "content_security_policy": {
