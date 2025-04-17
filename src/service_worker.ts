@@ -98,6 +98,19 @@ async function startRecording(tab: chrome.tabs.Tab) {
     const streamId = await (chrome.tabCapture.getMediaStreamId as typeof getMediaStreamId)({
         targetTabId: tab.id
     })
+    
+    // Get tab title
+    let tabTitle = tab.title || 'Untitled Tab';
+    
+    // If no title, try to get it again (in some cases tab.title might be empty)
+    if (!tabTitle && tab.id) {
+        try {
+            const tabInfo = await chrome.tabs.get(tab.id);
+            tabTitle = tabInfo.title || 'Untitled Tab';
+        } catch (error) {
+            console.warn('Failed to get tab title:', error);
+        }
+    }
 
     // Add task to tracking list
     recordingTasks.set(taskId, tab.id);
@@ -109,12 +122,13 @@ async function startRecording(tab: chrome.tabs.Tab) {
         data: {
             tabSize: { width: tab.width ?? 0, height: tab.height ?? 0 },
             streamId,
-            tabId: tab.id
+            tabId: tab.id,
+            tabTitle: tabTitle
         },
     }
     await chrome.runtime.sendMessage(msg)
     
-    console.log(`Started recording task ${taskId} for tab ${tab.id}`);
+    console.log(`Started recording task ${taskId} for tab ${tab.id} "${tabTitle}"`);
 }
 
 async function stopRecording(taskId?: string) {

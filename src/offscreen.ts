@@ -18,6 +18,7 @@ interface RecordingTask {
     recordFileHandle: FileSystemFileHandle;
     dirHandle: FileSystemDirectoryHandle;
     size: { width: number, height: number };
+    tabTitle?: string;
 }
 
 const recordingTasks = new Map<string, RecordingTask>();
@@ -72,7 +73,9 @@ async function startRecording(startRecording: StartRecording, taskId: string) {
     await chrome.runtime.sendMessage(msg)
 
     const dirHandle = await navigator.storage.getDirectory()
-    const fileBaseName = `video-${taskId}-${Date.now()}`
+    const startTime = Date.now();
+    // Use start time as part of the filename
+    const fileBaseName = `video-${startTime}`
     const backupFileName = `${fileBaseName}.bk${mimeType.extension()}`
     const regularFileName = `${fileBaseName}${mimeType.extension()}`
     const recordFileName = mimeType.is(MIMEType.webm) ? backupFileName : regularFileName
@@ -135,7 +138,8 @@ async function startRecording(startRecording: StartRecording, taskId: string) {
         regularFileName,
         recordFileHandle,
         dirHandle,
-        size
+        size,
+        tabTitle: startRecording.tabTitle
     };
     
     recordingTasks.set(taskId, task);
@@ -160,7 +164,9 @@ async function startRecording(startRecording: StartRecording, taskId: string) {
             const task = recordingTasks.get(taskId);
             if (!task) return;
             
-            const duration = Date.now() - task.startTime;
+            // Record end time
+            const endTime = Date.now();
+            const duration = endTime - task.startTime;
             console.log(`Task ${taskId} stopped: duration=${duration / 1000}s`);
 
             if (recorder.stream.active) {
@@ -191,7 +197,9 @@ async function startRecording(startRecording: StartRecording, taskId: string) {
                 const fixWebMDuration = task.fixWebM.duration()
                 console.debug(`Task ${taskId} fixWebM: duration=${fixWebMDuration / 1000}s`)
 
-                const fixedFileHandle = await task.dirHandle.getFileHandle(task.regularFileName, { create: true })
+                // Use filename with start and end time
+                const newRegularFileName = `video-${task.startTime}-${endTime}${mimeType.extension()}`
+                const fixedFileHandle = await task.dirHandle.getFileHandle(newRegularFileName, { create: true })
                 const fixedWritableStream = await fixedFileHandle.createWritable()
                 const file = await task.recordFileHandle.getFile()
                 const fixed = task.fixWebM.fixMetadata(file)
@@ -204,6 +212,88 @@ async function startRecording(startRecording: StartRecording, taskId: string) {
                 } catch (e) {
                     await fixedWritableStream.close()
                     throw e
+                }
+                
+                // Save metadata (such as tab title) to separate metadata file
+                if (task.tabTitle) {
+                    try {
+                        // Create metadata directory (if it doesn't exist)
+                        let metadataDir: FileSystemDirectoryHandle;
+                        try {
+                            metadataDir = await task.dirHandle.getDirectoryHandle('metadata');
+                        } catch (error) {
+                            metadataDir = await task.dirHandle.getDirectoryHandle('metadata', { create: true });
+                        }
+                        
+                        // Create metadata file
+                        const metadataFileName = `${newRegularFileName}.metadata.json`;
+                        const metadataHandle = await metadataDir.getFileHandle(metadataFileName, { create: true });
+                        const metadataWritable = await metadataHandle.createWritable();
+                        
+                        // Write metadata
+                        const metadata = JSON.stringify({
+                            tabTitle: task.tabTitle,
+                            recordingStart: task.startTime,
+                            recordingEnd: endTime
+                        });
+                        
+                        await metadataWritable.write(metadata);
+                        await metadataWritable.close();
+                        
+                        console.log(`Metadata saved for ${newRegularFileName}`);
+                    } catch (metadataError) {
+                        console.error('Failed to save metadata:', metadataError);
+                        // Continue processing even if metadata save fails, don't interrupt the main flow
+                    }
+                }
+            } else {
+                // For non-WebM formats, rename file to include end time
+                const newFileName = `video-${task.startTime}-${endTime}${mimeType.extension()}`
+                // Create new file and copy content
+                const file = await task.recordFileHandle.getFile()
+                const newFileHandle = await task.dirHandle.getFileHandle(newFileName, { create: true })
+                const writableStream = await newFileHandle.createWritable()
+                
+                try {
+                    await file.stream().pipeTo(writableStream)
+                    // Delete old file
+                    await task.dirHandle.removeEntry(task.fileName)
+                } catch (e) {
+                    await writableStream.close()
+                    throw e
+                }
+                
+                // Save metadata (such as tab title) to separate metadata file
+                if (task.tabTitle) {
+                    try {
+                        // Create metadata directory (if it doesn't exist)
+                        let metadataDir: FileSystemDirectoryHandle;
+                        try {
+                            metadataDir = await task.dirHandle.getDirectoryHandle('metadata');
+                        } catch (error) {
+                            metadataDir = await task.dirHandle.getDirectoryHandle('metadata', { create: true });
+                        }
+                        
+                        // Create metadata file
+                        const metadataFileName = `${newFileName}.metadata.json`;
+                        const metadataHandle = await metadataDir.getFileHandle(metadataFileName, { create: true });
+                        const metadataWritable = await metadataHandle.createWritable();
+                        
+                        // Write metadata
+                        const metadata = JSON.stringify({
+                            tabTitle: task.tabTitle,
+                            recordingStart: task.startTime,
+                            recordingEnd: endTime
+                        });
+                        
+                        await metadataWritable.write(metadata);
+                        await metadataWritable.close();
+                        
+                        console.log(`Metadata saved for ${newFileName}`);
+                    } catch (metadataError) {
+                        console.error('Failed to save metadata:', metadataError);
+                        // Continue processing even if metadata save fails, don't interrupt the main flow
+                    }
                 }
             }
             
@@ -231,7 +321,7 @@ async function startRecording(startRecording: StartRecording, taskId: string) {
                 if (task) {
                 // close backup file writable stream
                     await task.writableStream.close();
-                    // 从记录中移除
+                    // Remove from records
                     recordingTasks.delete(taskId);
                 }
             } catch (e) {
@@ -279,10 +369,9 @@ async function stopRecordingTask(taskId: string) {
         console.log(`Task ${taskId} not found.`);
         return;
     }
-
+    
     task.recorder.stop();
-
+    
     // Stopping the tracks makes sure the recording icon in the tab is removed.
     task.recorder.stream.getTracks().forEach(t => t.stop());
 }
-

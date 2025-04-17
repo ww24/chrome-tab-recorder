@@ -26,6 +26,7 @@ export interface StartRecording {
     tabSize: Resolution;
     streamId: string;
     tabId: number;
+    tabTitle?: string;
 }
 
 export interface UpdateRecordingIconMessage {

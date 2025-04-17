@@ -28,6 +28,8 @@ export class Configuration {
     userId: string
     openOptionPage: boolean
     muteOnRecording: boolean
+    saveToDefaultPath: boolean
+    defaultSavePath: string
     constructor() {
         this.windowSize = {
             width: 1920,
@@ -51,6 +53,8 @@ export class Configuration {
         this.userId = ''
         this.openOptionPage = true
         this.muteOnRecording = false
+        this.saveToDefaultPath = false
+        this.defaultSavePath = ''
     }
     static restoreDefault({ userId }: Configuration): Configuration {
         const config = new Configuration()
