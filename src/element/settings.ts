@@ -69,6 +69,17 @@ export class Settings extends LitElement {
     .mime-type-input {
         width: 564px;
     }
+    .path-input {
+        width: 500px;
+    }
+    .path-select-button {
+        margin-left: 8px;
+    }
+    .path-container {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1em;
+    }
     `
 
     @property({ noAccessor: true })
@@ -123,6 +134,28 @@ export class Settings extends LitElement {
             Mute tab audio when recording starts
             <md-switch ?selected=${live(this.config.muteOnRecording)} @input=${this.updateProp('muteOnRecording')}></md-switch>
         </label>
+        <h2>Save Settings</h2>
+        <label style="line-height: 32px; font-size: 1.5em">
+            Save to default path
+            <md-switch ?selected=${live(this.config.saveToDefaultPath)} @input=${this.updateProp('saveToDefaultPath')}></md-switch>
+        </label>
+        <div class="path-container">
+            <md-filled-text-field
+                class="path-input"
+                label="Default save path"
+                .value=${live(this.config.defaultSavePath)}
+                ?disabled=${!this.config.saveToDefaultPath}
+                @input=${this.updateProp('defaultSavePath')}
+            ></md-filled-text-field>
+            <md-filled-tonal-button
+                class="path-select-button"
+                ?disabled=${!this.config.saveToDefaultPath}
+                @click=${this.selectDefaultPath}
+            >
+                Select folder
+                <md-icon slot="icon">folder_open</md-icon>
+            </md-filled-tonal-button>
+        </div>
         <h2>Privacy</h2>
         <label style="line-height: 32px; font-size: 1.5em">
             Bug Tracking
@@ -149,7 +182,7 @@ export class Settings extends LitElement {
         }
         await chrome.runtime.sendMessage(msg)
     }
-    private updateProp(key1: 'windowSize' | 'screenRecordingSize' | 'videoFormat' | 'enableBugTracking' | 'openOptionPage' | 'muteOnRecording', key2?: string) {
+    private updateProp(key1: 'windowSize' | 'screenRecordingSize' | 'videoFormat' | 'enableBugTracking' | 'openOptionPage' | 'muteOnRecording' | 'saveToDefaultPath' | 'defaultSavePath', key2?: string) {
         return async (e: Event) => {
             const oldVal = { ...this.config }
 
@@ -205,8 +238,13 @@ export class Settings extends LitElement {
                 case 'enableBugTracking':
                 case 'openOptionPage':
                 case 'muteOnRecording':
+                case 'saveToDefaultPath':
                     if (!(e.target instanceof MdSwitch)) return
                     this.config[key1] = e.target.selected
+                    break
+                case 'defaultSavePath':
+                    if (!(e.target instanceof MdFilledTextField)) return
+                    this.config[key1] = e.target.value
                     break
             }
 
@@ -241,6 +279,120 @@ export class Settings extends LitElement {
             elem.setCustomValidity('')
             elem.reportValidity()
         }
+    }
+    private async selectDefaultPath() {
+        try {
+            const dirHandle = await window.showDirectoryPicker({
+                id: 'default-save-directory',
+                mode: 'readwrite',
+                startIn: 'downloads'
+            });
+            
+            // 确认权限
+            const permission = await dirHandle.requestPermission({ mode: 'readwrite' });
+            if (permission !== 'granted') {
+                throw new Error('权限被拒绝');
+            }
+            
+            // 存储目录句柄
+            const oldVal = { ...this.config };
+            this.config.defaultSavePath = dirHandle.name;
+            
+            // 将目录句柄保存到IndexedDB中，以便后续使用
+            await this.storeDirHandle(dirHandle);
+            
+            this.requestUpdate('config', oldVal);
+            Settings.setConfiguration(this.config);
+            await Settings.syncConfiguration(this.config);
+            
+            // 显示成功消息
+            this.showToast('默认保存路径设置成功', '#4caf50');
+        } catch (error) {
+            console.error('Failed to select directory:', error);
+            this.showToast('选择文件夹失败: ' + (error as Error).message, '#d32f2f');
+        }
+    }
+    
+    private async storeDirHandle(dirHandle: FileSystemDirectoryHandle): Promise<void> {
+        // 使用IndexedDB存储目录句柄
+        const dbName = 'directoryHandlesDB';
+        const storeName = 'directoryHandles';
+        const key = 'defaultSavePath';
+        
+        return new Promise<void>((resolve, reject) => {
+            try {
+                const request = indexedDB.open(dbName, 1);
+                
+                request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
+                    try {
+                        const db = (event.target as IDBOpenDBRequest).result;
+                        if (!db.objectStoreNames.contains(storeName)) {
+                            db.createObjectStore(storeName);
+                        }
+                    } catch (error) {
+                        console.error('Error during database upgrade:', error);
+                    }
+                };
+                
+                request.onsuccess = (event: Event) => {
+                    try {
+                        const db = (event.target as IDBOpenDBRequest).result;
+                        const transaction = db.transaction(storeName, 'readwrite');
+                        const objectStore = transaction.objectStore(storeName);
+                        
+                        const saveRequest = objectStore.put(dirHandle, key);
+                        
+                        saveRequest.onsuccess = () => {
+                            console.log('Directory handle stored successfully');
+                            resolve();
+                        };
+                        
+                        saveRequest.onerror = (error: Event) => {
+                            console.error('Error storing directory handle:', error);
+                            reject(error);
+                        };
+                        
+                        transaction.oncomplete = () => {
+                            db.close();
+                        };
+                    } catch (error) {
+                        console.error('Error in IndexedDB transaction:', error);
+                        reject(error);
+                    }
+                };
+                
+                request.onerror = (error: Event) => {
+                    console.error('Error opening database:', error);
+                    reject(error);
+                };
+            } catch (error) {
+                console.error('Unexpected error in storeDirHandle:', error);
+                reject(error);
+            }
+        });
+    }
+
+    // 显示提示消息
+    private showToast(message: string, backgroundColor: string) {
+        const toast = document.createElement('div');
+        toast.textContent = message;
+        toast.style.position = 'fixed';
+        toast.style.bottom = '20px';
+        toast.style.left = '50%';
+        toast.style.transform = 'translateX(-50%)';
+        toast.style.backgroundColor = backgroundColor;
+        toast.style.color = 'white';
+        toast.style.padding = '10px 20px';
+        toast.style.borderRadius = '4px';
+        toast.style.zIndex = '1000';
+        
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            if (document.body.contains(toast)) {
+                document.body.removeChild(toast);
+            }
+        }, 3000);
     }
 };
 
