@@ -29,8 +29,9 @@ scope.setClient(client)
 client.init() // initializing has to be done after setting the client on the scope
 
 function getScope(): Scope | undefined {
-    if (!Settings.getEnableBugTracking()) return
-    scope.setUser({ id: Settings.getUserId() })
+    const config = Settings.getConfiguration()
+    if (!config.enableBugTracking) return
+    scope.setUser({ id: config.userId })
     return scope
 }
 
@@ -72,7 +73,7 @@ export function sendEvent(e: Event) {
         tags: e.tags,
     })
 
-    const userId = Settings.getUserId()
+    const userId = Settings.getConfiguration().userId
     const tags = { ...e.tags, userId }
     if (e.metrics.duration != null) {
         metrics.distribution(e.type + '_duration', e.metrics.duration, {

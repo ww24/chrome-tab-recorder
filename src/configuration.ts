@@ -13,6 +13,10 @@ export interface ScreenRecordingSize extends Resolution {
     auto: boolean;
     scale: number;
 }
+export interface RecordingInfo {
+    videoFormat: VideoFormat
+    recordingSize: Resolution
+}
 const videoRecordingMode = ['video-and-audio', 'video-only', 'audio-only'] as const
 export type VideoRecordingMode = (typeof videoRecordingMode)[number];
 export function isVideoRecordingMode(v: unknown): v is VideoRecordingMode {
@@ -54,22 +58,22 @@ export class Configuration {
         const config = new Configuration()
         return { ...config, userId }
     }
-    static screenRecordingSize(config: Configuration, base: Resolution): Resolution {
-        if (config.screenRecordingSize.auto && base.width > 0 && base.height > 0) {
+    static screenRecordingSize(screenRecordingSize: ScreenRecordingSize, base: Resolution): Resolution {
+        if (screenRecordingSize.auto && base.width > 0 && base.height > 0) {
             return {
-                width: base.width * config.screenRecordingSize.scale,
-                height: base.height * config.screenRecordingSize.scale,
+                width: base.width * screenRecordingSize.scale,
+                height: base.height * screenRecordingSize.scale,
             }
         }
-        return config.screenRecordingSize
+        return screenRecordingSize
     }
-    static videoFormat(config: Configuration): VideoFormat {
-        if (config.videoFormat.videoBitrate === 0) {
+    static videoFormat(videoFormat: VideoFormat, screenRecordingSize: Resolution): VideoFormat {
+        if (videoFormat.videoBitrate === 0) {
             return {
-                ...config.videoFormat,
-                videoBitrate: 8 * config.screenRecordingSize.width * config.screenRecordingSize.height,
+                ...videoFormat,
+                videoBitrate: 8 * screenRecordingSize.width * screenRecordingSize.height,
             }
         }
-        return config.videoFormat
+        return videoFormat
     }
 };
