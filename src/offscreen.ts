@@ -82,7 +82,8 @@ async function startRecording(startRecording: StartRecording) {
         }
     })
 
-    if (media.getAudioTracks().length > 0) {
+    const muteRecordingTab = Settings.getConfiguration().muteRecordingTab
+    if (!muteRecordingTab && media.getAudioTracks().length > 0) {
         // Continue to play the captured audio to the user.
         const output = new AudioContext()
         const source = output.createMediaStreamSource(media)
