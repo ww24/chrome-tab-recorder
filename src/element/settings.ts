@@ -19,7 +19,7 @@ import { deepMerge } from './util'
 export class Settings extends LitElement {
     private static readonly storage = new WebLocalStorage()
 
-    private static getConfiguration(): Configuration {
+    public static getConfiguration(): Configuration {
         const defaultConfig = new Configuration()
         const config = Settings.storage.get(Configuration.key) as Configuration
         return deepMerge(defaultConfig, config)
@@ -43,14 +43,6 @@ export class Settings extends LitElement {
         const recordingSize = Configuration.screenRecordingSize(config.screenRecordingSize, base)
         const videoFormat = Configuration.videoFormat(config.videoFormat, recordingSize)
         return { videoFormat, recordingSize }
-    }
-
-    public static getEnableBugTracking(): boolean {
-        return Settings.getConfiguration().enableBugTracking
-    }
-
-    public static getUserId(): string {
-        return Settings.getConfiguration().userId
     }
 
     static readonly styles = css`
