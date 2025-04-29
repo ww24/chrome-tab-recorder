@@ -4,7 +4,6 @@ import {
     getDefaultIntegrations,
     makeFetchTransport,
     Scope,
-    metrics,
 } from '@sentry/browser'
 import { Settings } from './element/settings'
 import { VideoRecordingMode } from './configuration'
@@ -72,13 +71,4 @@ export function sendEvent(e: Event) {
         level: 'info',
         tags: e.tags,
     })
-
-    const userId = Settings.getConfiguration().userId
-    const tags = { ...e.tags, userId }
-    if (e.metrics.duration != null) {
-        metrics.distribution(e.type + '_duration', e.metrics.duration, {
-            tags,
-            client,
-        })
-    }
 }
