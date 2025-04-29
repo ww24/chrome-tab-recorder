@@ -43,7 +43,7 @@ async function startRecording(startRecording: StartRecording) {
         console.warn('OPFS persist: permission denied')
     }
 
-    const videoFormat = Settings.getVideoFormat()
+    const { videoFormat, recordingSize } = Settings.getRecordingInfo(startRecording.tabSize)
     if (!MediaRecorder.isTypeSupported(videoFormat.mimeType)) {
         throw new Error('unsupported MIME type: ' + videoFormat.mimeType)
     }
@@ -64,7 +64,6 @@ async function startRecording(startRecording: StartRecording) {
     const recordFileHandle = await dirHandle.getFileHandle(recordFileName, { create: true })
     const writableStream = await recordFileHandle.createWritable()
 
-    const size = Settings.getScreenRecordingSize(startRecording.tabSize)
     const media = await navigator.mediaDevices.getUserMedia({
         audio: videoFormat.recordingMode === 'video-only' ? undefined : {
             mandatory: {
@@ -76,8 +75,8 @@ async function startRecording(startRecording: StartRecording) {
             mandatory: {
                 chromeMediaSource: 'tab',
                 chromeMediaSourceId: startRecording.streamId,
-                maxWidth: size.width,
-                maxHeight: size.height,
+                maxWidth: recordingSize.width,
+                maxHeight: recordingSize.height,
                 maxFrameRate: videoFormat.frameRate,
             },
         }
@@ -130,7 +129,7 @@ async function startRecording(startRecording: StartRecording) {
                     mimeType: recorder?.mimeType,
                     videoBitRate: recorder?.videoBitsPerSecond,
                     audioBitRate: recorder?.audioBitsPerSecond,
-                    recordingResolution: `${size.width}x${size.height}`,
+                    recordingResolution: `${recordingSize.width}x${recordingSize.height}`,
                     recordingMode: videoFormat.recordingMode,
                 },
                 metrics: {

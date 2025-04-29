@@ -10,7 +10,7 @@ import { MdFilledSelect } from '@material/web/select/filled-select'
 import { MdFilledTextField } from '@material/web/textfield/filled-text-field'
 import { MdSwitch } from '@material/web/switch/switch'
 import type { ResizeWindowMessage, SaveConfigSyncMessage } from '../message'
-import { Configuration, Resolution, VideoFormat, isVideoRecordingMode } from '../configuration'
+import { Configuration, Resolution, RecordingInfo, isVideoRecordingMode } from '../configuration'
 import { WebLocalStorage } from '../storage'
 import type { FetchConfigMessage } from '../message'
 import { deepMerge } from './util'
@@ -38,14 +38,11 @@ export class Settings extends LitElement {
         await chrome.runtime.sendMessage(msg)
     }
 
-    public static getScreenRecordingSize(base: Resolution): Resolution {
+    public static getRecordingInfo(base: Resolution): RecordingInfo {
         const config = Settings.getConfiguration()
-        return Configuration.screenRecordingSize(config, base)
-    }
-
-    public static getVideoFormat(): VideoFormat {
-        const config = Settings.getConfiguration()
-        return Configuration.videoFormat(config)
+        const recordingSize = Configuration.screenRecordingSize(config.screenRecordingSize, base)
+        const videoFormat = Configuration.videoFormat(config.videoFormat, recordingSize)
+        return { videoFormat, recordingSize }
     }
 
     public static getEnableBugTracking(): boolean {
