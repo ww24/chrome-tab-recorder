@@ -18,7 +18,7 @@
   "license": "MIT",
   "dependencies": {
     "@material/web": "^2.3.0",
-    "@sentry/browser": "^8.48.0",
+    "@sentry/browser": "^9.14.0",
     "buffer": "^6.0.3",
     "lit": "^3.2.1",
     "ts-ebml": "^3.0.1",
