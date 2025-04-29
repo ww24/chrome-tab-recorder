@@ -104,10 +104,18 @@ export class Settings extends LitElement {
             </md-select-option>
         </md-filled-select>
         <h2>Option</h2>
-        <label style="line-height: 32px; font-size: 1.5em">
-            Open the option page after recording
-            <md-switch ?selected=${live(this.config.openOptionPage)} @input=${this.updateProp('openOptionPage')}></md-switch>
-        </label>
+        <div>
+            <label style="line-height: 32px; font-size: 1.5em">
+                Open the option page after recording
+                <md-switch ?selected=${live(this.config.openOptionPage)} @input=${this.updateProp('openOptionPage')}></md-switch>
+            </label>
+        </div>
+        <div>
+            <label style="line-height: 32px; font-size: 1.5em" title="If you want to focus on another task while recording.">
+                Mute recording Tab
+                <md-switch ?selected=${live(this.config.muteRecordingTab)} @input=${this.updateProp('muteRecordingTab')}></md-switch>
+            </label>
+        </div>
         <h2>Privacy</h2>
         <label style="line-height: 32px; font-size: 1.5em">
             Bug Tracking
@@ -134,7 +142,7 @@ export class Settings extends LitElement {
         }
         await chrome.runtime.sendMessage(msg)
     }
-    private updateProp(key1: 'windowSize' | 'screenRecordingSize' | 'videoFormat' | 'enableBugTracking' | 'openOptionPage', key2?: string) {
+    private updateProp(key1: 'windowSize' | 'screenRecordingSize' | 'videoFormat' | 'enableBugTracking' | 'openOptionPage' | 'muteRecordingTab', key2?: string) {
         return async (e: Event) => {
             const oldVal = { ...this.config }
 
@@ -189,6 +197,7 @@ export class Settings extends LitElement {
                     break
                 case 'enableBugTracking':
                 case 'openOptionPage':
+                case 'muteRecordingTab':
                     if (!(e.target instanceof MdSwitch)) return
                     this.config[key1] = e.target.selected
                     break

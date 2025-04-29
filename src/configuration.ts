@@ -31,6 +31,7 @@ export class Configuration {
     updatedAt: number
     userId: string
     openOptionPage: boolean
+    muteRecordingTab: boolean
     constructor() {
         this.windowSize = {
             width: 1920,
@@ -53,6 +54,7 @@ export class Configuration {
         this.updatedAt = 0
         this.userId = ''
         this.openOptionPage = true
+        this.muteRecordingTab = false
     }
     static restoreDefault({ userId }: Configuration): Configuration {
         const config = new Configuration()
