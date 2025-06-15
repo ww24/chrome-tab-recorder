@@ -6,9 +6,11 @@ import '@material/web/button/filled-tonal-button'
 import '@material/web/switch/switch'
 import '@material/web/select/filled-select'
 import '@material/web/select/select-option'
+import '@material/web/slider/slider'
 import { MdFilledSelect } from '@material/web/select/filled-select'
 import { MdFilledTextField } from '@material/web/textfield/filled-text-field'
 import { MdSwitch } from '@material/web/switch/switch'
+import { MdSlider } from '@material/web/slider/slider'
 import type { ResizeWindowMessage, SaveConfigSyncMessage } from '../message'
 import { Configuration, Resolution, RecordingInfo, isVideoRecordingMode } from '../configuration'
 import { WebLocalStorage } from '../storage'
@@ -30,10 +32,16 @@ export class Settings extends LitElement {
         Settings.storage.set(Configuration.key, config)
     }
 
+    public static mergeRemoteConfiguration(remote: Configuration) {
+        const local = Settings.getConfiguration()
+        const config = deepMerge(local, Configuration.filterForSync(remote))
+        Settings.setConfiguration(config)
+    }
+
     private static async syncConfiguration(config: Configuration) {
         const msg: SaveConfigSyncMessage = {
             type: 'save-config-sync',
-            data: config,
+            data: Configuration.filterForSync(config),
         }
         await chrome.runtime.sendMessage(msg)
     }
@@ -62,6 +70,9 @@ export class Settings extends LitElement {
 
     @property({ noAccessor: true })
     private config: Configuration
+
+    @property()
+    private microphonePermissionGranted: boolean | null = null
 
     public constructor() {
         super()
@@ -103,6 +114,26 @@ export class Settings extends LitElement {
                 <div slot="headline">Audio only</div>
             </md-select-option>
         </md-filled-select>
+        <h2>Microphone</h2>
+        <div>
+            <label style="line-height: 32px; font-size: 1.5em">
+                Enable microphone recording
+                <md-switch ?selected=${live(this.config.microphone.enabled ?? false)} @input=${this.updateProp('microphone', 'enabled')}></md-switch>
+            </label>
+        </div>
+        ${this.config.microphone.enabled ? html`
+        ${this.microphonePermissionGranted !== null ? html`
+        <div style="margin-bottom: 8px; font-size: 1.2em; color: ${this.microphonePermissionGranted ? '#4caf50' : '#f44336'};">
+            Status: ${this.microphonePermissionGranted ? 'Permission granted' : 'Permission required'}
+        </div>
+        ` : ''}
+        <div>
+            <label for="mic-gain" style="font-size: 1.2em; display: block; margin-bottom: 8px;">
+                Microphone volume: ${Math.round(this.config.microphone.gain * 100)}%
+            </label>
+            <md-slider id="mic-gain" min="0" max="2" step="0.1" .value=${live(this.config.microphone.gain)} @input=${this.updateProp('microphone', 'gain')}></md-slider>
+        </div>
+        ` : ''}
         <h2>Option</h2>
         <div>
             <label style="line-height: 32px; font-size: 1.5em">
@@ -142,7 +173,7 @@ export class Settings extends LitElement {
         }
         await chrome.runtime.sendMessage(msg)
     }
-    private updateProp(key1: 'windowSize' | 'screenRecordingSize' | 'videoFormat' | 'enableBugTracking' | 'openOptionPage' | 'muteRecordingTab', key2?: string) {
+    private updateProp(key1: keyof Configuration, key2?: string) {
         return async (e: Event) => {
             const oldVal = { ...this.config }
 
@@ -195,6 +226,23 @@ export class Settings extends LitElement {
                             break
                     }
                     break
+                case 'microphone':
+                    if (key2 == null) return
+                    switch (key2) {
+                        case 'enabled':
+                            if (!(e.target instanceof MdSwitch)) return
+                            this.config[key1][key2] = e.target.selected
+                            // Auto-test microphone permission when enabled
+                            if (e.target.selected) {
+                                this.testMicrophonePermission()
+                            }
+                            break
+                        case 'gain':
+                            if (!(e.target instanceof MdSlider)) return
+                            this.config[key1][key2] = e.target.value ?? 0
+                            break
+                    }
+                    break
                 case 'enableBugTracking':
                 case 'openOptionPage':
                 case 'muteRecordingTab':
@@ -208,6 +256,22 @@ export class Settings extends LitElement {
             await Settings.syncConfiguration(this.config)
         }
     }
+
+    private testMicrophonePermission = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: {} })
+
+            // Permission granted, clean up stream
+            stream.getTracks().forEach(track => track.stop())
+            this.microphonePermissionGranted = true
+
+        } catch (e) {
+            console.warn('Microphone permission denied:', e)
+            this.microphonePermissionGranted = false
+            alert('Microphone permission is required for recording. Please allow access when prompted.')
+        }
+    }
+
     private async sync() {
         const msg: FetchConfigMessage = {
             type: 'fetch-config',
@@ -215,7 +279,7 @@ export class Settings extends LitElement {
         const config = await chrome.runtime.sendMessage<FetchConfigMessage, Configuration | null>(msg)
         if (config == null) return
         const oldVal = this.config
-        this.config = deepMerge(oldVal, config)
+        this.config = deepMerge(oldVal, Configuration.filterForSync(config))
         this.requestUpdate('config', oldVal)
         Settings.setConfiguration(this.config)
     }

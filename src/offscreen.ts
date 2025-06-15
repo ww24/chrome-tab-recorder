@@ -17,7 +17,7 @@ chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.M
                     await stopRecording()
                     return
                 case 'save-config-local':
-                    Settings.setConfiguration(message.data)
+                    Settings.mergeRemoteConfiguration(message.data)
                     return
                 case 'exception':
                     throw message.data
@@ -33,6 +33,39 @@ chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.M
 })
 
 let recorder: MediaRecorder | undefined
+const audioContext = new AudioContext()
+
+function createMixedMediaStream(tabStream: MediaStream, micStream: MediaStream | null, micGain: number): MediaStream {
+    if (!micStream) {
+        return tabStream
+    }
+
+    const mixedOutput = audioContext.createMediaStreamDestination()
+
+    // Tab audio (if exists)
+    const tabAudioTracks = tabStream.getAudioTracks()
+    if (tabAudioTracks.length > 0) {
+        const tabAudioSource = audioContext.createMediaStreamSource(
+            new MediaStream(tabAudioTracks)
+        )
+        tabAudioSource.connect(mixedOutput)
+    }
+
+    // Microphone audio
+    const micAudioSource = audioContext.createMediaStreamSource(micStream)
+    const micGainNode = audioContext.createGain()
+    micGainNode.gain.value = micGain
+    micAudioSource.connect(micGainNode).connect(mixedOutput)
+
+    // Combine mixed audio with video tracks
+    const videoTracks = tabStream.getVideoTracks()
+    const finalStream = new MediaStream([
+        ...mixedOutput.stream.getAudioTracks(),
+        ...videoTracks
+    ])
+
+    return finalStream
+}
 
 async function startRecording(startRecording: StartRecording) {
     if (recorder?.state === 'recording') {
@@ -64,7 +97,7 @@ async function startRecording(startRecording: StartRecording) {
     const recordFileHandle = await dirHandle.getFileHandle(recordFileName, { create: true })
     const writableStream = await recordFileHandle.createWritable()
 
-    const media = await navigator.mediaDevices.getUserMedia({
+    const tabMedia = await navigator.mediaDevices.getUserMedia({
         audio: videoFormat.recordingMode === 'video-only' ? undefined : {
             mandatory: {
                 chromeMediaSource: 'tab',
@@ -82,6 +115,27 @@ async function startRecording(startRecording: StartRecording) {
         }
     })
 
+    // Get microphone stream if enabled
+    const microphone = Settings.getConfiguration().microphone
+    let micStream: MediaStream | null = null
+
+    if (microphone.enabled === true) {
+        try {
+            micStream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: false
+                }
+            })
+        } catch (e) {
+            console.warn('Microphone access denied:', e)
+        }
+    }
+
+    // Mix audio streams if microphone is available
+    const media = createMixedMediaStream(tabMedia, micStream, microphone.gain)
+
     const muteRecordingTab = Settings.getConfiguration().muteRecordingTab
     if (!muteRecordingTab && media.getAudioTracks().length > 0) {
         // Continue to play the captured audio to the user.
@@ -91,9 +145,10 @@ async function startRecording(startRecording: StartRecording) {
     }
 
     // Start recording.
+    const hasAudio = videoFormat.recordingMode !== 'video-only' || (microphone.enabled === true && micStream != null)
     recorder = new MediaRecorder(media, {
         mimeType: videoFormat.mimeType,
-        audioBitsPerSecond: videoFormat.recordingMode === 'video-only' ? undefined : videoFormat.audioBitrate,
+        audioBitsPerSecond: hasAudio ? videoFormat.audioBitrate : undefined,
         videoBitsPerSecond: videoFormat.recordingMode === 'audio-only' ? undefined : videoFormat.videoBitrate,
     })
 
