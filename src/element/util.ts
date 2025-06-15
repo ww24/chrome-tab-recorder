@@ -1,14 +1,14 @@
 import type { FileSystemHandlePermissionDescriptor } from '../type'
 
 export function formatNum(num: number, dig: number) {
-    return num.toLocaleString('ja-JP', {
+    return num.toLocaleString('en-US', {
         maximumFractionDigits: dig,
         minimumFractionDigits: dig,
     })
 }
 
 export function formatRate(rate: number, dig: number) {
-    return rate.toLocaleString('ja-JP', {
+    return rate.toLocaleString('en-US', {
         style: 'percent',
         maximumFractionDigits: dig,
         minimumFractionDigits: dig,
