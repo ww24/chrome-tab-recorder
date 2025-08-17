@@ -65,7 +65,7 @@ export async function fixWebmDuration(blob: Blob) {
     while (true) {
         const { done, value } = await r.read()
         if (done) break
-        const details = decoder.decode(value as unknown as ArrayBuffer) // workaround: `decoder.decode(value.buffer)` is not work
+        const details = decoder.decode(value.buffer)
         for (const detail of details) {
             reader.read(detail)
         }
