@@ -35,7 +35,7 @@
     "eslint": "^9.33.0",
     "globals": "^16.3.0",
     "jest": "^30.0.5",
-    "ts-jest": "^29.4.0",
+    "ts-jest": "^29.4.1",
     "ts-loader": "^9.5.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3",
