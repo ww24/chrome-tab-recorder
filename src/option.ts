@@ -1,4 +1,5 @@
 import './element/confirm'
+import './element/alert'
 import './element/settings'
 import './element/recordList'
 import './element/tab'

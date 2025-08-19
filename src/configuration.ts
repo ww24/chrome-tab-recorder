@@ -13,6 +13,11 @@ export interface ScreenRecordingSize extends Resolution {
     auto: boolean;
     scale: number;
 }
+export interface Microphone {
+    enabled: boolean | null // null when excluded from sync to prevent cross-device permission conflicts
+    gain: number
+    deviceId: string | null // null = default device, string = specific device ID
+}
 export interface RecordingInfo {
     videoFormat: VideoFormat
     recordingSize: Resolution
@@ -32,6 +37,7 @@ export class Configuration {
     userId: string
     openOptionPage: boolean
     muteRecordingTab: boolean
+    microphone: Microphone
     constructor() {
         this.windowSize = {
             width: 1920,
@@ -55,10 +61,24 @@ export class Configuration {
         this.userId = ''
         this.openOptionPage = true
         this.muteRecordingTab = false
+        this.microphone = {
+            enabled: false,
+            gain: 1.0,
+            deviceId: null,
+        }
     }
     static restoreDefault({ userId }: Configuration): Configuration {
         const config = new Configuration()
         return { ...config, userId }
+    }
+    static filterForSync(config: Configuration): Configuration {
+        return {
+            ...config,
+            microphone: {
+                ...config.microphone,
+                enabled: null,
+            },
+        }
     }
     static screenRecordingSize(screenRecordingSize: ScreenRecordingSize, base: Resolution): Resolution {
         if (screenRecordingSize.auto && base.width > 0 && base.height > 0) {
