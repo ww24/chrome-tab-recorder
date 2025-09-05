@@ -32,7 +32,7 @@
     "@types/webpack": "^5.28.5",
     "@typescript-eslint/eslint-plugin": "^8.31.1",
     "dotenv-webpack": "^8.1.1",
-    "eslint": "^9.33.0",
+    "eslint": "^9.35.0",
     "globals": "^16.3.0",
     "jest": "^30.0.5",
     "ts-jest": "^29.4.1",
