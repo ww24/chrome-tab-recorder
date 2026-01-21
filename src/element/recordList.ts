@@ -111,10 +111,6 @@ export class RecordList extends LitElement {
                 record.objectUrl = undefined
             }
         })
-
-        // Revoke URLs created in playRecord
-        this.playbackUrls.forEach(url => URL.revokeObjectURL(url))
-        this.playbackUrls.clear()
     }
 
     public render() {
