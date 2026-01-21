@@ -24,6 +24,7 @@ export interface Record {
     file?: File;
     selected: boolean;
     recordedAt?: Date;
+    objectUrl?: string;
 }
 
 function selected(record: Record): boolean {
@@ -96,16 +97,43 @@ export class RecordList extends LitElement {
         })
     }
 
+    public disconnectedCallback() {
+        super.disconnectedCallback()
+        // Revoke all object URLs when component is destroyed
+        this.revokeAllObjectUrls()
+    }
+
+    protected willUpdate(changedProperties: Map<PropertyKey, unknown>) {
+        super.willUpdate(changedProperties)
+
+        // Create object URLs for records that don't have them yet
+        if (changedProperties.has('records')) {
+            this.records.forEach(record => {
+                if (record.file != null && record.objectUrl == null) {
+                    record.objectUrl = URL.createObjectURL(record.file)
+                }
+            })
+        }
+    }
+
+    private revokeAllObjectUrls() {
+        // Revoke URLs created in willUpdate
+        this.records.forEach(record => {
+            if (record.objectUrl != null) {
+                URL.revokeObjectURL(record.objectUrl)
+                record.objectUrl = undefined
+            }
+        })
+    }
+
     public render() {
         const row = (record: Record, idx: number) => {
             if (record.file == null) return
-
-            const uri = URL.createObjectURL(record.file)
             return html`
             ${idx > 0 ? html`<md-divider></md-divider>` : ''}
             <md-list-item class="list-item">
                 <md-checkbox touch-target="wrapper" slot="start" ?checked=${record.selected} @input=${this.selectRecord(record)}></md-checkbox>
-                <a href="${uri}" download="${record.title}">${record.title}</a>
+                <a href="${record.objectUrl}" download="${record.title}">${record.title}</a>
                 <div class="meta" title="file size"><md-icon>storage</md-icon> ${formatNum(record.size / 1024 / 1024, 2)} MB</div>
                 ${record.recordedAt != null ? html`<div class="meta" title="recorded at"><md-icon>schedule</md-icon> ${RecordList.dateTimeFormat.format(record.recordedAt)}</div>` : ''}
                 <md-filled-icon-button slot="end" @click=${this.playRecord(record)}>
@@ -137,12 +165,26 @@ export class RecordList extends LitElement {
     }
 
     private removeRecord(record: Record) {
+        // Revoke object URL before removing the record
+        if (record.objectUrl != null) {
+            URL.revokeObjectURL(record.objectUrl)
+            record.objectUrl = undefined
+        }
         this.records = this.records.filter(r => r.title !== record.title)
     }
     private async updateRecord() {
         const opfsRoot = await navigator.storage.getDirectory()
         const result: Array<Record> = []
         const timestampRegex = /^video-([0-9]+)\./
+
+        // Save existing object URLs in a map
+        const existingUrls = new Map<string, string>()
+        this.records.forEach(record => {
+            if (record.objectUrl != null) {
+                existingUrls.set(record.title, record.objectUrl)
+            }
+        })
+
         for await (const [name, handle] of opfsRoot.entries()) {
             const file = await handle.getFile()
 
@@ -157,9 +199,20 @@ export class RecordList extends LitElement {
                 size: file.size,
                 selected: false,
                 recordedAt,
+                // Reuse existing URL
+                objectUrl: existingUrls.get(name),
             }
             result.unshift(record)
         }
+
+        // Revoke object URLs for removed records
+        const newTitles = new Set(result.map(r => r.title))
+        this.records.forEach(record => {
+            if (!newTitles.has(record.title) && record.objectUrl != null) {
+                URL.revokeObjectURL(record.objectUrl)
+            }
+        })
+
         const oldVal = [...this.records]
         this.records = result
         this.requestUpdate('records', oldVal)
@@ -170,21 +223,9 @@ export class RecordList extends LitElement {
         this.requestUpdate('estimate', oldVal)
     }
     private playRecord(record: Record) {
-        return async () => {
-            if (record.file == null) return
-            const url = URL.createObjectURL(record.file)
-            const win = window.open(url, '_blank', 'popup=true')
-            if (win == null) return
-            win.addEventListener('visibilitychange', event => {
-                if (!event.isTrusted) {
-                    return
-                }
-                setTimeout(() => {
-                    if (!win.closed) return
-                    console.debug('popup window is closed')
-                    URL.revokeObjectURL(url)
-                }, 500)
-            })
+        return () => {
+            if (record.file == null || record.objectUrl == null) return
+            window.open(record.objectUrl, '_blank', 'popup=true')
         }
     }
     private selectRecord(record: Record) {
