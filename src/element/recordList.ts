@@ -24,6 +24,7 @@ export interface Record {
     file?: File;
     selected: boolean;
     recordedAt?: Date;
+    objectUrl?: string;
 }
 
 function selected(record: Record): boolean {
@@ -74,6 +75,9 @@ export class RecordList extends LitElement {
     @property({ type: Array })
     private records: Array<Record>
 
+    // Track object URLs created by playRecord
+    private playbackUrls: Set<string> = new Set()
+
     public constructor() {
         super()
         this.estimate = {}
@@ -96,11 +100,36 @@ export class RecordList extends LitElement {
         })
     }
 
+    public disconnectedCallback() {
+        super.disconnectedCallback()
+        // Revoke all object URLs when component is destroyed
+        this.revokeAllObjectUrls()
+    }
+
+    private revokeAllObjectUrls() {
+        // Revoke URLs created in render
+        this.records.forEach(record => {
+            if (record.objectUrl != null) {
+                URL.revokeObjectURL(record.objectUrl)
+                record.objectUrl = undefined
+            }
+        })
+
+        // Revoke URLs created in playRecord
+        this.playbackUrls.forEach(url => URL.revokeObjectURL(url))
+        this.playbackUrls.clear()
+    }
+
     public render() {
         const row = (record: Record, idx: number) => {
             if (record.file == null) return
 
-            const uri = URL.createObjectURL(record.file)
+            // Create object URL only if it doesn't exist
+            if (record.objectUrl == null) {
+                record.objectUrl = URL.createObjectURL(record.file)
+            }
+            const uri = record.objectUrl
+
             return html`
             ${idx > 0 ? html`<md-divider></md-divider>` : ''}
             <md-list-item class="list-item">
@@ -137,12 +166,26 @@ export class RecordList extends LitElement {
     }
 
     private removeRecord(record: Record) {
+        // Revoke object URL before removing the record
+        if (record.objectUrl != null) {
+            URL.revokeObjectURL(record.objectUrl)
+            record.objectUrl = undefined
+        }
         this.records = this.records.filter(r => r.title !== record.title)
     }
     private async updateRecord() {
         const opfsRoot = await navigator.storage.getDirectory()
         const result: Array<Record> = []
         const timestampRegex = /^video-([0-9]+)\./
+
+        // Save existing object URLs in a map
+        const existingUrls = new Map<string, string>()
+        this.records.forEach(record => {
+            if (record.objectUrl != null) {
+                existingUrls.set(record.title, record.objectUrl)
+            }
+        })
+
         for await (const [name, handle] of opfsRoot.entries()) {
             const file = await handle.getFile()
 
@@ -157,9 +200,20 @@ export class RecordList extends LitElement {
                 size: file.size,
                 selected: false,
                 recordedAt,
+                // Reuse existing URL
+                objectUrl: existingUrls.get(name),
             }
             result.unshift(record)
         }
+
+        // Revoke object URLs for removed records
+        const newTitles = new Set(result.map(r => r.title))
+        this.records.forEach(record => {
+            if (!newTitles.has(record.title) && record.objectUrl != null) {
+                URL.revokeObjectURL(record.objectUrl)
+            }
+        })
+
         const oldVal = [...this.records]
         this.records = result
         this.requestUpdate('records', oldVal)
@@ -170,21 +224,9 @@ export class RecordList extends LitElement {
         this.requestUpdate('estimate', oldVal)
     }
     private playRecord(record: Record) {
-        return async () => {
-            if (record.file == null) return
-            const url = URL.createObjectURL(record.file)
-            const win = window.open(url, '_blank', 'popup=true')
-            if (win == null) return
-            win.addEventListener('visibilitychange', event => {
-                if (!event.isTrusted) {
-                    return
-                }
-                setTimeout(() => {
-                    if (!win.closed) return
-                    console.debug('popup window is closed')
-                    URL.revokeObjectURL(url)
-                }, 500)
-            })
+        return () => {
+            if (record.file == null || record.objectUrl == null) return
+            window.open(record.objectUrl, '_blank', 'popup=true')
         }
     }
     private selectRecord(record: Record) {
