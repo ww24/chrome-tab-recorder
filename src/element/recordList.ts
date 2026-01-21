@@ -75,9 +75,6 @@ export class RecordList extends LitElement {
     @property({ type: Array })
     private records: Array<Record>
 
-    // Track object URLs created by playRecord
-    private playbackUrls: Set<string> = new Set()
-
     public constructor() {
         super()
         this.estimate = {}
