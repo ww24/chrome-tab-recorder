@@ -1,7 +1,5 @@
 # chrome-tab-recorder
 
-[<img alt="GMO OSS Security Program" src="https://security-api.gmo.jp/static/img/oss_badge_ol-CyzWkcK8.svg" height="18px">](https://group.gmo/security/oss-support/)
-
 Google Chrome Extensions Tab Recorder
 
 ## Install
