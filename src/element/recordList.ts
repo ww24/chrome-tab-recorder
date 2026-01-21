@@ -103,8 +103,21 @@ export class RecordList extends LitElement {
         this.revokeAllObjectUrls()
     }
 
+    protected willUpdate(changedProperties: Map<PropertyKey, unknown>) {
+        super.willUpdate(changedProperties)
+        
+        // Create object URLs for records that don't have them yet
+        if (changedProperties.has('records')) {
+            this.records.forEach(record => {
+                if (record.file != null && record.objectUrl == null) {
+                    record.objectUrl = URL.createObjectURL(record.file)
+                }
+            })
+        }
+    }
+
     private revokeAllObjectUrls() {
-        // Revoke URLs created in render
+        // Revoke URLs created in willUpdate
         this.records.forEach(record => {
             if (record.objectUrl != null) {
                 URL.revokeObjectURL(record.objectUrl)
@@ -117,10 +130,6 @@ export class RecordList extends LitElement {
         const row = (record: Record, idx: number) => {
             if (record.file == null) return
 
-            // Create object URL only if it doesn't exist
-            if (record.objectUrl == null) {
-                record.objectUrl = URL.createObjectURL(record.file)
-            }
             const uri = record.objectUrl
 
             return html`
