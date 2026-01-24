@@ -1,10 +1,31 @@
 import { MediaRecorderWebMDurationWorkaround } from './fix_webm_duration'
 import { Settings } from './element/settings'
-import type { Message, StartRecording, UpdateRecordingIconMessage, CompleteRecordingMessage } from './message'
+import type {
+    Message,
+    StartRecording,
+    UpdateRecordingIconMessage,
+    CompleteRecordingMessage,
+    PreviewFrameMessage,
+    PreviewControlMessage,
+    UpdateCropRegionMessage,
+} from './message'
 import { sendEvent, sendException } from './sentry'
 import { MIMEType } from './mime'
+import { CropRegion } from './configuration'
+import { Preview } from './preview'
 
 const timeslice = 3000 // 3s
+const CROPPING_INTERVAL = 10 // 10ms
+
+const preview = new Preview(async ({ imageUrl, width, height }) => {
+    // Send preview frame
+    const msg: PreviewFrameMessage = {
+        type: 'preview-frame',
+        imageUrl,
+        recordingSize: { width, height },
+    }
+    await chrome.runtime.sendMessage(msg)
+})
 
 chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.MessageSender, sendResponse: () => void) => {
     (async () => {
@@ -21,6 +42,12 @@ chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.M
                     return
                 case 'exception':
                     throw message.data
+                case 'preview-control':
+                    handlePreviewControl(message)
+                    return
+                case 'update-crop-region':
+                    handleCropRegionUpdate(message)
+                    return
             }
         } catch (e) {
             sendException(e)
@@ -40,6 +67,17 @@ function getAudioContext(): AudioContext {
     }
     return _audioContext
 }
+
+// Cropping and preview state
+let currentVideoTrack: MediaStreamTrack | null = null
+let currentCropRegion: CropRegion | null = null
+let croppingEnabled = false
+
+// Canvas for cropping
+let croppingCanvas: HTMLCanvasElement | null = null
+let croppingCtx: CanvasRenderingContext2D | null = null
+let croppingVideo: HTMLVideoElement | null = null
+let croppingIntervalId: ReturnType<typeof setInterval> | null = null
 
 function createMixedMediaStream(tabStream: MediaStream, micStream: MediaStream | null, micGain: number): MediaStream {
     if (!micStream) {
@@ -145,7 +183,21 @@ async function startRecording(startRecording: StartRecording) {
     }
 
     // Mix audio streams if microphone is available
-    const media = createMixedMediaStream(tabMedia, micStream, microphone.gain)
+    let media = createMixedMediaStream(tabMedia, micStream, microphone.gain)
+
+    // Store video track for preview
+    const videoTracks = tabMedia.getVideoTracks()
+    if (videoTracks.length > 0) {
+        currentVideoTrack = videoTracks[0]
+    }
+
+    // Apply cropping if enabled (video modes only)
+    const croppingConfig = Settings.getConfiguration().cropping
+    croppingEnabled = croppingConfig.enabled && videoFormat.recordingMode !== 'audio-only'
+    if (croppingEnabled) {
+        currentCropRegion = croppingConfig.region
+        media = createCroppedMediaStream(media, croppingConfig.region, videoFormat.frameRate)
+    }
 
     const muteRecordingTab = Settings.getConfiguration().muteRecordingTab
     if (!muteRecordingTab && tabMedia.getAudioTracks().length > 0) {
@@ -263,11 +315,126 @@ async function stopRecording() {
         return
     }
 
+    // Stop preview and cropping
+    preview.stop()
+    stopCroppingLoop()
+
     recorder.stop()
 
     // Stopping the tracks makes sure the recording icon in the tab is removed.
     recorder.stream.getTracks().forEach(t => t.stop())
 
+    // Clean up cropping resources
+    currentVideoTrack = null
+
     // Update current state in URL
     window.location.hash = ''
+}
+
+// Preview control handler
+function handlePreviewControl(message: PreviewControlMessage) {
+    if (message.action === 'start' && currentVideoTrack !== null) {
+        preview.start(currentVideoTrack)
+    } else {
+        preview.stop()
+    }
+}
+
+// Crop region update handler
+function handleCropRegionUpdate(message: UpdateCropRegionMessage) {
+    currentCropRegion = message.region
+}
+
+// Create cropped media stream using Canvas
+function createCroppedMediaStream(
+    originalStream: MediaStream,
+    cropRegion: CropRegion,
+    frameRate: number
+): MediaStream {
+    // Create hidden video element to receive the stream
+    croppingVideo = document.createElement('video')
+    croppingVideo.srcObject = originalStream
+    croppingVideo.muted = true
+    croppingVideo.playsInline = true
+    croppingVideo.play()
+
+    // Create canvas for cropping
+    croppingCanvas = document.createElement('canvas')
+    croppingCanvas.width = cropRegion.width
+    croppingCanvas.height = cropRegion.height
+    croppingCtx = croppingCanvas.getContext('2d', { alpha: false, willReadFrequently: true })
+
+    if (!croppingCtx) {
+        console.error('Failed to get canvas context')
+        return originalStream
+    }
+
+    // Store current crop region for dynamic updates
+    currentCropRegion = cropRegion
+
+    // Start drawing loop
+    startCroppingLoop()
+
+    // Get cropped video stream from canvas
+    const canvasStream = croppingCanvas.captureStream(frameRate)
+
+    // Combine cropped video with original audio
+    const audioTracks = originalStream.getAudioTracks()
+
+    return new MediaStream([
+        ...canvasStream.getVideoTracks(),
+        ...audioTracks,
+    ])
+}
+
+// Start the cropping draw loop
+function startCroppingLoop() {
+    if (croppingIntervalId !== null) return
+    const drawFrame = () => {
+        if (!croppingVideo || !croppingCanvas || !croppingCtx || !currentCropRegion) {
+            croppingIntervalId = null
+            return
+        }
+
+        try {
+            const { x, y, width, height } = currentCropRegion
+
+            // Update canvas size if crop region changed
+            if (croppingCanvas.width !== width || croppingCanvas.height !== height) {
+                croppingCanvas.setAttribute('width', width.toString())
+                croppingCanvas.setAttribute('height', height.toString())
+            }
+
+            // Draw cropped region
+            croppingCtx.drawImage(
+                croppingVideo,
+                x, y, width, height,  // source rectangle
+                0, 0, width, height   // destination rectangle
+            )
+        } catch (e) {
+            console.error('Cropping draw error:', e)
+            // Continue on error
+        }
+        if (currentVideoTrack?.readyState !== 'live') return
+    }
+    croppingVideo?.addEventListener('loadedmetadata', () => {
+        // workaround: requestAnimationFrame is not works in offscreen.
+        croppingIntervalId = setInterval(drawFrame, CROPPING_INTERVAL)
+    })
+}
+
+// Stop the cropping draw loop
+function stopCroppingLoop() {
+    if (croppingIntervalId !== null) {
+        clearInterval(croppingIntervalId)
+        croppingIntervalId = null
+    }
+
+    if (croppingVideo) {
+        croppingVideo.srcObject = null
+        croppingVideo = null
+    }
+
+    croppingCanvas = null
+    croppingCtx = null
 }

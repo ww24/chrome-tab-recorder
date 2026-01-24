@@ -29,13 +29,18 @@ export class Settings extends LitElement {
         return deepMerge(defaultConfig, config)
     }
 
+    public static readonly CONFIG_CHANGED_EVENT = 'extension-config-changed'
+
     public static setConfiguration(config: Configuration) {
         config.updatedAt = Date.now()
         Settings.storage.set(Configuration.key, config)
+        // Dispatch custom event to notify other components about configuration change
+        window.dispatchEvent(new CustomEvent(Settings.CONFIG_CHANGED_EVENT, { detail: config }))
     }
 
     public static mergeRemoteConfiguration(remote: Configuration) {
         const local = Settings.getConfiguration()
+        // deepMerge preserves local.cropping since filterForSync excludes it from remote
         const config = deepMerge(local, Configuration.filterForSync(remote))
         Settings.setConfiguration(config)
     }

@@ -26,6 +26,10 @@ declare global {
         minHeight?: number;
         minFrameRate?: number;
     }
+    // Extend ImageCapture with grabFrame method
+    interface ImageCapture {
+        grabFrame(): Promise<ImageBitmap>;
+    }
 }
 
 export interface ShowDirectoryPickerOptions {
