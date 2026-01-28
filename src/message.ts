@@ -78,8 +78,8 @@ export interface RequestRecordingStateMessage {
 // Preview frame transfer (offscreen → service_worker → option page)
 export interface PreviewFrameMessage {
     type: 'preview-frame';
-    imageUrl: string; // object url
     recordingSize: Resolution;
+    image: string; // base64 encoded jpeg image
 }
 
 // Preview start/stop request (option page → service_worker → offscreen)

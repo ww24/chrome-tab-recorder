@@ -16,12 +16,13 @@ import { Crop } from './crop'
 
 const timeslice = 3000 // 3s
 
-const preview = new Preview(async ({ imageUrl, width, height }) => {
+// let previewImageUrl: string | null = null
+const preview = new Preview(async ({ image, width, height }) => {
     // Send preview frame
     const msg: PreviewFrameMessage = {
         type: 'preview-frame',
-        imageUrl,
         recordingSize: { width, height },
+        image: (new Uint8Array(await image.arrayBuffer())).toBase64(),
     }
     await chrome.runtime.sendMessage(msg)
 })

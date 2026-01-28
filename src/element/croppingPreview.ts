@@ -139,8 +139,11 @@ export class CroppingPreview extends LitElement {
     }
 
     private handleMessage = (message: PreviewFrameMessage) => {
-        if (message.type === 'preview-frame' && message.imageUrl) {
-            this.previewUrl = message.imageUrl
+        if (message.type === 'preview-frame' && message.image) {
+            // Revoke old preview image object url
+            if (this.previewUrl !== null) URL.revokeObjectURL(this.previewUrl)
+            const blob = new Blob([Uint8Array.fromBase64(message.image)], { type: 'image/jpeg' })
+            this.previewUrl = URL.createObjectURL(blob)
             this.recordingWidth = message.recordingSize.width
             this.recordingHeight = message.recordingSize.height
         }
