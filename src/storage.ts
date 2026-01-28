@@ -13,7 +13,7 @@ export class ExtensionSyncStorage extends ConfigStorage {
     }
 
     public async get(key: string): Promise<object | null> {
-        return (await chrome.storage.sync.get(key))[key]
+        return (await chrome.storage.sync.get(key))[key] as (object | null)
     }
 }
 
