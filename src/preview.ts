@@ -11,7 +11,7 @@ export class Preview {
     #intervalId: ReturnType<typeof setInterval> | null = null
     #imageCapture: ImageCapture | null = null
     #canvas: OffscreenCanvas = new OffscreenCanvas(1, 1)
-    #canvasCtx: OffscreenCanvasRenderingContext2D | null = this.#canvas.getContext('2d', { alpha: false, willReadFrequently: false })
+    #canvasCtx: ImageBitmapRenderingContext | null = this.#canvas.getContext('bitmaprenderer', { alpha: false, willReadFrequently: false })
     constructor(callback: (frame: PreviewFrame) => void) {
         this.#callback = callback
     }
@@ -45,8 +45,8 @@ export class Preview {
             this.#canvas.width = previewWidth
             this.#canvas.height = previewHeight
 
-            this.#canvasCtx.drawImage(imageBitmap, 0, 0, previewWidth, previewHeight)
-            imageBitmap.close()
+            // Consuming ImageBitmap with canvas
+            this.#canvasCtx.transferFromImageBitmap(imageBitmap)
 
             // Convert to JPEG blob
             const image = await this.#canvas.convertToBlob({ type: 'image/jpeg', quality: 0.9 })

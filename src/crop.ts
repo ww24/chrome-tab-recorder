@@ -16,7 +16,7 @@ export class Crop {
         const transformer = new TransformStream<VideoFrame, VideoFrame>({
             transform: (frame, controller) => {
                 const croppedFrame = new VideoFrame(frame, {
-                    visibleRect: alignRegion(frame, cropRegion),
+                    visibleRect: alignRegion(frame, this.region),
                 })
                 frame.close()
                 controller.enqueue(croppedFrame)
