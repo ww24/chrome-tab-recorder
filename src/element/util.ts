@@ -37,3 +37,27 @@ export function deepMerge<T extends object, P extends Partial<T>>(obj1: T, obj2:
     }
     return res
 }
+
+/**
+ * Round a number to the nearest even value.
+ * This is required for VideoFrame which requires x, y offsets to be even numbers.
+ */
+export function roundToEven(value: number): number {
+    return Math.round(value / 2) * 2
+}
+
+/**
+ * Clamp a coordinate value to be non-negative (>= 0).
+ * x and y coordinates must not be negative.
+ */
+export function clampCoordinate(value: number): number {
+    return Math.max(0, value)
+}
+
+/**
+ * Clamp a dimension value to be positive (>= 1).
+ * width and height must be greater than 0.
+ */
+export function clampDimension(value: number, minValue: number = 1): number {
+    return Math.max(minValue, value)
+}

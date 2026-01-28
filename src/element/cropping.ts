@@ -15,6 +15,7 @@ import {
 import Settings from './settings'
 import './croppingPreview'
 import { CropRegionChangeEvent } from './croppingPreview'
+import { roundToEven, clampCoordinate, clampDimension } from './util'
 
 @customElement('extension-cropping')
 export class Cropping extends LitElement {
@@ -175,8 +176,17 @@ export class Cropping extends LitElement {
         return (e: Event) => {
             if (!this.canChangeRegion) return
             const target = e.target as MdFilledTextField
-            const value = parseInt(target.value, 10)
-            if (isNaN(value) || value < 0) return
+            let value = parseInt(target.value, 10)
+            if (isNaN(value)) return
+
+            // Apply constraints based on field type
+            if (field === 'x' || field === 'y') {
+                // x, y: must be non-negative and even for VideoFrame compatibility
+                value = roundToEven(clampCoordinate(value))
+            } else {
+                // width, height: must be positive (> 0)
+                value = clampDimension(value)
+            }
 
             this.updateCropRegion({
                 ...this.config.cropping.region,
@@ -258,6 +268,8 @@ export class Cropping extends LitElement {
                 <md-filled-text-field
                     label="X"
                     type="number"
+                    min="0"
+                    step="2"
                     suffix-text="px"
                     .value=${live(String(region.x))}
                     ?disabled=${inputsDisabled}
@@ -266,6 +278,8 @@ export class Cropping extends LitElement {
                 <md-filled-text-field
                     label="Y"
                     type="number"
+                    min="0"
+                    step="2"
                     suffix-text="px"
                     .value=${live(String(region.y))}
                     ?disabled=${inputsDisabled}
@@ -274,6 +288,7 @@ export class Cropping extends LitElement {
                 <md-filled-text-field
                     label="Width"
                     type="number"
+                    min="1"
                     suffix-text="px"
                     .value=${live(String(region.width))}
                     ?disabled=${inputsDisabled}
@@ -282,6 +297,7 @@ export class Cropping extends LitElement {
                 <md-filled-text-field
                     label="Height"
                     type="number"
+                    min="1"
                     suffix-text="px"
                     .value=${live(String(region.height))}
                     ?disabled=${inputsDisabled}

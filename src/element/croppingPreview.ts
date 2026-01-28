@@ -2,6 +2,7 @@ import { html, css, LitElement, PropertyValues } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { CropRegion, Resolution } from '../configuration'
 import type { PreviewFrameMessage, } from '../message'
+import { roundToEven, clampCoordinate, clampDimension } from './util'
 
 export interface CropRegionChangeEvent {
     region: CropRegion
@@ -205,10 +206,13 @@ export class CroppingPreview extends LitElement {
 
         if (this.isDragging) {
             // Move the crop region
+            // x, y: must be non-negative and even for VideoFrame
+            const newX = clampCoordinate(Math.min(this.initialCropRegion.x + deltaX, this.recordingWidth - this.initialCropRegion.width))
+            const newY = clampCoordinate(Math.min(this.initialCropRegion.y + deltaY, this.recordingHeight - this.initialCropRegion.height))
             newRegion = {
                 ...this.initialCropRegion,
-                x: Math.max(0, Math.min(this.initialCropRegion.x + deltaX, this.recordingWidth - this.initialCropRegion.width)),
-                y: Math.max(0, Math.min(this.initialCropRegion.y + deltaY, this.recordingHeight - this.initialCropRegion.height)),
+                x: roundToEven(newX),
+                y: roundToEven(newY),
             }
         } else if (this.isResizing) {
             // Resize the crop region
@@ -229,19 +233,21 @@ export class CroppingPreview extends LitElement {
         let newX = x, newY = y, newWidth = width, newHeight = height
 
         // Handle resize based on direction
+        // x/y: must be non-negative and even for VideoFrame
+        // width/height: must be positive (>= minSize)
         if (this.resizeDirection.includes('w')) {
-            newX = Math.max(0, Math.min(x + deltaX, x + width - minSize))
-            newWidth = width - (newX - x)
+            newX = roundToEven(clampCoordinate(Math.min(x + deltaX, x + width - minSize)))
+            newWidth = clampDimension(width - (newX - x), minSize)
         }
         if (this.resizeDirection.includes('e')) {
-            newWidth = Math.max(minSize, Math.min(width + deltaX, this.recordingWidth - x))
+            newWidth = clampDimension(Math.min(width + deltaX, this.recordingWidth - x), minSize)
         }
         if (this.resizeDirection.includes('n')) {
-            newY = Math.max(0, Math.min(y + deltaY, y + height - minSize))
-            newHeight = height - (newY - y)
+            newY = roundToEven(clampCoordinate(Math.min(y + deltaY, y + height - minSize)))
+            newHeight = clampDimension(height - (newY - y), minSize)
         }
         if (this.resizeDirection.includes('s')) {
-            newHeight = Math.max(minSize, Math.min(height + deltaY, this.recordingHeight - y))
+            newHeight = clampDimension(Math.min(height + deltaY, this.recordingHeight - y), minSize)
         }
 
         return { x: newX, y: newY, width: newWidth, height: newHeight }
