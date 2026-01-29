@@ -2,6 +2,16 @@ export interface Resolution {
     width: number;
     height: number;
 }
+export interface CropRegion {
+    x: number;      // Top-left X coordinate (px)
+    y: number;      // Top-left Y coordinate (px)
+    width: number;  // Width (px)
+    height: number; // Height (px)
+}
+export interface CroppingConfig {
+    enabled: boolean;   // Cropping feature ON/OFF
+    region: CropRegion; // Cropping region
+}
 export interface VideoFormat {
     audioBitrate: number; // bps
     videoBitrate: number; // bps
@@ -14,7 +24,7 @@ export interface ScreenRecordingSize extends Resolution {
     scale: number;
 }
 export interface Microphone {
-    enabled: boolean | null // null when excluded from sync to prevent cross-device permission conflicts
+    enabled: boolean
     gain: number
     deviceId: string | null // null = default device, string = specific device ID
 }
@@ -27,6 +37,10 @@ export type VideoRecordingMode = (typeof videoRecordingMode)[number];
 export function isVideoRecordingMode(v: unknown): v is VideoRecordingMode {
     return videoRecordingMode.some(m => v === m)
 }
+
+// Configuration type for sync storage (excludes device-specific settings)
+export type SyncConfiguration = Omit<Configuration, 'microphone' | 'cropping'>
+
 export class Configuration {
     public static readonly key = 'settings'
     windowSize: Resolution
@@ -38,6 +52,7 @@ export class Configuration {
     openOptionPage: boolean
     muteRecordingTab: boolean
     microphone: Microphone
+    cropping: CroppingConfig
     constructor() {
         this.windowSize = {
             width: 1920,
@@ -66,19 +81,25 @@ export class Configuration {
             gain: 1.0,
             deviceId: null,
         }
+        this.cropping = {
+            enabled: false,
+            region: {
+                x: 0,
+                y: 0,
+                width: 1920,
+                height: 1080,
+            },
+        }
     }
     static restoreDefault({ userId }: Configuration): Configuration {
         const config = new Configuration()
         return { ...config, userId }
     }
-    static filterForSync(config: Configuration): Configuration {
-        return {
-            ...config,
-            microphone: {
-                ...config.microphone,
-                enabled: null,
-            },
-        }
+    static filterForSync(config: Configuration): SyncConfiguration {
+        // Exclude microphone and cropping from sync as it depends on device-specific information
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { microphone: _m, cropping: _c, ...rest } = config
+        return { ...rest }
     }
     static screenRecordingSize(screenRecordingSize: ScreenRecordingSize, base: Resolution): Resolution {
         if (screenRecordingSize.auto && base.width > 0 && base.height > 0) {

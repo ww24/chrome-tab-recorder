@@ -26,6 +26,17 @@ declare global {
         minHeight?: number;
         minFrameRate?: number;
     }
+    // Extend ImageCapture with grabFrame method
+    interface ImageCapture {
+        grabFrame(): Promise<ImageBitmap>;
+    }
+    // Extend Uint8Array with Base64 methods
+    interface Uint8Array {
+        toBase64(): string;
+    }
+    interface Uint8ArrayConstructor {
+        fromBase64(base64: string): Uint8Array<ArrayBuffer>;
+    }
 }
 
 export interface ShowDirectoryPickerOptions {
