@@ -1,10 +1,31 @@
 import { MediaRecorderWebMDurationWorkaround } from './fix_webm_duration'
 import { Settings } from './element/settings'
-import type { Message, StartRecording, UpdateRecordingIconMessage, CompleteRecordingMessage } from './message'
+import type {
+    Message,
+    StartRecording,
+    UpdateRecordingIconMessage,
+    CompleteRecordingMessage,
+    PreviewFrameMessage,
+    PreviewControlMessage,
+    UpdateCropRegionMessage,
+} from './message'
 import { sendEvent, sendException } from './sentry'
 import { MIMEType } from './mime'
+import { Preview } from './preview'
+import { Crop } from './crop'
 
 const timeslice = 3000 // 3s
+
+const preview = new Preview(async ({ image, width, height }) => {
+    // Send preview frame
+    const msg: PreviewFrameMessage = {
+        type: 'preview-frame',
+        recordingSize: { width, height },
+        image: (new Uint8Array(await image.arrayBuffer())).toBase64(),
+    }
+    await chrome.runtime.sendMessage(msg)
+})
+const crop = new Crop()
 
 chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.MessageSender, sendResponse: () => void) => {
     (async () => {
@@ -21,6 +42,12 @@ chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.M
                     return
                 case 'exception':
                     throw message.data
+                case 'preview-control':
+                    handlePreviewControl(message)
+                    return
+                case 'update-crop-region':
+                    handleCropRegionUpdate(message)
+                    return
             }
         } catch (e) {
             sendException(e)
@@ -40,6 +67,9 @@ function getAudioContext(): AudioContext {
     }
     return _audioContext
 }
+
+// Cropping and preview state
+let currentVideoTrack: MediaStreamTrack | null = null
 
 function createMixedMediaStream(tabStream: MediaStream, micStream: MediaStream | null, micGain: number): MediaStream {
     if (!micStream) {
@@ -145,7 +175,20 @@ async function startRecording(startRecording: StartRecording) {
     }
 
     // Mix audio streams if microphone is available
-    const media = createMixedMediaStream(tabMedia, micStream, microphone.gain)
+    let media = createMixedMediaStream(tabMedia, micStream, microphone.gain)
+
+    // Store video track for preview
+    const videoTracks = tabMedia.getVideoTracks()
+    if (videoTracks.length > 0) {
+        currentVideoTrack = videoTracks[0]
+    }
+
+    // Apply cropping if enabled (video modes only)
+    const croppingConfig = Settings.getConfiguration().cropping
+    const croppingEnabled = croppingConfig.enabled && videoFormat.recordingMode !== 'audio-only'
+    if (croppingEnabled) {
+        media = crop.getCroppedStream(media, croppingConfig.region)
+    }
 
     const muteRecordingTab = Settings.getConfiguration().muteRecordingTab
     if (!muteRecordingTab && tabMedia.getAudioTracks().length > 0) {
@@ -263,11 +306,30 @@ async function stopRecording() {
         return
     }
 
+    // Stop preview, cropping and recorder
+    preview.stop()
     recorder.stop()
 
     // Stopping the tracks makes sure the recording icon in the tab is removed.
     recorder.stream.getTracks().forEach(t => t.stop())
 
+    // Clean up cropping resources
+    currentVideoTrack = null
+
     // Update current state in URL
     window.location.hash = ''
+}
+
+// Preview control handler
+function handlePreviewControl(message: PreviewControlMessage) {
+    if (message.action === 'start' && currentVideoTrack != null) {
+        preview.start(currentVideoTrack)
+    } else {
+        preview.stop()
+    }
+}
+
+// Crop region update handler
+function handleCropRegionUpdate(message: UpdateCropRegionMessage) {
+    crop.region = message.region
 }

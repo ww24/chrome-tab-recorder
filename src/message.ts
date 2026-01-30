@@ -1,4 +1,4 @@
-import type { Resolution, Configuration } from './configuration'
+import type { Resolution, Configuration, SyncConfiguration, CropRegion } from './configuration'
 
 export type Message =
     | ExceptionMessage
@@ -10,6 +10,11 @@ export type Message =
     | FetchConfigMessage
     | SaveConfigLocalMessage
     | SaveConfigSyncMessage
+    | RecordingStateMessage
+    | RequestRecordingStateMessage
+    | PreviewFrameMessage
+    | PreviewControlMessage
+    | UpdateCropRegionMessage
     ;
 
 export interface ExceptionMessage {
@@ -55,5 +60,36 @@ export interface SaveConfigLocalMessage {
 
 export interface SaveConfigSyncMessage {
     type: 'save-config-sync';
-    data: Configuration;
+    data: SyncConfiguration;
+}
+
+// Recording state notification (service_worker → option page)
+export interface RecordingStateMessage {
+    type: 'recording-state';
+    isRecording: boolean;
+    screenSize?: Resolution;
+}
+
+// Request current recording state (option page → service_worker)
+export interface RequestRecordingStateMessage {
+    type: 'request-recording-state';
+}
+
+// Preview frame transfer (offscreen → service_worker → option page)
+export interface PreviewFrameMessage {
+    type: 'preview-frame';
+    recordingSize: Resolution;
+    image: string; // base64 encoded jpeg image
+}
+
+// Preview start/stop request (option page → service_worker → offscreen)
+export interface PreviewControlMessage {
+    type: 'preview-control';
+    action: 'start' | 'stop';
+}
+
+// Cropping region update (option page → service_worker → offscreen)
+export interface UpdateCropRegionMessage {
+    type: 'update-crop-region';
+    region: CropRegion;
 }

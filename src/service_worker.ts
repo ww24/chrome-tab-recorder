@@ -1,7 +1,14 @@
 import { v7 as uuidv7 } from 'uuid'
 
 import type { getMediaStreamId } from './type'
-import type { Message, StartRecordingMessage, StopRecordingMessage, SaveConfigLocalMessage, ExceptionMessage } from './message'
+import type {
+    Message,
+    StartRecordingMessage,
+    StopRecordingMessage,
+    SaveConfigLocalMessage,
+    ExceptionMessage,
+    RecordingStateMessage,
+} from './message'
 import { Configuration, Resolution } from './configuration'
 import { ExtensionSyncStorage } from './storage'
 import { deepMerge } from './element/util'
@@ -11,6 +18,10 @@ const recordingVideoOnlyIcon = '/icons/recording-video-only.png'
 const recordingAudioOnlyIcon = '/icons/recording-audio-only.png'
 const notRecordingIcon = '/icons/not-recording.png'
 const storage = new ExtensionSyncStorage()
+
+// Track recording state for preview functionality
+let isRecording = false
+let currentScreenSize: Resolution | null = null
 
 chrome.runtime.onInstalled.addListener(async () => {
     await getOrCreateOffscreenDocument()
@@ -80,15 +91,22 @@ async function startRecording(tab: chrome.tabs.Tab) {
         targetTabId: tab.id
     })
 
+    // Track screen size for preview functionality
+    currentScreenSize = { width: tab.width ?? 0, height: tab.height ?? 0 }
+
     // Send the stream ID to the offscreen document to start recording.
     const msg: StartRecordingMessage = {
         type: 'start-recording',
         data: {
-            tabSize: { width: tab.width ?? 0, height: tab.height ?? 0 },
+            tabSize: currentScreenSize,
             streamId,
         },
     }
     await chrome.runtime.sendMessage(msg)
+
+    // Update recording state and broadcast to option pages
+    isRecording = true
+    await broadcastRecordingState()
 }
 
 async function stopRecording() {
@@ -98,8 +116,27 @@ async function stopRecording() {
     await chrome.runtime.sendMessage(msg)
     await chrome.action.setIcon({ path: notRecordingIcon })
 
+    // Update recording state and broadcast to option pages
+    isRecording = false
+    currentScreenSize = null
+    await broadcastRecordingState()
+
     const config = await getConfiguration()
     if (config.openOptionPage) await chrome.runtime.openOptionsPage()
+}
+
+// Broadcast recording state to all option pages
+async function broadcastRecordingState() {
+    const msg: RecordingStateMessage = {
+        type: 'recording-state',
+        isRecording,
+        screenSize: currentScreenSize ?? undefined,
+    }
+    try {
+        await chrome.runtime.sendMessage(msg)
+    } catch {
+        // No listeners, ignore
+    }
 }
 
 chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.MessageSender, sendResponse: (response?: Configuration) => void) => {
@@ -136,6 +173,10 @@ chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.M
                     const config = deepMerge(defaultConfig, remoteConfig)
                     console.debug('fetch:', config)
                     sendResponse(config)
+                    return
+                case 'request-recording-state':
+                    // Respond with current recording state
+                    await broadcastRecordingState()
                     return
             }
         } catch (e) {
