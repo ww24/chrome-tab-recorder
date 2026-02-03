@@ -11,6 +11,7 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-22.04
+    timeout-minutes: 3
     steps:
       - uses: actions/checkout@v6
       - name: Use Node.js
@@ -42,6 +43,7 @@ jobs:
   test:
     needs: [lint]
     runs-on: ubuntu-22.04
+    timeout-minutes: 5
     strategy:
       matrix:
         node-version: ["22.x", "24.x"] # Maintenance LTS, Active LTS
