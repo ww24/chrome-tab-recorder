@@ -23,6 +23,8 @@ const storage = new ExtensionSyncStorage()
 let isRecording = false
 let currentScreenSize: Resolution | null = null
 
+const CONTEXT_MENU_ID = 'start-recording'
+
 chrome.runtime.onInstalled.addListener(async () => {
     await getOrCreateOffscreenDocument()
 
@@ -46,6 +48,13 @@ chrome.runtime.onInstalled.addListener(async () => {
     await chrome.runtime.sendMessage(msg)
 
     await chrome.offscreen.closeDocument()
+
+    // Create context menu for starting recording
+    chrome.contextMenus.create({
+        id: CONTEXT_MENU_ID,
+        title: 'Start Recording',
+        contexts: ['page'],
+    })
 })
 
 async function getOrCreateOffscreenDocument(): Promise<boolean> {
@@ -85,6 +94,26 @@ chrome.action.onClicked.addListener(async (tab: chrome.tabs.Tab) => {
     }
 })
 
+// Context menu click handler
+chrome.contextMenus.onClicked.addListener(async (info: chrome.contextMenus.OnClickData, tab?: chrome.tabs.Tab) => {
+    if (info.menuItemId !== CONTEXT_MENU_ID || !tab) return
+
+    try {
+        const recording = await getOrCreateOffscreenDocument()
+        if (recording) {
+            await stopRecording()
+            return
+        }
+        await startRecording(tab)
+    } catch (e) {
+        const msg: ExceptionMessage = {
+            type: 'exception',
+            data: e,
+        }
+        await chrome.runtime.sendMessage(msg)
+    }
+})
+
 async function startRecording(tab: chrome.tabs.Tab) {
     // Get a MediaStream for the active tab.
     const streamId = await (chrome.tabCapture.getMediaStreamId as typeof getMediaStreamId)({
@@ -107,6 +136,9 @@ async function startRecording(tab: chrome.tabs.Tab) {
     // Update recording state and broadcast to option pages
     isRecording = true
     await broadcastRecordingState()
+
+    // Update context menu title
+    await updateContextMenuTitle()
 }
 
 async function stopRecording() {
@@ -121,8 +153,22 @@ async function stopRecording() {
     currentScreenSize = null
     await broadcastRecordingState()
 
+    // Update context menu title
+    await updateContextMenuTitle()
+
     const config = await getConfiguration()
     if (config.openOptionPage) await chrome.runtime.openOptionsPage()
+}
+
+// Update context menu title based on recording state
+async function updateContextMenuTitle() {
+    try {
+        await chrome.contextMenus.update(CONTEXT_MENU_ID, {
+            title: isRecording ? 'Stop Recording' : 'Start Recording',
+        })
+    } catch (e) {
+        console.error('Failed to update context menu:', e)
+    }
 }
 
 // Broadcast recording state to all option pages
