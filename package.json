@@ -1,6 +1,6 @@
 {
   "name": "chrome-tab-recorder",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Google Chrome Extensions Screen Recorder",
   "scripts": {
     "build": "webpack --mode=production",

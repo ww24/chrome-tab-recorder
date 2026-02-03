@@ -3,7 +3,7 @@
     "name": "Instant Tab Recorder",
     "short_name": "Tab Recorder",
     "description": "Blazing simple tab recorder.",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "minimum_chrome_version": "140",
     "icons": {
         "48": "icons/icon48.png",
