@@ -81,7 +81,7 @@ chrome.action.onClicked.addListener(async (tab: chrome.tabs.Tab) => {
     try {
         const recording = await getOrCreateOffscreenDocument()
         if (recording) {
-            await stopRecording()
+            await stopRecording(true)
             return
         }
         await startRecording(tab)
@@ -101,7 +101,7 @@ chrome.contextMenus.onClicked.addListener(async (info: chrome.contextMenus.OnCli
     try {
         const recording = await getOrCreateOffscreenDocument()
         if (recording) {
-            await stopRecording()
+            await stopRecording(true)
             return
         }
         await startRecording(tab)
@@ -141,11 +141,13 @@ async function startRecording(tab: chrome.tabs.Tab) {
     await updateContextMenuTitle()
 }
 
-async function stopRecording() {
-    const msg: StopRecordingMessage = {
-        type: 'stop-recording',
+async function stopRecording(sendMessage?: boolean) {
+    if (sendMessage) {
+        const msg: StopRecordingMessage = {
+            type: 'stop-recording',
+        }
+        await chrome.runtime.sendMessage(msg)
     }
-    await chrome.runtime.sendMessage(msg)
     await chrome.action.setIcon({ path: notRecordingIcon })
 
     // Update recording state and broadcast to option pages
@@ -180,8 +182,8 @@ async function broadcastRecordingState() {
     }
     try {
         await chrome.runtime.sendMessage(msg)
-    } catch {
-        // No listeners, ignore
+    } catch (e) {
+        console.error('Failed to send recording state:', e)
     }
 }
 
@@ -206,7 +208,7 @@ chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.M
                     await chrome.action.setIcon({ path })
                     return
                 case 'complete-recording':
-                    await chrome.action.setIcon({ path: notRecordingIcon })
+                    await stopRecording()
                     await chrome.offscreen.closeDocument()
                     return
                 case 'save-config-sync':

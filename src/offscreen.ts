@@ -87,6 +87,12 @@ function createMixedMediaStream(tabStream: MediaStream, micStream: MediaStream |
         tabAudioSource.connect(mixedOutput)
     }
 
+    // Handle source ended event
+    const [tabTrack] = tabStream.getTracks()
+    tabTrack?.addEventListener('ended', () => {
+        mixedOutput.stream.getAudioTracks().forEach(track => track.stop())
+    })
+
     // Microphone audio
     const micAudioSource = getAudioContext().createMediaStreamSource(micStream)
     const micGainNode = getAudioContext().createGain()
@@ -95,10 +101,9 @@ function createMixedMediaStream(tabStream: MediaStream, micStream: MediaStream |
     micGainNode.connect(mixedOutput)
 
     // Combine mixed audio with video tracks
-    const videoTracks = tabStream.getVideoTracks()
     const finalStream = new MediaStream([
         ...mixedOutput.stream.getAudioTracks(),
-        ...videoTracks
+        ...tabStream.getVideoTracks()
     ])
 
     return finalStream
@@ -176,6 +181,17 @@ async function startRecording(startRecording: StartRecording) {
 
     // Mix audio streams if microphone is available
     let media = createMixedMediaStream(tabMedia, micStream, microphone.gain)
+
+    // workaround: When a MediaStream from getUserMedia has only one audio track, the stream does not become
+    // inactive even after the MediaStreamTrack ends. We manually remove the track to make the stream inactive.
+    if (videoFormat.recordingMode === 'audio-only' && !microphone.enabled) {
+        const [tabTrack] = tabMedia.getTracks()
+        tabTrack?.addEventListener('ended', () => {
+            console.debug(`tabTrack.readyState: ${tabTrack.readyState}, tabMedia.active: ${tabMedia.active}`)
+            tabMedia.getTracks().forEach(track => tabMedia.removeTrack(track))
+            console.debug(`tabMedia.active: ${tabMedia.active}`)
+        })
+    }
 
     // Store video track for preview
     const videoTracks = tabMedia.getVideoTracks()
