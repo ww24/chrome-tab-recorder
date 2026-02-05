@@ -3,6 +3,9 @@ import webpack from 'webpack'
 import Dotenv from 'dotenv-webpack'
 import pkg from './package.json'
 
+const envName = process.env.ENV_NAME === 'production' ? 'production' : 'develop'
+console.log(`${envName} build`)
+
 const config: webpack.Configuration = {
     entry: {
         offscreen: path.join(__dirname, 'src/offscreen.ts'),
@@ -33,6 +36,7 @@ const config: webpack.Configuration = {
         new Dotenv(),
         new webpack.DefinePlugin({
             'process.env.VERSION': `"${pkg.version}"`,
+            'process.env.ENV_NAME': `"${envName}"`,
         }),
     ],
 }
