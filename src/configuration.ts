@@ -41,6 +41,10 @@ export function isVideoRecordingMode(v: unknown): v is VideoRecordingMode {
 // Configuration type for sync storage (excludes device-specific settings)
 export type SyncConfiguration = Omit<Configuration, 'microphone' | 'cropping'>
 
+export type ReportConfiguration =
+    Pick<Configuration, 'windowSize' | 'screenRecordingSize' | 'videoFormat' | 'openOptionPage' | 'muteRecordingTab' | 'cropping'>
+    & { microphone: Omit<Microphone, 'deviceId'> }
+
 export class Configuration {
     public static readonly key = 'settings'
     windowSize: Resolution
@@ -100,6 +104,18 @@ export class Configuration {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { microphone: _m, cropping: _c, ...rest } = config
         return { ...rest }
+    }
+    static filterForReport(config: Configuration): ReportConfiguration {
+        const { windowSize, screenRecordingSize, videoFormat, openOptionPage, muteRecordingTab, microphone, cropping } = config
+        return {
+            windowSize,
+            screenRecordingSize,
+            videoFormat,
+            openOptionPage,
+            muteRecordingTab,
+            microphone: { enabled: microphone.enabled, gain: microphone.gain },
+            cropping,
+        }
     }
     static screenRecordingSize(screenRecordingSize: ScreenRecordingSize, base: Resolution): Resolution {
         if (screenRecordingSize.auto && base.width > 0 && base.height > 0) {

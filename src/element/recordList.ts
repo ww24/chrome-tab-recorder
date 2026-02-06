@@ -91,7 +91,7 @@ export class RecordList extends LitElement {
                         return
                 }
             } catch (e) {
-                sendException(e)
+                sendException(e, { exceptionSource: 'option.recordList.onMessage' })
                 console.error(e)
             }
         })

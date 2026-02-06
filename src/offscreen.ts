@@ -50,7 +50,7 @@ chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.M
                     return
             }
         } catch (e) {
-            sendException(e)
+            sendException(e, { exceptionSource: 'offscreen.onMessage' })
             console.error(e)
         } finally {
             sendResponse()
@@ -114,9 +114,19 @@ async function startRecording(startRecording: StartRecording) {
         throw new Error('Called startRecording while recording is in progress.')
     }
 
-    if (! await navigator.storage.persisted()) {
+    const opfsPersisted = await navigator.storage.persisted()
+    if (!opfsPersisted) {
         console.warn('OPFS persist: permission denied')
     }
+
+    sendEvent({
+        type: 'start_recording',
+        tags: {
+            state: {
+                opfsPersisted,
+            },
+        },
+    })
 
     const { videoFormat, recordingSize } = Settings.getRecordingInfo(startRecording.tabSize)
     if (!MediaRecorder.isTypeSupported(videoFormat.mimeType)) {
@@ -232,37 +242,32 @@ async function startRecording(startRecording: StartRecording) {
                 await fixWebM.write(event.data)
             }
         } catch (e) {
-            sendException(e)
+            sendException(e, { exceptionSource: 'recorder.dataavailable' })
             console.error(e)
         }
     })
     const startTime = Date.now()
     recorder.addEventListener('stop', async () => {
         const duration = Date.now() - startTime
-        console.log(`stopped: duration=${duration / 1000}s`)
+        console.info(`stopped: duration=${duration / 1000}s`)
 
-        try {
-            if (media.active) {
-                console.log('recorder: unexpected stop, retrying')
-                recorder?.start(timeslice)
-                return
-            }
-
+        if (media.active) {
+            recorder?.start(timeslice)
             sendEvent({
-                type: 'stop_recording',
-                tags: {
-                    mimeType: recorder?.mimeType,
-                    videoBitRate: recorder?.videoBitsPerSecond,
-                    audioBitRate: recorder?.audioBitsPerSecond,
-                    recordingResolution: `${recordingSize.width}x${recordingSize.height}`,
-                    recordingMode: videoFormat.recordingMode,
-                },
+                type: 'unexpected_stop',
                 metrics: {
-                    duration: duration / 1000,
+                    recording: {
+                        durationSec: duration / 1000,
+                    },
                 },
             })
-
+            console.warn('recorder: unexpected stop, retrying')
+            return
+        }
+        try {
             await writableStream.close()
+            const file = await recordFileHandle.getFile()
+            let filesize = file.size;
 
             if (fixWebM != null) {
                 // workaround: fix video duration
@@ -272,7 +277,6 @@ async function startRecording(startRecording: StartRecording) {
 
                 const fixedFileHandle = await dirHandle.getFileHandle(regularFileName, { create: true })
                 const fixedWritableStream = await fixedFileHandle.createWritable()
-                const file = await recordFileHandle.getFile()
                 const fixed = fixWebM.fixMetadata(file)
 
                 try {
@@ -280,6 +284,7 @@ async function startRecording(startRecording: StartRecording) {
                     if (fixed.size >= file.size && Math.abs(duration - fixWebMDuration) < 5000) {
                         await dirHandle.removeEntry(recordFileName)
                     }
+                    filesize = fixed.size
                 } catch (e) {
                     await fixedWritableStream.close()
                     throw e
@@ -287,16 +292,19 @@ async function startRecording(startRecording: StartRecording) {
                     fixWebM = undefined
                 }
             }
-        } catch (e) {
-            sendException(e)
-            console.error(e)
 
-            try {
-                // close backup file writable stream
-                await writableStream.close()
-            } catch (e) {
-                console.error(e)
-            }
+            sendEvent({
+                type: 'stop_recording',
+                metrics: {
+                    recording: {
+                        durationSec: duration / 1000,
+                        filesize,
+                    },
+                },
+            })
+        } catch (e) {
+            sendException(e, { exceptionSource: 'recorder.stop' })
+            console.error(e)
         } finally {
             recorder = undefined
             window.location.hash = ''
@@ -306,11 +314,15 @@ async function startRecording(startRecording: StartRecording) {
             await chrome.runtime.sendMessage(msg)
         }
     })
+    recorder.addEventListener('error', e => {
+        sendException(e, { exceptionSource: 'recorder.error' })
+        console.error('recorder error:', e)
+    })
     recorder.start(timeslice)
 
-    console.log('mimeType:', recorder.mimeType)
-    console.log('videoBitRate:', recorder.videoBitsPerSecond)
-    console.log('audioBitRate:', recorder.audioBitsPerSecond)
+    console.info('mimeType:', recorder.mimeType)
+    console.info('videoBitRate:', recorder.videoBitsPerSecond)
+    console.info('audioBitRate:', recorder.audioBitsPerSecond)
 
     // ref. https://github.com/GoogleChrome/chrome-extensions-samples/blob/137cf71b9b4d631191cedbf96343d5b6a51c9a74/functional-samples/sample.tabcapture-recorder/offscreen.js#L71-L77
     window.location.hash = 'recording'
