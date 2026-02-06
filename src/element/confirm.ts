@@ -8,18 +8,22 @@ import '@material/web/list/list'
 import '@material/web/list/list-item'
 import '@material/web/divider/divider'
 import { formatNum } from './util'
-import { Record } from './recordList'
+import { RecordEntry } from './recordList'
 
 @customElement('extension-confirm')
 export default class Confirm extends LitElement {
   static readonly styles = css`
     md-dialog {
       width: 520px;
+      --md-text-button-label-text-color: #ff3333;
+      --md-text-button-focus-label-text-color: #ff3333;
+      --md-text-button-hover-label-text-color: #ff3333;
+      --md-text-button-pressed-label-text-color: #ff3333;
     }
   `
 
   @property({ noAccessor: true })
-  private records: Array<Record>
+  private records: Array<RecordEntry>
 
   public constructor() {
     super()
@@ -49,7 +53,7 @@ export default class Confirm extends LitElement {
       `
   }
 
-  public setRecords(records: Array<Record>) {
+  public setRecords(records: Array<RecordEntry>) {
     const oldVal = [...this.records]
     this.records = records
     this.requestUpdate('records', oldVal)

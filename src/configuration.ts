@@ -32,6 +32,11 @@ export interface RecordingInfo {
     videoFormat: VideoFormat
     recordingSize: Resolution
 }
+
+/**
+ * Sort order for recording list
+ */
+export type RecordingSortOrder = 'asc' | 'desc'
 const videoRecordingMode = ['video-and-audio', 'video-only', 'audio-only'] as const
 export type VideoRecordingMode = (typeof videoRecordingMode)[number];
 export function isVideoRecordingMode(v: unknown): v is VideoRecordingMode {
@@ -57,6 +62,7 @@ export class Configuration {
     muteRecordingTab: boolean
     microphone: Microphone
     cropping: CroppingConfig
+    recordingSortOrder: RecordingSortOrder
     constructor() {
         this.windowSize = {
             width: 1920,
@@ -94,6 +100,7 @@ export class Configuration {
                 height: 1080,
             },
         }
+        this.recordingSortOrder = 'asc'
     }
     static restoreDefault({ userId }: Configuration): Configuration {
         const config = new Configuration()

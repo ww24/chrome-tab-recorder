@@ -24,7 +24,7 @@ export class Crop {
         processor.readable
             .pipeThrough(transformer)
             .pipeTo(generator.writable)
-            .catch((e) => {
+            .catch((e: unknown) => {
                 // Pipeline errors are expected when the stream is stopped
                 // (e.g., recording ends, track is stopped)
                 if (e instanceof TypeError && e.message.includes('aborted')) {

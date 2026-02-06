@@ -1,5 +1,6 @@
 import { html, css, LitElement } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
+import { repeat } from 'lit/directives/repeat.js'
 import { formatNum, formatRate, checkFileHandlePermission } from './util'
 import '@material/web/list/list'
 import '@material/web/list/list-item'
@@ -15,19 +16,28 @@ import { MdCheckbox } from '@material/web/checkbox/checkbox'
 import { MdFilterChip } from '@material/web/chips/filter-chip'
 import Confirm from './confirm'
 import type { ShowDirectoryPickerOptions } from '../type'
-import { Message } from '../message'
+import { Message, SaveConfigSyncMessage } from '../message'
 import { sendException } from '../sentry'
+import { recordingApi } from '../api_client'
+import type { StorageEstimateInfo } from '../storage'
+import { Settings } from './settings'
+import { Configuration, RecordingSortOrder } from '../configuration'
 
-export interface Record {
+export interface RecordEntry {
     title: string;
     size: number;
-    file?: File;
     selected: boolean;
     recordedAt?: Date;
-    objectUrl?: string;
 }
 
-function selected(record: Record): boolean {
+/**
+ * Get the API URL for a recording file
+ */
+function getRecordingFileUrl(title: string): string {
+    return `/api/recordings/${encodeURIComponent(title)}`
+}
+
+function selected(record: RecordEntry): boolean {
     return record.selected
 }
 
@@ -58,6 +68,9 @@ export class RecordList extends LitElement {
         .selected-actions {
             margin: 1em 0;
         }
+        .sort-chip {
+            min-width: 90px;
+        }
     `
 
     private static readonly dateTimeFormat = new Intl.DateTimeFormat(undefined, {
@@ -70,70 +83,56 @@ export class RecordList extends LitElement {
     })
 
     @property({ noAccessor: true })
-    private estimate: StorageEstimate
+    private estimate: StorageEstimateInfo
 
     @property({ type: Array })
-    private records: Array<Record>
+    private records: Array<RecordEntry>
+
+    @property()
+    private sortOrder: RecordingSortOrder
 
     public constructor() {
         super()
-        this.estimate = {}
+        this.estimate = { usage: 0, quota: 0 }
         this.records = []
-        this.updateRecord()
-        this.updateEstimate()
+        this.sortOrder = Settings.getConfiguration().recordingSortOrder
+    }
 
-        chrome.runtime.onMessage.addListener(async (message: Message) => {
-            try {
-                switch (message.type) {
-                    case 'complete-recording':
-                        await this.updateRecord()
-                        await this.updateEstimate()
-                        return
-                }
-            } catch (e) {
-                sendException(e, { exceptionSource: 'option.recordList.onMessage' })
-                console.error(e)
-            }
-        })
+    public async connectedCallback() {
+        super.connectedCallback()
+        await this.updateRecord()
+        await this.updateEstimate()
+        chrome.runtime.onMessage.addListener(this.handleMessage)
     }
 
     public disconnectedCallback() {
         super.disconnectedCallback()
-        // Revoke all object URLs when component is destroyed
-        this.revokeAllObjectUrls()
+        chrome.runtime.onMessage.removeListener(this.handleMessage)
     }
 
-    protected willUpdate(changedProperties: Map<PropertyKey, unknown>) {
-        super.willUpdate(changedProperties)
-
-        // Create object URLs for records that don't have them yet
-        if (changedProperties.has('records')) {
-            this.records.forEach(record => {
-                if (record.file != null && record.objectUrl == null) {
-                    record.objectUrl = URL.createObjectURL(record.file)
-                }
-            })
+    private handleMessage = async (message: Message) => {
+        try {
+            switch (message.type) {
+                case 'complete-recording':
+                    await this.updateRecord()
+                    await this.updateEstimate()
+                    return
+            }
+        } catch (e) {
+            sendException(e, { exceptionSource: 'option.recordList.onMessage' })
+            console.error(e)
         }
     }
 
-    private revokeAllObjectUrls() {
-        // Revoke URLs created in willUpdate
-        this.records.forEach(record => {
-            if (record.objectUrl != null) {
-                URL.revokeObjectURL(record.objectUrl)
-                record.objectUrl = undefined
-            }
-        })
-    }
-
     public render() {
-        const row = (record: Record, idx: number) => {
-            if (record.file == null) return
+        const row = (record: RecordEntry, idx: number) => {
+            const fileUrl = getRecordingFileUrl(record.title)
+            const downloadUrl = `${fileUrl}?download=true`
             return html`
             ${idx > 0 ? html`<md-divider></md-divider>` : ''}
             <md-list-item class="list-item">
                 <md-checkbox touch-target="wrapper" slot="start" ?checked=${record.selected} @input=${this.selectRecord(record)}></md-checkbox>
-                <a href="${record.objectUrl}" download="${record.title}">${record.title}</a>
+                <a href="${downloadUrl}">${record.title}</a>
                 <div class="meta" title="file size"><md-icon>storage</md-icon> ${formatNum(record.size / 1024 / 1024, 2)} MB</div>
                 ${record.recordedAt != null ? html`<div class="meta" title="recorded at"><md-icon>schedule</md-icon> ${RecordList.dateTimeFormat.format(record.recordedAt)}</div>` : ''}
                 <md-filled-icon-button slot="end" @click=${this.playRecord(record)}>
@@ -142,8 +141,10 @@ export class RecordList extends LitElement {
             </md-list-item>`
         }
         const est = this.estimate
-        const usage = est.usage ?? 0
-        const quota = est.quota ?? 1
+        const usage = est.usage
+        const quota = est.quota || 1
+        const sortIcon = this.sortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward'
+        const sortLabel = this.sortOrder.toUpperCase()
         return html`
         <h2 class="storage-heading">
         Storage (total: ${formatNum(usage / 1024 / 1024, 1)} MB, ${formatRate(usage / quota, 1)})
@@ -152,6 +153,9 @@ export class RecordList extends LitElement {
             <md-filter-chip label="Select all" has-icon="true" ?disabled=${this.records.length === 0} ?selected=${this.records.length > 0 && this.records.every(selected)} @click=${this.selectAll}>
                 <md-icon slot="icon">check_box_outline_blank</md-icon>
             </md-filter-chip>
+            <md-assist-chip class="sort-chip" label="${sortLabel}" has-icon="true" @click=${this.toggleSortOrder}>
+                <md-icon slot="icon">${sortIcon}</md-icon>
+            </md-assist-chip>
             <md-assist-chip label="Save" ?disabled=${!this.records.some(selected)} @click=${this.saveSelectedRecords}>
                 <md-icon slot="icon">save</md-icon>
             </md-assist-chip>
@@ -160,58 +164,23 @@ export class RecordList extends LitElement {
             </md-assist-chip>
         </md-chip-set>
         <md-list>
-            ${this.records.length === 0 ? html`<md-list-item>no entry</md-list-item>` : this.records.map(row)}
+            ${this.records.length === 0 ? html`<md-list-item>no entry</md-list-item>` : repeat(this.records, record => record.title, row)}
         </md-list>`
     }
 
-    private removeRecord(record: Record) {
-        // Revoke object URL before removing the record
-        if (record.objectUrl != null) {
-            URL.revokeObjectURL(record.objectUrl)
-            record.objectUrl = undefined
-        }
+    private removeRecord(record: RecordEntry) {
         this.records = this.records.filter(r => r.title !== record.title)
     }
     private async updateRecord() {
-        const opfsRoot = await navigator.storage.getDirectory()
-        const result: Array<Record> = []
-        const timestampRegex = /^video-([0-9]+)\./
+        // Fetch recordings from API
+        const recordings = await recordingApi.listRecordings({ sort: this.sortOrder })
 
-        // Save existing object URLs in a map
-        const existingUrls = new Map<string, string>()
-        this.records.forEach(record => {
-            if (record.objectUrl != null) {
-                existingUrls.set(record.title, record.objectUrl)
-            }
-        })
-
-        for await (const [name, handle] of opfsRoot.entries()) {
-            const file = await handle.getFile()
-
-            let recordedAt: Date | undefined
-            const matched = name.match(timestampRegex)
-            if (matched != null && matched.length >= 2) {
-                recordedAt = new Date(Number.parseInt(matched[1], 10))
-            }
-            const record: Record = {
-                title: name,
-                file: file,
-                size: file.size,
-                selected: false,
-                recordedAt,
-                // Reuse existing URL
-                objectUrl: existingUrls.get(name),
-            }
-            result.unshift(record)
-        }
-
-        // Revoke object URLs for removed records
-        const newTitles = new Set(result.map(r => r.title))
-        this.records.forEach(record => {
-            if (!newTitles.has(record.title) && record.objectUrl != null) {
-                URL.revokeObjectURL(record.objectUrl)
-            }
-        })
+        const result: Array<RecordEntry> = recordings.map(meta => ({
+            title: meta.title,
+            size: meta.size,
+            selected: false,
+            recordedAt: meta.recordedAt != null ? new Date(meta.recordedAt) : undefined,
+        }))
 
         const oldVal = [...this.records]
         this.records = result
@@ -219,16 +188,35 @@ export class RecordList extends LitElement {
     }
     private async updateEstimate() {
         const oldVal = this.estimate
-        this.estimate = await navigator.storage.estimate()
+        this.estimate = await recordingApi.getStorageEstimate()
         this.requestUpdate('estimate', oldVal)
     }
-    private playRecord(record: Record) {
+    private async toggleSortOrder() {
+        const newOrder: RecordingSortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc'
+        this.sortOrder = newOrder
+
+        // Save to configuration
+        const config = Settings.getConfiguration()
+        config.recordingSortOrder = newOrder
+        Settings.setConfiguration(config)
+
+        // Sync to remote storage
+        const msg: SaveConfigSyncMessage = {
+            type: 'save-config-sync',
+            data: Configuration.filterForSync(config),
+        }
+        await chrome.runtime.sendMessage(msg)
+
+        // Refresh the list with new sort order
+        await this.updateRecord()
+    }
+    private playRecord(record: RecordEntry) {
         return () => {
-            if (record.file == null || record.objectUrl == null) return
-            window.open(record.objectUrl, '_blank', 'popup=true')
+            const fileUrl = getRecordingFileUrl(record.title)
+            window.open(fileUrl, '_blank', 'popup=true')
         }
     }
-    private selectRecord(record: Record) {
+    private selectRecord(record: RecordEntry) {
         return (e: Event) => {
             if (!(e.target instanceof MdCheckbox)) return
             const oldVal = [...this.records]
@@ -258,22 +246,19 @@ export class RecordList extends LitElement {
             throw new Error('permission denied')
         }
 
-        const recordsMap = new Map<string, boolean>()
-        this.records.filter(selected).forEach(record => {
-            recordsMap.set(record.title, true)
-        })
+        const selectedRecords = this.records.filter(selected)
 
-        const opfsRoot = await navigator.storage.getDirectory()
-        for await (const [name, handle] of opfsRoot.entries()) {
-            if (!recordsMap.get(name)) {
+        for (const record of selectedRecords) {
+            console.log('Copy:', record.title)
+            const fileHandle = await dirHandle.getFileHandle(record.title, { create: true })
+            const blob = await recordingApi.getRecordingFile(record.title)
+            if (!blob) {
+                console.error('File not found:', record.title)
                 continue
             }
-            console.log('Copy:', name)
-            const fileHandle = await dirHandle.getFileHandle(name, { create: true })
-            const file = await handle.getFile()
             const writableStream = await fileHandle.createWritable()
             try {
-                await file.stream().pipeTo(writableStream)
+                await blob.stream().pipeTo(writableStream)
             } catch (e) {
                 writableStream.close()
                 throw e
@@ -293,18 +278,21 @@ export class RecordList extends LitElement {
 
             console.log('confirm-dialog:', dialog.returnValue)
             if (dialog.returnValue === 'delete') {
-                const opfsRoot = await navigator.storage.getDirectory()
-                await Promise.all(selectedRecords.map(async record => {
-                    console.log('Delete:', record.title)
+                try {
+                    await Promise.all(selectedRecords.map(async record => {
+                        console.log('Delete:', record.title)
 
-                    // remove entry from file system
-                    await opfsRoot.removeEntry(record.title)
-                    // remove from UI
-                    this.removeRecord(record)
-                }))
+                        // Delete via API
+                        await recordingApi.deleteRecording(record.title)
+                        // remove from UI
+                        this.removeRecord(record)
+                    }))
 
-                // update UI
-                this.updateEstimate()
+                    // update UI
+                    this.updateEstimate()
+                } catch (e) {
+                    sendException(e, { exceptionSource: 'option.recordList.delete.dialog' })
+                }
             }
             dialog.returnValue = ''
         }
