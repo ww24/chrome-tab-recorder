@@ -38,7 +38,7 @@ export class Cropping extends LitElement {
             margin: 1em 0;
         }
         .message.warning {
-            color: #b00;
+            color: #f44336;
         }
         .hint {
             color: #666;
@@ -164,17 +164,18 @@ export class Cropping extends LitElement {
         return !this.isAudioOnlyMode
     }
 
-    private handleEnableChange(e: Event) {
+    private updateCroppingEnabled(e: Event) {
         if (!this.canChangeCroppingEnabled) return
-        const target = e.target as MdSwitch
+        if (!(e.target instanceof MdSwitch)) return
         this.config = {
             ...this.config,
             cropping: {
                 ...this.config.cropping,
-                enabled: target.selected,
+                enabled: e.target.selected,
             },
         }
         Settings.setConfiguration(this.config)
+        // This setting cannot be synchronized
     }
 
     private updateRegion(field: keyof CropRegion) {
@@ -251,7 +252,7 @@ export class Cropping extends LitElement {
                 <md-switch
                     ?selected=${enabled}
                     ?disabled=${switchDisabled}
-                    @change=${this.handleEnableChange}
+                    @input=${this.updateCroppingEnabled}
                 ></md-switch>
             </div>
             ${this.renderMessages()}

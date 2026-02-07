@@ -45,7 +45,7 @@ export class Settings extends LitElement {
         Settings.setConfiguration(config)
     }
 
-    private static async syncConfiguration(config: Configuration) {
+    public static async syncConfiguration(config: Configuration) {
         const msg: SaveConfigSyncMessage = {
             type: 'save-config-sync',
             data: Configuration.filterForSync(config),
@@ -176,11 +176,6 @@ export class Settings extends LitElement {
                 <md-switch ?selected=${live(this.config.muteRecordingTab)} @input=${this.updateProp('muteRecordingTab')}></md-switch>
             </label>
         </div>
-        <h2>Privacy</h2>
-        <label style="line-height: 32px; font-size: 1.5em">
-            Bug Tracking
-            <md-switch ?selected=${live(this.config.enableBugTracking)} @input=${this.updateProp('enableBugTracking')}></md-switch>
-        </label>
         <h2>Sync</h2>
         <md-filled-tonal-button @click=${this.sync}>
             Fetch Synced Settings
@@ -361,7 +356,7 @@ export class Settings extends LitElement {
 
     private alert(content: string) {
         const dialogWrapper = document.getElementById('alert-dialog') as Alert
-        dialogWrapper.setContent(content)
+        dialogWrapper.setContent('Alert', content)
 
         if (dialogWrapper.shadowRoot == null) return
         const dialog = dialogWrapper.shadowRoot.children[0] as MdDialog

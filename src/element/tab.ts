@@ -68,6 +68,10 @@ export class OptionTab extends LitElement {
                 <md-icon slot="icon">crop</md-icon>
                 Cropping
             </md-primary-tab>
+            <md-primary-tab id="tab-support" aria-controls="panel-support" inline-icon>
+                <md-icon slot="icon">support</md-icon>
+                Support
+            </md-primary-tab>
         </md-tabs>
         <div role="tabpanel" id="panel-main" aria-labelledby="tab-main">
             <slot name="panel-main"></slot>
@@ -77,6 +81,9 @@ export class OptionTab extends LitElement {
         </div>
         <div role="tabpanel" id="panel-cropping" aria-labelledby="tab-cropping" hidden>
             <slot name="panel-cropping"></slot>
+        </div>
+        <div role="tabpanel" id="panel-support" aria-labelledby="tab-support" hidden>
+            <slot name="panel-support"></slot>
         </div>
         `
     }
