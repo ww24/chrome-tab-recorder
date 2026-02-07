@@ -47,8 +47,9 @@ export function isVideoRecordingMode(v: unknown): v is VideoRecordingMode {
 export type SyncConfiguration = Omit<Configuration, 'microphone' | 'cropping'>
 
 export type ReportConfiguration =
-    Pick<Configuration, 'windowSize' | 'screenRecordingSize' | 'videoFormat' | 'openOptionPage' | 'muteRecordingTab' | 'cropping'>
+    Pick<Configuration, 'windowSize' | 'screenRecordingSize' | 'videoFormat' | 'openOptionPage' | 'muteRecordingTab' | 'recordingSortOrder'>
     & { microphone: Omit<Microphone, 'deviceId'> }
+    & { cropping: Pick<CroppingConfig, 'enabled'> & { region: Pick<CropRegion, 'width' | 'height'> } }
 
 export class Configuration {
     public static readonly key = 'settings'
@@ -113,7 +114,7 @@ export class Configuration {
         return { ...rest }
     }
     static filterForReport(config: Configuration): ReportConfiguration {
-        const { windowSize, screenRecordingSize, videoFormat, openOptionPage, muteRecordingTab, microphone, cropping } = config
+        const { windowSize, screenRecordingSize, videoFormat, openOptionPage, muteRecordingTab, microphone, cropping, recordingSortOrder } = config
         return {
             windowSize,
             screenRecordingSize,
@@ -121,7 +122,8 @@ export class Configuration {
             openOptionPage,
             muteRecordingTab,
             microphone: { enabled: microphone.enabled, gain: microphone.gain },
-            cropping,
+            cropping: { enabled: cropping.enabled, region: { width: cropping.region.width, height: cropping.region.height } },
+            recordingSortOrder,
         }
     }
     static screenRecordingSize(screenRecordingSize: ScreenRecordingSize, base: Resolution): Resolution {
