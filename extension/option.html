@@ -5,6 +5,10 @@
     <title>Options</title>
     <link href="material-symbols-outlined.css" rel="stylesheet">
     <style>
+        body {
+            margin-top: 0;
+        }
+
         .container {
             width: 600px;
             position: relative;
@@ -25,6 +29,9 @@
             </div>
             <div slot="panel-cropping">
                 <extension-cropping></extension-cropping>
+            </div>
+            <div slot="panel-support">
+                <extension-support></extension-support>
             </div>
         </option-tab>
         <extension-confirm id="confirm-dialog"></extension-confirm>

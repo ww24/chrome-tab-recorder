@@ -6,6 +6,7 @@ import {
     Scope,
     logger,
     metrics,
+    captureFeedback,
 } from '@sentry/browser'
 import type { Event, ExceptionMetadata } from './sentry_event'
 import { Settings } from './element/settings'
@@ -61,6 +62,19 @@ function flatten(obj: Record<string, unknown>, prefix = ''): Record<string, unkn
 export function sendException(e: unknown, meta: ExceptionMetadata) {
     const { exceptionSource } = meta
     getScope()?.captureException(e, { captureContext: { tags: { exceptionSource } } })
+}
+
+export type FeedbackType = 'bug-report' | 'feature-request'
+export function sendFeedback(feedback: { feedbackType: FeedbackType, message: string }): boolean {
+    const scope = getScope()
+    if (scope == null) return false
+    const { message, feedbackType } = feedback
+    const config = Settings.getConfiguration()
+    captureFeedback({
+        message,
+        tags: { feedbackType, ...flatten(Configuration.filterForReport(config), 'config') },
+    }, {}, scope)
+    return true
 }
 
 const METRICS = {

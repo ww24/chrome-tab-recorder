@@ -12,6 +12,9 @@ export default class Alert extends LitElement {
   `
 
     @property({ noAccessor: true })
+    private headline: string = 'Alert'
+
+    @property({ noAccessor: true })
     private content: string = ''
 
     public constructor() {
@@ -21,7 +24,7 @@ export default class Alert extends LitElement {
     public render() {
         return html`
         <md-dialog>
-          <div slot="headline">Alert</div>
+          <div slot="headline">${this.headline}</div>
           <form id="form" slot="content" method="dialog">
             ${this.content.split('\n').map(p => html`<p>${p}</p>`)}
           </form>
@@ -32,10 +35,13 @@ export default class Alert extends LitElement {
       `
     }
 
-    public setContent(content: string) {
-        const oldVal = this.content
+    public setContent(headline: string, content: string) {
+        const oldHeadline = this.headline
+        this.headline = headline
+        this.requestUpdate('headline', oldHeadline)
+        const oldContent = this.content
         this.content = content
-        this.requestUpdate('content', oldVal)
+        this.requestUpdate('content', oldContent)
     }
 };
 

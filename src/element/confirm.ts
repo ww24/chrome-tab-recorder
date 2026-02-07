@@ -15,10 +15,10 @@ export default class Confirm extends LitElement {
   static readonly styles = css`
     md-dialog {
       width: 520px;
-      --md-text-button-label-text-color: #ff3333;
-      --md-text-button-focus-label-text-color: #ff3333;
-      --md-text-button-hover-label-text-color: #ff3333;
-      --md-text-button-pressed-label-text-color: #ff3333;
+      --md-text-button-label-text-color: #f44336;
+      --md-text-button-focus-label-text-color: #f44336;
+      --md-text-button-hover-label-text-color: #f44336;
+      --md-text-button-pressed-label-text-color: #f44336;
     }
   `
 
