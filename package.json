@@ -22,7 +22,7 @@
     "buffer": "^6.0.3",
     "lit": "^3.3.2",
     "ts-ebml": "^3.0.2",
-    "uuid": "^11.1.0"
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@types/chrome": "^0.1.36",
