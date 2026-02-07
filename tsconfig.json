@@ -16,7 +16,8 @@
     "lib": [
       "es2022",
       "DOM",
-      "DOM.Iterable"
+      "DOM.Iterable",
+      "WebWorker"
     ],
     "experimentalDecorators": true,
     "useDefineForClassFields": false,

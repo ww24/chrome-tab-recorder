@@ -267,7 +267,7 @@ async function startRecording(startRecording: StartRecording) {
         try {
             await writableStream.close()
             const file = await recordFileHandle.getFile()
-            let filesize = file.size;
+            let filesize = file.size
 
             if (fixWebM != null) {
                 // workaround: fix video duration
