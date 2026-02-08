@@ -12,7 +12,7 @@ import { MdFilledSelect } from '@material/web/select/filled-select'
 import { MdSwitch } from '@material/web/switch/switch'
 import { Settings } from './settings'
 import { Configuration } from '../configuration'
-import { sendFeedback, FeedbackType, sendException } from '../sentry'
+import { sendFeedback, FeedbackType, sendException, sendEvent } from '../sentry'
 import Alert from './alert'
 
 const MAX_MESSAGE_LENGTH = 1000
@@ -134,7 +134,7 @@ export class Support extends LitElement {
             <h2>Review</h2>
             <div class="review-section">
                 <p>If you find this extension useful, please leave a review!</p>
-                <md-filled-tonal-button href="https://chromewebstore.google.com/detail/instant-tab-recorder/giebbnikpnedbdojlghnnegpfbgdecmi/reviews" target="_blank">
+                <md-filled-tonal-button href="https://chromewebstore.google.com/detail/instant-tab-recorder/giebbnikpnedbdojlghnnegpfbgdecmi/reviews" target="_blank" rel="noopener" @click=${this.handleReviewLink}>
                     Write a Review
                     <md-icon slot="icon">rate_review</md-icon>
                 </md-filled-tonal-button>
@@ -143,7 +143,7 @@ export class Support extends LitElement {
             <h2>Support Development</h2>
             <div class="support-section">
                 <p>Your support helps keep this extension maintained and improved. Every contribution motivates continued development!</p>
-                <a class="buymeacoffee-link" href="https://www.buymeacoffee.com/ww24" target="_blank">
+                <a class="buymeacoffee-link" href="https://www.buymeacoffee.com/ww24" target="_blank" rel="noopener" @click=${this.handleSupportLink}>
                     <img src="icons/buymeacoffee.png" alt="Buy Me a Coffee">
                 </a>
             </div>
@@ -262,6 +262,14 @@ export class Support extends LitElement {
         } finally {
             this.isSending = false
         }
+    }
+
+    private handleSupportLink() {
+        sendEvent({ type: 'click_external_link', tags: { link: 'support' } })
+    }
+
+    private handleReviewLink() {
+        sendEvent({ type: 'click_external_link', tags: { link: 'review' } })
     }
 }
 
