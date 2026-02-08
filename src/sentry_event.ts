@@ -2,7 +2,7 @@ export interface ExceptionMetadata {
     exceptionSource: string;
 }
 
-export type Event = StartRecordingEvent | StopRecordingEvent | UnexpectedStopEvent;
+export type Event = StartRecordingEvent | StopRecordingEvent | UnexpectedStopEvent | ClickExternalLinkEvent;
 
 export interface StartRecordingEvent {
     type: 'start_recording';
@@ -29,5 +29,12 @@ export interface UnexpectedStopEvent {
         recording: {
             durationSec: number,
         },
+    };
+}
+
+export interface ClickExternalLinkEvent {
+    type: 'click_external_link';
+    tags: {
+        link: 'support' | 'review',
     };
 }

@@ -81,6 +81,7 @@ const METRICS = {
     START: 'recording.start',
     DURATION: 'recording.duration',
     FILESIZE: 'recording.filesize',
+    EXTERNAL_LINK: 'external_link.click',
 }
 
 export function sendEvent(e: Event) {
@@ -114,6 +115,13 @@ export function sendEvent(e: Event) {
                 scope, unit: 'second',
             })
             logger.info(e.type, { ...flatten(e.metrics) }, { scope })
+            break
+
+        case 'click_external_link':
+            metrics.count(METRICS.EXTERNAL_LINK, 1, {
+                scope, attributes: { ...flatten(e.tags) },
+            })
+            logger.info(e.type, { ...flatten(e.tags) }, { scope })
             break
     }
 }
