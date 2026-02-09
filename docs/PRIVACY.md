@@ -1,7 +1,5 @@
 # Privacy Policy
 
-[Japanese Version](./PRIVACY_JA.md)
-
 This privacy policy aims to provide you with a understanding of how the website (recorder.appcloud.info) and the Chrome extension (Instant Tab Recorder) treat user data.
 
 We place a high priority on protecting the privacy of our users and will not obtain, retain, or provide data unnecessarily.
@@ -23,6 +21,7 @@ The following information will be obtained and retained.
   - Video resolution (aspect ratio)
   - Video format (codec)
   - Video bit rate (data volume)
+  - Other configuration items
 
 No personally identifiable information is included in the information collected.
 
@@ -44,11 +43,13 @@ We apologize for the inconvenience, but please refer to the privacy policy of ea
 In order to improve the quality of our services, we use the following external services to manage crash reports and monitor usage.
 
 - [Sentry](https://sentry.io/privacy/)
-  - For Chrome extensions, you can opt-out of sending events by going to Option => Privacy Settings => Bug Tracking
+  - For Chrome extensions (<= v1.2.0), you can opt-out of sending events by going to Option => Privacy Settings => Bug Tracking
+  - For Chrome extensions (>= v1.3.0), you can opt-out of sending events by going to Option => Support Tab => Bug Tracking
+    - However, the Feedback feature that uses Sentry cannot be used when opted out
 
 ## Privacy Policy Revisions
 
 This Privacy Policy may be revised from time to time.
 Revised versions will be posted on this site.
 
-Updated: 2024-06-22
+Updated: 2026-02-10
