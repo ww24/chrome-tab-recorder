@@ -116,6 +116,46 @@ chrome.contextMenus.onClicked.addListener(async (info: chrome.contextMenus.OnCli
     }
 })
 
+// Keyboard shortcut handler
+chrome.commands.onCommand.addListener(async (command: string, tab?: chrome.tabs.Tab) => {
+    try {
+        switch (command) {
+            case 'start-recording': {
+                if (!tab) return
+                const recording = await getOrCreateOffscreenDocument()
+                if (recording) return
+                await startRecording(tab)
+                break
+            }
+            case 'stop-recording': {
+                if (!isRecording) return
+                await stopRecording(true)
+                break
+            }
+            case 'toggle-recording': {
+                const recording = await getOrCreateOffscreenDocument()
+                if (recording) {
+                    await stopRecording(true)
+                    return
+                }
+                if (!tab) return
+                await startRecording(tab)
+                break
+            }
+            case 'open-option-page': {
+                await chrome.runtime.openOptionsPage()
+                break
+            }
+        }
+    } catch (e) {
+        const msg: ExceptionMessage = {
+            type: 'exception',
+            data: e,
+        }
+        await chrome.runtime.sendMessage(msg)
+    }
+})
+
 async function startRecording(tab: chrome.tabs.Tab) {
     // Get a MediaStream for the active tab.
     const streamId = await (chrome.tabCapture.getMediaStreamId as typeof getMediaStreamId)({
