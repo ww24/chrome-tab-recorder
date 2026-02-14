@@ -22,13 +22,12 @@ const notRecordingIcon = '/icons/not-recording.png'
 const storage = new ExtensionSyncStorage()
 
 // Track recording state for preview functionality
-let isRecording = false
 let currentScreenSize: Resolution | null = null
 
 const CONTEXT_MENU_ID = 'start-recording'
 
 chrome.runtime.onInstalled.addListener(async () => {
-    await getOrCreateOffscreenDocument()
+    await createOffscreenDocument()
 
     const defaultConfig = new Configuration()
     const remoteConfig = await getRemoteConfiguration()
@@ -59,30 +58,32 @@ chrome.runtime.onInstalled.addListener(async () => {
     })
 })
 
-async function getOrCreateOffscreenDocument(): Promise<boolean> {
+async function getOffscreenDocument(): Promise<chrome.runtime.ExtensionContext | undefined> {
     const existingContexts = await chrome.runtime.getContexts({})
-    const offscreenDocument = existingContexts.find(
-        c => c.contextType === 'OFFSCREEN_DOCUMENT'
-    )
+    return existingContexts.find(c => c.contextType === 'OFFSCREEN_DOCUMENT')
+}
+
+
+async function isRecording(): Promise<boolean> {
+    const offscreenDocument = await getOffscreenDocument()
+    return offscreenDocument?.documentUrl?.endsWith('#recording') ?? false
+}
+
+async function createOffscreenDocument() {
+    const offscreenDocument = await getOffscreenDocument()
+    if (offscreenDocument) return
 
     // If an offscreen document is not already open, create one.
-    let recording = false
-    if (!offscreenDocument) {
-        await chrome.offscreen.createDocument({
-            url: 'offscreen.html',
-            reasons: [chrome.offscreen.Reason.USER_MEDIA],
-            justification: 'Recording from chrome.tabCapture API'
-        })
-    } else {
-        recording = (offscreenDocument.documentUrl?.endsWith('#recording') ?? false)
-    }
-    return recording
+    await chrome.offscreen.createDocument({
+        url: 'offscreen.html',
+        reasons: [chrome.offscreen.Reason.USER_MEDIA],
+        justification: 'Recording from chrome.tabCapture API'
+    })
 }
 
 chrome.action.onClicked.addListener(async (tab: chrome.tabs.Tab) => {
     try {
-        const recording = await getOrCreateOffscreenDocument()
-        if (recording) {
+        if (await isRecording()) {
             await stopRecording(true)
             return
         }
@@ -101,8 +102,7 @@ chrome.contextMenus.onClicked.addListener(async (info: chrome.contextMenus.OnCli
     if (info.menuItemId !== CONTEXT_MENU_ID || !tab) return
 
     try {
-        const recording = await getOrCreateOffscreenDocument()
-        if (recording) {
+        if (await isRecording()) {
             await stopRecording(true)
             return
         }
@@ -122,19 +122,17 @@ chrome.commands.onCommand.addListener(async (command: string, tab?: chrome.tabs.
         switch (command) {
             case 'start-recording': {
                 if (!tab) return
-                const recording = await getOrCreateOffscreenDocument()
-                if (recording) return
+                if (await isRecording()) return
                 await startRecording(tab)
                 break
             }
             case 'stop-recording': {
-                if (!isRecording) return
+                if (!(await isRecording())) return
                 await stopRecording(true)
                 break
             }
             case 'toggle-recording': {
-                const recording = await getOrCreateOffscreenDocument()
-                if (recording) {
+                if (await isRecording()) {
                     await stopRecording(true)
                     return
                 }
@@ -157,6 +155,8 @@ chrome.commands.onCommand.addListener(async (command: string, tab?: chrome.tabs.
 })
 
 async function startRecording(tab: chrome.tabs.Tab) {
+    await createOffscreenDocument()
+
     // Get a MediaStream for the active tab.
     const streamId = await (chrome.tabCapture.getMediaStreamId as typeof getMediaStreamId)({
         targetTabId: tab.id
@@ -176,7 +176,6 @@ async function startRecording(tab: chrome.tabs.Tab) {
     await chrome.runtime.sendMessage(msg)
 
     // Update recording state and broadcast to option pages
-    isRecording = true
     await broadcastRecordingState()
 
     // Update context menu title
@@ -193,7 +192,6 @@ async function stopRecording(sendMessage?: boolean) {
     await chrome.action.setIcon({ path: notRecordingIcon })
 
     // Update recording state and broadcast to option pages
-    isRecording = false
     currentScreenSize = null
     await broadcastRecordingState()
 
@@ -208,7 +206,7 @@ async function stopRecording(sendMessage?: boolean) {
 async function updateContextMenuTitle() {
     try {
         await chrome.contextMenus.update(CONTEXT_MENU_ID, {
-            title: isRecording ? 'Stop Recording' : 'Start Recording',
+            title: (await isRecording()) ? 'Stop Recording' : 'Start Recording',
         })
     } catch (e) {
         console.error('Failed to update context menu:', e)
@@ -219,7 +217,7 @@ async function updateContextMenuTitle() {
 async function broadcastRecordingState() {
     const msg: RecordingStateMessage = {
         type: 'recording-state',
-        isRecording,
+        isRecording: await isRecording(),
         screenSize: currentScreenSize ?? undefined,
     }
     try {
