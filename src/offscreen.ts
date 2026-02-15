@@ -198,6 +198,9 @@ async function startRecording(startRecording: StartRecording) {
         const [tabTrack] = tabMedia.getTracks()
         tabTrack?.addEventListener('ended', () => {
             console.debug(`tabTrack.readyState: ${tabTrack.readyState}, tabMedia.active: ${tabMedia.active}`)
+            // Stop the MediaRecorder before removing tracks.
+            // Otherwise, it will get the error "InvalidModificationError: Tracks in MediaStream were removed."
+            recorder?.stop()
             tabMedia.getTracks().forEach(track => tabMedia.removeTrack(track))
             console.debug(`tabMedia.active: ${tabMedia.active}`)
         })
