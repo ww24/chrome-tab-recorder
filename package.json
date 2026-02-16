@@ -33,7 +33,7 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^25.2.3",
     "@types/webpack": "^5.28.5",
-    "@typescript-eslint/eslint-plugin": "^8.31.1",
+    "@typescript-eslint/eslint-plugin": "^8.55.0",
     "copy-webpack-plugin": "^13.0.1",
     "dotenv-webpack": "^8.1.1",
     "eslint": "^9.39.2",
