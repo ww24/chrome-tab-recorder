@@ -20,10 +20,10 @@
   "license": "MIT",
   "dependencies": {
     "@material/web": "^2.4.1",
+    "@mediabunny/flac-encoder": "^1.38.1",
     "@sentry/browser": "^10.38.0",
-    "buffer": "^6.0.3",
     "lit": "^3.3.2",
-    "ts-ebml": "^3.0.2",
+    "mediabunny": "^1.38.1",
     "uuid": "^13.0.0"
   },
   "devDependencies": {

@@ -39,6 +39,7 @@ chrome.runtime.onInstalled.addListener(async () => {
     if (config.userId === '') {
         config.userId = uuidv7()
     }
+    Configuration.migrate(config, remoteConfig as unknown as Record<string, unknown>)
     await storage.set(Configuration.key, config)
     console.debug('config:', config)
 

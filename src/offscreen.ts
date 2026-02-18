@@ -1,4 +1,10 @@
-import { MediaRecorderWebMDurationWorkaround } from './fix_webm_duration'
+import {
+    Output,
+    StreamTarget,
+    MediaStreamVideoTrackSource,
+    MediaStreamAudioTrackSource,
+} from 'mediabunny'
+import { resolveBitrate, createOutputFormat, hasVideo, hasAudio } from './configuration'
 import { Settings } from './element/settings'
 import type {
     Message,
@@ -10,11 +16,9 @@ import type {
     UpdateCropRegionMessage,
 } from './message'
 import { sendEvent, sendException } from './sentry'
-import { MIMEType } from './mime'
+import { containerExtension } from './configuration'
 import { Preview } from './preview'
 import { Crop } from './crop'
-
-const timeslice = 3000 // 3s
 
 const preview = new Preview(async ({ image, width, height }) => {
     // Send preview frame
@@ -59,31 +63,50 @@ chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.M
     return true // asynchronous flag
 })
 
-let recorder: MediaRecorder | undefined
-let _audioContext: AudioContext | undefined
-function getAudioContext(): AudioContext {
-    if (_audioContext == null) {
-        _audioContext = new AudioContext()
+let output: Output | undefined
+let currentMediaTracks: MediaStreamTrack[] = []
+const getAudioContext = (() => {
+    let audioCtx: AudioContext | undefined
+    return (sampleRate: number): AudioContext => {
+        if (audioCtx == null) {
+            audioCtx = sampleRate > 0 ? new AudioContext({ sampleRate }) : new AudioContext()
+        }
+        return audioCtx
     }
-    return _audioContext
-}
+})()
 
 // Cropping and preview state
 let currentVideoTrack: MediaStreamTrack | null = null
 
-function createMixedMediaStream(tabStream: MediaStream, micStream: MediaStream | null, micGain: number): MediaStream {
+function createMixedMediaStream(tabStream: MediaStream, micStream: MediaStream | null, micGain: number, audioSampleRate: number): MediaStream {
+    const audioCtx = getAudioContext(audioSampleRate)
+
     if (!micStream) {
+        // No microphone — if custom sample rate is requested, resample via AudioContext
+        if (audioSampleRate > 0 && tabStream.getAudioTracks().length > 0) {
+            const dest = audioCtx.createMediaStreamDestination()
+            const src = audioCtx.createMediaStreamSource(new MediaStream(tabStream.getAudioTracks()))
+            src.connect(dest)
+
+            const [tabTrack] = tabStream.getTracks()
+            tabTrack?.addEventListener('ended', () => {
+                dest.stream.getAudioTracks().forEach(track => track.stop())
+            })
+
+            return new MediaStream([
+                ...dest.stream.getAudioTracks(),
+                ...tabStream.getVideoTracks(),
+            ])
+        }
         return tabStream
     }
 
-    const mixedOutput = getAudioContext().createMediaStreamDestination()
+    const mixedOutput = audioCtx.createMediaStreamDestination()
 
     // Tab audio (if exists)
     const tabAudioTracks = tabStream.getAudioTracks()
     if (tabAudioTracks.length > 0) {
-        const tabAudioSource = getAudioContext().createMediaStreamSource(
-            new MediaStream(tabAudioTracks)
-        )
+        const tabAudioSource = audioCtx.createMediaStreamSource(new MediaStream(tabAudioTracks))
         tabAudioSource.connect(mixedOutput)
     }
 
@@ -94,8 +117,8 @@ function createMixedMediaStream(tabStream: MediaStream, micStream: MediaStream |
     })
 
     // Microphone audio
-    const micAudioSource = getAudioContext().createMediaStreamSource(micStream)
-    const micGainNode = getAudioContext().createGain()
+    const micAudioSource = audioCtx.createMediaStreamSource(micStream)
+    const micGainNode = audioCtx.createGain()
     micGainNode.gain.value = micGain
     micAudioSource.connect(micGainNode)
     micGainNode.connect(mixedOutput)
@@ -110,7 +133,7 @@ function createMixedMediaStream(tabStream: MediaStream, micStream: MediaStream |
 }
 
 async function startRecording(startRecording: StartRecording) {
-    if (recorder?.state === 'recording') {
+    if (output?.state === 'started') {
         throw new Error('Called startRecording while recording is in progress.')
     }
 
@@ -129,10 +152,6 @@ async function startRecording(startRecording: StartRecording) {
     })
 
     const { videoFormat, recordingSize } = Settings.getRecordingInfo(startRecording.tabSize)
-    if (!MediaRecorder.isTypeSupported(videoFormat.mimeType)) {
-        throw new Error('unsupported MIME type: ' + videoFormat.mimeType)
-    }
-    const mimeType = new MIMEType(videoFormat.mimeType)
 
     // update recording icon
     const msg: UpdateRecordingIconMessage = {
@@ -141,22 +160,29 @@ async function startRecording(startRecording: StartRecording) {
     }
     await chrome.runtime.sendMessage(msg)
 
+    // Prepare output file
     const dirHandle = await navigator.storage.getDirectory()
-    const fileBaseName = `video-${Date.now()}`
-    const backupFileName = `${fileBaseName}.bk${mimeType.extension()}`
-    const regularFileName = `${fileBaseName}${mimeType.extension()}`
-    const recordFileName = mimeType.is(MIMEType.webm) ? backupFileName : regularFileName
-    const recordFileHandle = await dirHandle.getFileHandle(recordFileName, { create: true })
-    const writableStream = await recordFileHandle.createWritable()
+    const ext = containerExtension(videoFormat.container)
+    const fileName = `video-${Date.now()}${ext}`
+    const fileHandle = await dirHandle.getFileHandle(fileName, { create: true })
+    const writableStream = await fileHandle.createWritable()
 
+    // Create output with StreamTarget
+    output = new Output({
+        format: createOutputFormat(videoFormat.container),
+        target: new StreamTarget(writableStream, { chunked: true }),
+    })
+
+    // Capture tab media
     const tabMedia = await navigator.mediaDevices.getUserMedia({
-        audio: videoFormat.recordingMode === 'video-only' ? undefined : {
+        audio: hasAudio(videoFormat.recordingMode) ? {
             mandatory: {
                 chromeMediaSource: 'tab',
                 chromeMediaSourceId: startRecording.streamId,
-            }
-        },
-        video: videoFormat.recordingMode === 'audio-only' ? undefined : {
+                maxSampleRate: videoFormat.audioSampleRate,
+            },
+        } : undefined,
+        video: hasVideo(videoFormat.recordingMode) ? {
             mandatory: {
                 chromeMediaSource: 'tab',
                 chromeMediaSourceId: startRecording.streamId,
@@ -164,7 +190,7 @@ async function startRecording(startRecording: StartRecording) {
                 maxHeight: recordingSize.height,
                 maxFrameRate: videoFormat.frameRate,
             },
-        }
+        } : undefined
     })
 
     // Get microphone stream if enabled
@@ -178,6 +204,7 @@ async function startRecording(startRecording: StartRecording) {
                     echoCancellation: true,
                     noiseSuppression: true,
                     autoGainControl: false,
+                    sampleRate: videoFormat.audioSampleRate,
                     ...(microphone.deviceId && microphone.deviceId !== 'default'
                         ? { deviceId: { exact: microphone.deviceId } }
                         : {})
@@ -190,21 +217,7 @@ async function startRecording(startRecording: StartRecording) {
     }
 
     // Mix audio streams if microphone is available
-    let media = createMixedMediaStream(tabMedia, micStream, microphone.gain)
-
-    // workaround: When a MediaStream from getUserMedia has only one audio track, the stream does not become
-    // inactive even after the MediaStreamTrack ends. We manually remove the track to make the stream inactive.
-    if (videoFormat.recordingMode === 'audio-only' && !microphone.enabled) {
-        const [tabTrack] = tabMedia.getTracks()
-        tabTrack?.addEventListener('ended', () => {
-            console.debug(`tabTrack.readyState: ${tabTrack.readyState}, tabMedia.active: ${tabMedia.active}`)
-            // Stop the MediaRecorder before removing tracks.
-            // Otherwise, it will get the error "InvalidModificationError: Tracks in MediaStream were removed."
-            recorder?.stop()
-            tabMedia.getTracks().forEach(track => tabMedia.removeTrack(track))
-            console.debug(`tabMedia.active: ${tabMedia.active}`)
-        })
-    }
+    let media = createMixedMediaStream(tabMedia, micStream, microphone.gain, videoFormat.audioSampleRate)
 
     // Store video track for preview
     const videoTracks = tabMedia.getVideoTracks()
@@ -214,7 +227,7 @@ async function startRecording(startRecording: StartRecording) {
 
     // Apply cropping if enabled (video modes only)
     const croppingConfig = Settings.getConfiguration().cropping
-    const croppingEnabled = croppingConfig.enabled && videoFormat.recordingMode !== 'audio-only'
+    const croppingEnabled = croppingConfig.enabled && hasVideo(videoFormat.recordingMode)
     if (croppingEnabled) {
         media = crop.getCroppedStream(media, croppingConfig.region)
     }
@@ -222,133 +235,149 @@ async function startRecording(startRecording: StartRecording) {
     const muteRecordingTab = Settings.getConfiguration().muteRecordingTab
     if (!muteRecordingTab && tabMedia.getAudioTracks().length > 0) {
         // Continue to play the captured audio to the user.
-        const source = getAudioContext().createMediaStreamSource(tabMedia)
-        source.connect(getAudioContext().destination)
+        const playbackCtx = getAudioContext(videoFormat.audioSampleRate)
+        const source = playbackCtx.createMediaStreamSource(tabMedia)
+        source.connect(playbackCtx.destination)
     }
 
-    // Start recording.
-    const hasAudio = videoFormat.recordingMode !== 'video-only' || (microphone.enabled && micStream != null)
-    recorder = new MediaRecorder(media, {
-        mimeType: videoFormat.mimeType,
-        audioBitsPerSecond: hasAudio ? videoFormat.audioBitrate : undefined,
-        videoBitsPerSecond: videoFormat.recordingMode === 'audio-only' ? undefined : videoFormat.videoBitrate,
-    })
-
-    let fixWebM: MediaRecorderWebMDurationWorkaround | undefined
-    if (mimeType.is(MIMEType.webm)) {
-        fixWebM = new MediaRecorderWebMDurationWorkaround()
-    }
-    recorder.addEventListener('dataavailable', async event => {
-        try {
-            await writableStream.write(event.data)
-            if (fixWebM != null) {
-                await fixWebM.write(event.data)
-            }
-        } catch (e) {
-            sendException(e, { exceptionSource: 'recorder.dataavailable' })
-            console.error(e)
+    // Add video track to output
+    if (hasVideo(videoFormat.recordingMode)) {
+        const mediaVideoTrack = media.getVideoTracks()[0]
+        if (mediaVideoTrack) {
+            const videoSource = new MediaStreamVideoTrackSource(
+                mediaVideoTrack,
+                {
+                    codec: videoFormat.videoCodec,
+                    bitrate: resolveBitrate(videoFormat.videoBitratePreset, videoFormat.videoBitrate),
+                    sizeChangeBehavior: 'passThrough',
+                },
+            )
+            output.addVideoTrack(videoSource)
+            videoSource.errorPromise.catch(e => {
+                sendException(e, { exceptionSource: 'videoSource.error' })
+                console.error('Video source error:', e)
+            })
         }
-    })
+    }
+
+    // Add audio track to output
+    const hasAudioTrack = hasAudio(videoFormat.recordingMode) || (microphone.enabled && micStream != null)
+    if (hasAudioTrack) {
+        const mediaAudioTrack = media.getAudioTracks()[0]
+        if (mediaAudioTrack) {
+            const audioSource = new MediaStreamAudioTrackSource(
+                mediaAudioTrack,
+                {
+                    codec: videoFormat.audioCodec,
+                    bitrate: resolveBitrate(videoFormat.audioBitratePreset, videoFormat.audioBitrate),
+                },
+            )
+            output.addAudioTrack(audioSource)
+            audioSource.errorPromise.catch(e => {
+                sendException(e, { exceptionSource: 'audioSource.error' })
+                console.error('Audio source error:', e)
+            })
+        }
+    }
+
+    // Collect all media tracks for cleanup
+    currentMediaTracks = [
+        ...tabMedia.getTracks(),
+        ...(micStream?.getTracks() ?? []),
+    ]
+
+    // Start output
     const startTime = Date.now()
-    recorder.addEventListener('stop', async () => {
-        const duration = Date.now() - startTime
-        console.info(`stopped: duration=${duration / 1000}s`)
+    await output.start()
 
-        if (media.active) {
-            recorder?.start(timeslice)
-            sendEvent({
-                type: 'unexpected_stop',
-                metrics: {
-                    recording: {
-                        durationSec: duration / 1000,
-                    },
-                },
-            })
-            console.warn('recorder: unexpected stop, retrying')
-            return
-        }
+    const outputMimeType = await output.getMimeType()
+    console.info('container:', videoFormat.container)
+    console.info('mimeType:', outputMimeType)
+    console.info('videoCodec:', videoFormat.videoCodec)
+    console.info('audioCodec:', videoFormat.audioCodec)
+    console.info('videoBitRate:', videoFormat.videoBitrate)
+    console.info('audioBitRate:', videoFormat.audioBitrate)
+    console.info('audioSampleRate:', videoFormat.audioSampleRate)
+
+    // Listen for tab track ending to auto-finalize
+    const [tabTrack] = tabMedia.getTracks()
+    tabTrack?.addEventListener('ended', async () => {
+        console.debug('tabTrack ended, finalizing recording')
         try {
-            await writableStream.close()
-            const file = await recordFileHandle.getFile()
-            let filesize = file.size
-
-            if (fixWebM != null) {
-                // workaround: fix video duration
-                fixWebM.close()
-                const fixWebMDuration = fixWebM.duration()
-                console.debug(`fixWebM: duration=${fixWebMDuration / 1000}s`)
-
-                const fixedFileHandle = await dirHandle.getFileHandle(regularFileName, { create: true })
-                const fixedWritableStream = await fixedFileHandle.createWritable()
-                const fixed = fixWebM.fixMetadata(file)
-
-                try {
-                    await fixed.stream().pipeTo(fixedWritableStream)
-                    if (fixed.size >= file.size && Math.abs(duration - fixWebMDuration) < 5000) {
-                        await dirHandle.removeEntry(recordFileName)
-                    }
-                    filesize = fixed.size
-                } catch (e) {
-                    await fixedWritableStream.close()
-                    throw e
-                } finally {
-                    fixWebM = undefined
-                }
-            }
-
-            sendEvent({
-                type: 'stop_recording',
-                metrics: {
-                    recording: {
-                        durationSec: duration / 1000,
-                        filesize,
-                    },
-                },
-            })
+            await finalizeRecording(startTime, fileHandle)
         } catch (e) {
-            sendException(e, { exceptionSource: 'recorder.stop' })
+            sendException(e, { exceptionSource: 'tabTrack.ended' })
             console.error(e)
-        } finally {
-            recorder = undefined
-            window.location.hash = ''
-            const msg: CompleteRecordingMessage = {
-                type: 'complete-recording',
-            }
-            await chrome.runtime.sendMessage(msg)
         }
     })
-    recorder.addEventListener('error', e => {
-        sendException(e, { exceptionSource: 'recorder.error' })
-        console.error('recorder error:', e)
-    })
-    recorder.start(timeslice)
-
-    console.info('mimeType:', recorder.mimeType)
-    console.info('videoBitRate:', recorder.videoBitsPerSecond)
-    console.info('audioBitRate:', recorder.audioBitsPerSecond)
 
     // ref. https://github.com/GoogleChrome/chrome-extensions-samples/blob/137cf71b9b4d631191cedbf96343d5b6a51c9a74/functional-samples/sample.tabcapture-recorder/offscreen.js#L71-L77
     window.location.hash = 'recording'
 }
 
+async function finalizeRecording(startTime: number, fileHandle: FileSystemFileHandle) {
+    if (output?.state !== 'started') return
+
+    try {
+        await output.finalize()
+
+        const file = await fileHandle.getFile()
+        const duration = Date.now() - startTime
+        console.info(`stopped: duration=${duration / 1000}s`)
+
+        sendEvent({
+            type: 'stop_recording',
+            metrics: {
+                recording: {
+                    durationSec: duration / 1000,
+                    filesize: file.size,
+                },
+            },
+        })
+    } catch (e) {
+        sendException(e, { exceptionSource: 'output.finalize' })
+        console.error(e)
+    } finally {
+        output = undefined
+        // Stopping the tracks makes sure the recording icon in the tab is removed.
+        currentMediaTracks.forEach(t => t.stop())
+        currentMediaTracks = []
+        currentVideoTrack = null
+        window.location.hash = ''
+        const msg: CompleteRecordingMessage = {
+            type: 'complete-recording',
+        }
+        await chrome.runtime.sendMessage(msg)
+    }
+}
+
 async function stopRecording() {
-    if (recorder == null) {
+    if (output == null) {
         window.location.hash = ''
         return
     }
 
-    // Stop preview, cropping and recorder
+    // Stop preview
     preview.stop()
-    recorder.stop()
 
-    // Stopping the tracks makes sure the recording icon in the tab is removed.
-    recorder.stream.getTracks().forEach(t => t.stop())
-
-    // Clean up cropping resources
-    currentVideoTrack = null
-
-    // Update current state in URL
-    window.location.hash = ''
+    // Finalize the output (this closes the file stream)
+    try {
+        await output.finalize()
+    } catch (e) {
+        sendException(e, { exceptionSource: 'output.finalize.stop' })
+        console.error(e)
+    } finally {
+        output = undefined
+        // Stopping the tracks makes sure the recording icon in the tab is removed.
+        currentMediaTracks.forEach(t => t.stop())
+        currentMediaTracks = []
+        currentVideoTrack = null
+        window.location.hash = ''
+        const msg: CompleteRecordingMessage = {
+            type: 'complete-recording',
+        }
+        await chrome.runtime.sendMessage(msg)
+    }
 }
 
 // Preview control handler
