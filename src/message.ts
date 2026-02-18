@@ -4,8 +4,8 @@ export type Message =
     | ExceptionMessage
     | StartRecordingMessage
     | UpdateRecordingIconMessage
+    | TabTrackEndedMessage
     | StopRecordingMessage
-    | CompleteRecordingMessage
     | ResizeWindowMessage
     | FetchConfigMessage
     | SaveConfigLocalMessage
@@ -36,12 +36,12 @@ export interface UpdateRecordingIconMessage {
     icon: 'video-and-audio' | 'audio-only' | 'video-only';
 }
 
-export interface StopRecordingMessage {
-    type: 'stop-recording';
+export interface TabTrackEndedMessage {
+    type: 'tab-track-ended';
 }
 
-export interface CompleteRecordingMessage {
-    type: 'complete-recording';
+export interface StopRecordingMessage {
+    type: 'stop-recording';
 }
 
 export interface ResizeWindowMessage {

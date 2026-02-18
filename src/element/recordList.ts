@@ -113,14 +113,16 @@ export class RecordList extends LitElement {
     private handleMessage = async (message: Message) => {
         try {
             switch (message.type) {
-                case 'complete-recording':
+                case 'recording-state':
+                    // Update UI when recording completed
+                    if (message.isRecording) return
                     await this.updateRecord()
                     await this.updateEstimate()
                     return
             }
         } catch (e) {
-            sendException(e, { exceptionSource: 'option.recordList.onMessage' })
             console.error(e)
+            sendException(e, { exceptionSource: 'option.recordList.onMessage' })
         }
     }
 

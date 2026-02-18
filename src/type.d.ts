@@ -22,9 +22,11 @@ declare global {
         maxWidth?: number;
         maxHeight?: number;
         maxFrameRate?: number;
+        maxSampleRate?: number;
         minWidth?: number;
         minHeight?: number;
         minFrameRate?: number;
+        minSampleRate?: number;
     }
     // Extend ImageCapture with grabFrame method
     interface ImageCapture {

@@ -39,6 +39,7 @@ chrome.runtime.onInstalled.addListener(async () => {
     if (config.userId === '') {
         config.userId = uuidv7()
     }
+    Configuration.migrate(config, remoteConfig as unknown as Record<string, unknown>)
     await storage.set(Configuration.key, config)
     console.debug('config:', config)
 
@@ -81,14 +82,16 @@ async function createOffscreenDocument() {
     })
 }
 
+// Action icon handler
 chrome.action.onClicked.addListener(async (tab: chrome.tabs.Tab) => {
     try {
         if (await isRecording()) {
-            await stopRecording(true)
+            await stopRecording()
             return
         }
         await startRecording(tab)
     } catch (e) {
+        console.error(e)
         const msg: ExceptionMessage = {
             type: 'exception',
             data: e,
@@ -103,11 +106,12 @@ chrome.contextMenus.onClicked.addListener(async (info: chrome.contextMenus.OnCli
 
     try {
         if (await isRecording()) {
-            await stopRecording(true)
+            await stopRecording()
             return
         }
         await startRecording(tab)
     } catch (e) {
+        console.error(e)
         const msg: ExceptionMessage = {
             type: 'exception',
             data: e,
@@ -128,12 +132,12 @@ chrome.commands.onCommand.addListener(async (command: string, tab?: chrome.tabs.
             }
             case 'stop-recording': {
                 if (!(await isRecording())) return
-                await stopRecording(true)
+                await stopRecording()
                 break
             }
             case 'toggle-recording': {
                 if (await isRecording()) {
-                    await stopRecording(true)
+                    await stopRecording()
                     return
                 }
                 if (!tab) return
@@ -146,6 +150,7 @@ chrome.commands.onCommand.addListener(async (command: string, tab?: chrome.tabs.
             }
         }
     } catch (e) {
+        console.error(e)
         const msg: ExceptionMessage = {
             type: 'exception',
             data: e,
@@ -182,13 +187,14 @@ async function startRecording(tab: chrome.tabs.Tab) {
     await updateContextMenuTitle()
 }
 
-async function stopRecording(sendMessage?: boolean) {
-    if (sendMessage) {
-        const msg: StopRecordingMessage = {
-            type: 'stop-recording',
-        }
-        await chrome.runtime.sendMessage(msg)
+async function stopRecording() {
+    // Send stop-recording message to offscreen document
+    const msg: StopRecordingMessage = {
+        type: 'stop-recording',
     }
+    await chrome.runtime.sendMessage(msg)
+
+    // Update action icon
     await chrome.action.setIcon({ path: notRecordingIcon })
 
     // Update recording state and broadcast to option pages
@@ -198,8 +204,12 @@ async function stopRecording(sendMessage?: boolean) {
     // Update context menu title
     await updateContextMenuTitle()
 
+    // Open option page if need
     const config = await getConfiguration()
     if (config.openOptionPage) await chrome.runtime.openOptionsPage()
+
+    // Close offscreen document
+    await chrome.offscreen.closeDocument()
 }
 
 // Update context menu title based on recording state
@@ -247,9 +257,17 @@ chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.M
                     }
                     await chrome.action.setIcon({ path })
                     return
-                case 'complete-recording':
-                    await stopRecording()
-                    await chrome.offscreen.closeDocument()
+                case 'tab-track-ended':
+                    // Fire-and-forget: stopRecording closes the Offscreen Document,
+                    // so it must not be awaited inside the message listener.
+                    stopRecording().catch(async e => {
+                        console.error(e)
+                        const msg: ExceptionMessage = {
+                            type: 'exception',
+                            data: e,
+                        }
+                        await chrome.runtime.sendMessage(msg)
+                    })
                     return
                 case 'save-config-sync':
                     await storage.set(Configuration.key, message.data)
@@ -268,6 +286,7 @@ chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.M
                     return
             }
         } catch (e) {
+            console.error(e)
             const msg: ExceptionMessage = {
                 type: 'exception',
                 data: e,
