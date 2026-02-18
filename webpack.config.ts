@@ -22,9 +22,6 @@ const config: webpack.Configuration = {
     },
     resolve: {
         extensions: ['.ts', '.js'],
-        alias: {
-            ebml: 'ebml/lib/ebml.esm.js',
-        }
     },
     output: {
         path: path.join(__dirname, 'extension/dist'),

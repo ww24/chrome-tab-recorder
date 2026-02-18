@@ -13,7 +13,8 @@ import { MdSwitch } from '@material/web/switch/switch'
 import { MdSlider } from '@material/web/slider/slider'
 import { MdDialog } from '@material/web/dialog/dialog'
 import type { ResizeWindowMessage, SaveConfigSyncMessage } from '../message'
-import { Configuration, Resolution, RecordingInfo, isVideoRecordingMode } from '../configuration'
+import { Configuration, Resolution, RecordingInfo, isVideoRecordingMode, isContainerFormat, isVideoCodec, isAudioCodec, containerCodecs, migrateFromMimeType, ALL_VIDEO_CODECS, ALL_AUDIO_CODECS } from '../configuration'
+import type { ContainerFormat, VideoCodecType, AudioCodecType } from '../configuration'
 import { WebLocalStorage } from '../storage'
 import type { FetchConfigMessage } from '../message'
 import { deepMerge, formatNum } from './util'
@@ -25,8 +26,19 @@ export class Settings extends LitElement {
 
     public static getConfiguration(): Configuration {
         const defaultConfig = new Configuration()
-        const config = Settings.storage.get(Configuration.key) as Configuration
-        return deepMerge(defaultConfig, config)
+        const stored = Settings.storage.get(Configuration.key) as Configuration & { videoFormat?: { mimeType?: string } }
+        const config = deepMerge(defaultConfig, stored)
+        // Migrate legacy mimeType string to container/codec fields
+        if (stored?.videoFormat && 'mimeType' in stored.videoFormat && stored.videoFormat.mimeType && !stored.videoFormat.container) {
+            const migrated = migrateFromMimeType(stored.videoFormat.mimeType as string)
+            config.videoFormat.container = migrated.container
+            config.videoFormat.videoCodec = migrated.videoCodec
+            config.videoFormat.audioCodec = migrated.audioCodec
+            // Remove legacy field and persist
+            delete (config.videoFormat as unknown as Record<string, unknown>)['mimeType']
+            Settings.setConfiguration(config)
+        }
+        return config
     }
 
     public static readonly CONFIG_CHANGED_EVENT = 'extension-config-changed'
@@ -70,8 +82,9 @@ export class Settings extends LitElement {
     .video-format-input {
         width: 280px;
     }
-    .mime-type-input {
-        width: 564px;
+    .codec-select {
+        width: 280px;
+        margin-bottom: 1em;
     }
     `
 
@@ -113,7 +126,28 @@ export class Settings extends LitElement {
         <md-filled-text-field class="video-format-input" label="audio bitrate" type="number" min="1" suffix-text="Kbps" ?disabled=${live(this.config.videoFormat.recordingMode === 'video-only')} .value=${live(this.config.videoFormat.audioBitrate / 1024)} @input=${this.updateProp('videoFormat', 'audioBitrate')}></md-filled-text-field>
         <md-filled-text-field class="video-format-input" label="video bitrate" type="number" min="0" step="0.1" supporting-text="0 means auto (number of pixels * 8 bps)" suffix-text="Mbps" ?disabled=${live(this.config.videoFormat.recordingMode === 'audio-only')} .value=${live(this.config.videoFormat.videoBitrate / 1024 / 1024)} @input=${this.updateProp('videoFormat', 'videoBitrate')}></md-filled-text-field>
         <md-filled-text-field class="video-format-input" label="frame rate" type="number" min="1" step="0.001" supporting-text="(experimental parameter)" suffix-text="fps" ?disabled=${live(this.config.videoFormat.recordingMode === 'audio-only')} .value=${live(this.config.videoFormat.frameRate)} @input=${this.updateProp('videoFormat', 'frameRate')}></md-filled-text-field>
-        <md-filled-text-field class="mime-type-input" label="MIME type" type="text" .value=${live(this.config.videoFormat.mimeType)} @input=${this.updateProp('videoFormat', 'mimeType')}></md-filled-text-field>
+        <md-filled-select class="codec-select" label="container" .value=${live(this.config.videoFormat.container)} @input=${this.updateProp('videoFormat', 'container')}>
+            <md-select-option value="webm">
+                <div slot="headline">WebM</div>
+            </md-select-option>
+            <md-select-option value="mp4">
+                <div slot="headline">MP4</div>
+            </md-select-option>
+        </md-filled-select>
+        <md-filled-select class="codec-select" label="video codec" .value=${live(this.config.videoFormat.videoCodec)} ?disabled=${live(this.config.videoFormat.recordingMode === 'audio-only')} @input=${this.updateProp('videoFormat', 'videoCodec')}>
+            ${ALL_VIDEO_CODECS.map(c => html`
+                <md-select-option value=${c} ?disabled=${!this.availableVideoCodecs.includes(c)}>
+                    <div slot="headline">${this.codecDisplayName(c)}</div>
+                </md-select-option>
+            `)}
+        </md-filled-select>
+        <md-filled-select class="codec-select" label="audio codec" .value=${live(this.config.videoFormat.audioCodec)} ?disabled=${live(this.config.videoFormat.recordingMode === 'video-only')} @input=${this.updateProp('videoFormat', 'audioCodec')}>
+            ${ALL_AUDIO_CODECS.map(c => html`
+                <md-select-option value=${c} ?disabled=${!this.availableAudioCodecs.includes(c)}>
+                    <div slot="headline">${this.codecDisplayName(c)}</div>
+                </md-select-option>
+            `)}
+        </md-filled-select>
         <md-filled-select label="recording mode" .value=${live(this.config.videoFormat.recordingMode)} @input=${this.updateProp('videoFormat', 'recordingMode')}>
             <md-select-option value="video-and-audio">
                 <div slot="headline">Video and Audio</div>
@@ -233,15 +267,18 @@ export class Settings extends LitElement {
                         case 'frameRate':
                             this.config[key1][key2] = Number.parseFloat(e.target.value)
                             break
-                        case 'mimeType':
-                            if (!MediaRecorder.isTypeSupported(e.target.value)) {
-                                e.target.setCustomValidity('unsupported mimeType')
-                                e.target.reportValidity()
-                                console.debug('unsupported mimeType:', e.target.value)
-                                return
-                            }
-                            e.target.setCustomValidity('')
-                            e.target.reportValidity()
+                        case 'container':
+                            if (!isContainerFormat(e.target.value)) return
+                            this.config[key1][key2] = e.target.value
+                            // Ensure current codecs are valid for the new container
+                            this.ensureValidCodecs(e.target.value)
+                            break
+                        case 'videoCodec':
+                            if (!isVideoCodec(e.target.value)) return
+                            this.config[key1][key2] = e.target.value
+                            break
+                        case 'audioCodec':
+                            if (!isAudioCodec(e.target.value)) return
                             this.config[key1][key2] = e.target.value
                             break
                         case 'recordingMode':
@@ -283,6 +320,38 @@ export class Settings extends LitElement {
             Settings.setConfiguration(this.config)
             await Settings.syncConfiguration(this.config)
         }
+    }
+
+    private get availableVideoCodecs(): VideoCodecType[] {
+        return containerCodecs[this.config.videoFormat.container].video
+    }
+
+    private get availableAudioCodecs(): AudioCodecType[] {
+        return containerCodecs[this.config.videoFormat.container].audio
+    }
+
+    private ensureValidCodecs(container: ContainerFormat) {
+        const available = containerCodecs[container]
+        if (!available.video.includes(this.config.videoFormat.videoCodec)) {
+            this.config.videoFormat.videoCodec = available.video[0]
+        }
+        if (!available.audio.includes(this.config.videoFormat.audioCodec)) {
+            this.config.videoFormat.audioCodec = available.audio[0]
+        }
+    }
+
+    private codecDisplayName(codec: string): string {
+        const names: Record<string, string> = {
+            vp8: 'VP8',
+            vp9: 'VP9',
+            av1: 'AV1',
+            avc: 'H.264 (AVC)',
+            hevc: 'H.265 (HEVC)',
+            opus: 'Opus',
+            aac: 'AAC',
+            vorbis: 'Vorbis',
+        }
+        return names[codec] ?? codec
     }
 
     private async updateMicPermission() {
