@@ -12,12 +12,77 @@ export interface CroppingConfig {
     enabled: boolean;   // Cropping feature ON/OFF
     region: CropRegion; // Cropping region
 }
+const containerFormats = ['webm', 'mp4'] as const
+export type ContainerFormat = (typeof containerFormats)[number]
+export function isContainerFormat(v: unknown): v is ContainerFormat {
+    return containerFormats.some(f => v === f)
+}
+
+export const ALL_VIDEO_CODECS = ['vp8', 'vp9', 'av1', 'avc', 'hevc'] as const
+export type VideoCodecType = (typeof ALL_VIDEO_CODECS)[number]
+const videoCodecs = ALL_VIDEO_CODECS
+export function isVideoCodec(v: unknown): v is VideoCodecType {
+    return videoCodecs.some(c => v === c)
+}
+
+export const ALL_AUDIO_CODECS = ['opus', 'aac', 'vorbis'] as const
+export type AudioCodecType = (typeof ALL_AUDIO_CODECS)[number]
+const audioCodecs = ALL_AUDIO_CODECS
+export function isAudioCodec(v: unknown): v is AudioCodecType {
+    return audioCodecs.some(c => v === c)
+}
+
+/** Available codecs per container format */
+export const containerCodecs: Record<ContainerFormat, { video: VideoCodecType[], audio: AudioCodecType[] }> = {
+    webm: { video: ['vp8', 'vp9', 'av1'], audio: ['opus', 'vorbis'] },
+    mp4: { video: ['avc', 'hevc', 'vp9', 'av1'], audio: ['aac', 'opus'] },
+}
+
+/** Container format to file extension */
+export function containerExtension(container: ContainerFormat): string {
+    switch (container) {
+        case 'webm': return '.webm'
+        case 'mp4': return '.mp4'
+    }
+}
+
 export interface VideoFormat {
     audioBitrate: number; // bps
     videoBitrate: number; // bps
     frameRate: number; // fps
-    mimeType: string;
+    container: ContainerFormat;
+    videoCodec: VideoCodecType;
+    audioCodec: AudioCodecType;
     recordingMode: VideoRecordingMode;
+}
+
+/**
+ * Migrate legacy configuration that used mimeType string
+ */
+export function migrateFromMimeType(mimeType: string): { container: ContainerFormat, videoCodec: VideoCodecType, audioCodec: AudioCodecType } {
+    const base = mimeType.split(';')[0]
+    const codecStr = mimeType.match(/codecs="?([^"]+)"?/)?.[1] ?? ''
+    const codecs = codecStr.split(',').map(c => c.trim().toLowerCase())
+
+    const container: ContainerFormat = base === 'video/mp4' ? 'mp4' : 'webm'
+
+    let videoCodec: VideoCodecType = container === 'mp4' ? 'avc' : 'vp9'
+    for (const c of codecs) {
+        if (c === 'vp9') { videoCodec = 'vp9'; break }
+        if (c === 'vp8') { videoCodec = 'vp8'; break }
+        if (c === 'av1' || c.startsWith('av01')) { videoCodec = 'av1'; break }
+        if (c.startsWith('avc') || c.startsWith('h264')) { videoCodec = 'avc'; break }
+        if (c.startsWith('hev') || c.startsWith('hvc') || c.startsWith('h265')) { videoCodec = 'hevc'; break }
+    }
+
+    let audioCodec: AudioCodecType = container === 'mp4' ? 'aac' : 'opus'
+    for (const c of codecs) {
+        if (c === 'opus') { audioCodec = 'opus'; break }
+        if (c === 'vorbis') { audioCodec = 'vorbis'; break }
+        if (c.startsWith('mp4a') || c === 'aac') { audioCodec = 'aac'; break }
+    }
+
+    return { container, videoCodec, audioCodec }
 }
 export interface ScreenRecordingSize extends Resolution {
     auto: boolean;
@@ -79,7 +144,9 @@ export class Configuration {
             audioBitrate: 256 * 1024, // 256Kbps
             videoBitrate: 0, // auto
             frameRate: 30, // 30fps
-            mimeType: 'video/webm;codecs="vp9,opus"',
+            container: 'webm',
+            videoCodec: 'vp9',
+            audioCodec: 'opus',
             recordingMode: 'video-and-audio',
         }
         this.enableBugTracking = true
