@@ -316,6 +316,46 @@ const recordingStorage = new OPFSStorage()
 const API_PREFIX = '/api/'
 
 /**
+ * Parse Range header and return resolved byte range.
+ * Supports single byte-range only (e.g. bytes=0-1023, bytes=500-, bytes=-500).
+ * Returns null for invalid, unsatisfiable, or multi-range requests.
+ */
+function parseRangeHeader(rangeHeader: string, fileSize: number): { start: number; end: number } | null {
+    const match = rangeHeader.match(/^bytes=(\d+)?-(\d+)?$/)
+    if (!match) return null
+
+    const [, startStr, endStr] = match
+    let start: number
+    let end: number
+
+    if (startStr != null && endStr != null) {
+        // bytes=start-end
+        start = parseInt(startStr, 10)
+        end = parseInt(endStr, 10)
+    } else if (startStr != null) {
+        // bytes=start-
+        start = parseInt(startStr, 10)
+        end = fileSize - 1
+    } else if (endStr != null) {
+        // bytes=-suffix (last N bytes)
+        const suffix = parseInt(endStr, 10)
+        if (suffix === 0) return null
+        start = Math.max(0, fileSize - suffix)
+        end = fileSize - 1
+    } else {
+        return null
+    }
+
+    // Validate range
+    if (start > end || start < 0 || start >= fileSize) return null
+
+    // Clamp end to file size
+    if (end >= fileSize) end = fileSize - 1
+
+    return { start, end }
+}
+
+/**
  * Parse API path and extract route information
  */
 function parseApiPath(pathname: string): { route: string; name?: string } | null {
@@ -416,13 +456,38 @@ async function handleApiRequest(request: Request): Promise<Response> {
                 const mimeType = getMimeTypeFromExtension(name)
                 const headers: Record<string, string> = {
                     'Content-Type': mimeType,
-                    'Content-Length': file.size.toString(),
+                    'Accept-Ranges': 'bytes',
                 }
                 // Add Content-Disposition header only when download=true is specified
                 if (url.searchParams.get('download') === 'true') {
                     const encodedName = encodeURIComponent(name).replace(/'/g, '%27')
                     headers['Content-Disposition'] = `attachment; filename*=UTF-8''${encodedName}`
                 }
+
+                // Handle Range requests
+                const rangeHeader = request.headers.get('Range')
+                if (rangeHeader) {
+                    const range = parseRangeHeader(rangeHeader, file.size)
+                    if (!range) {
+                        return new Response(null, {
+                            status: 416,
+                            headers: {
+                                'Content-Range': `bytes */${file.size}`,
+                                'Accept-Ranges': 'bytes',
+                            },
+                        })
+                    }
+                    const { start, end } = range
+                    const contentLength = end - start + 1
+                    headers['Content-Range'] = `bytes ${start}-${end}/${file.size}`
+                    headers['Content-Length'] = contentLength.toString()
+                    return new Response(file.slice(start, end + 1), {
+                        status: 206,
+                        headers,
+                    })
+                }
+
+                headers['Content-Length'] = file.size.toString()
                 return new Response(file, {
                     status: 200,
                     headers,
