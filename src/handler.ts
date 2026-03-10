@@ -157,6 +157,7 @@ export async function handleApiRequest(request: Request, storage: RecordingStora
                             return new Response(null, {
                                 status: 416,
                                 headers: {
+                                    ...headers,
                                     'Content-Range': `bytes */${file.size}`,
                                 },
                             })
