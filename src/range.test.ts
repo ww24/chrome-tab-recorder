@@ -268,12 +268,20 @@ describe('buildMultipartByteRangesBody', () => {
         const boundary = 'b'
         const body = await buildMultipartByteRangesBody(file, ranges, 'text/plain', boundary)
 
-        // Verify the body length matches what we'd expect
-        expect(body.byteLength).toBeGreaterThan(0)
+        // Compute expected length from known multipart structure:
+        // Each part: "--b\r\nContent-Type: text/plain\r\nContent-Range: bytes X-X/10\r\n\r\n" + <1 byte> + "\r\n"
+        // Closing:   "--b--\r\n"
+        const partHeader = (start: number, end: number) =>
+            `--${boundary}\r\nContent-Type: text/plain\r\nContent-Range: bytes ${start}-${end}/${file.size}\r\n\r\n`
+        const partTrailer = '\r\n'
+        const closing = `--${boundary}--\r\n`
+        const expectedLength =
+            partHeader(0, 0).length + 1 + partTrailer.length +
+            partHeader(9, 9).length + 1 + partTrailer.length +
+            closing.length
+        expect(body.byteLength).toBe(expectedLength)
 
         const text = new TextDecoder().decode(body)
-        // Each part: "--b\r\nContent-Type: text/plain\r\nContent-Range: bytes X-X/10\r\n\r\n<byte>\r\n"
-        // Closing: "--b--\r\n"
         expect(text).toContain('0')
         expect(text).toContain('9')
     })
