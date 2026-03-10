@@ -178,8 +178,7 @@ export async function handleApiRequest(request: Request, storage: RecordingStora
                         // Multiple satisfiable ranges → multipart/byteranges (RFC 9110 Section 14.6)
                         const boundary = generateBoundary()
                         const body = await buildMultipartByteRangesBody(file, resolvedRanges, mimeType, boundary)
-                        const responseBody = body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength) as ArrayBuffer
-                        return new Response(responseBody, {
+                        return new Response(body, {
                             status: 206,
                             headers: {
                                 ...headers,
