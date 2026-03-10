@@ -32,7 +32,7 @@ export type RangeParseResult =
  * Returns { type: 'unsupported' } for non-bytes range units.
  */
 export function parseRangeHeader(header: string): RangeParseResult | null {
-    const match = header.match(/^([a-zA-Z][a-zA-Z0-9!#$&\-^_`|~.]*)=(.+)$/)
+    const match = header.match(/^([a-zA-Z0-9!#$%&'*+\-.^_`|~]+)=(.+)$/)
     if (!match) return null
 
     const [, unit, rangeSet] = match
