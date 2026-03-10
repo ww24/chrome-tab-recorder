@@ -150,7 +150,7 @@ export async function buildMultipartByteRangesBody(
     ranges: ResolvedRange[],
     contentType: string,
     boundary: string,
-): Promise<Uint8Array> {
+): Promise<Uint8Array<ArrayBuffer>> {
     const encoder = new TextEncoder()
     const parts: Uint8Array[] = []
 
