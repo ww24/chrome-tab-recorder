@@ -339,6 +339,8 @@ async function finalizeRecording(startTime: number, fileHandle: FileSystemFileHa
         console.error(e)
     } finally {
         output = undefined
+        // Stop preview before stopping tracks.
+        preview.stop()
         // Stopping the tracks makes sure the recording icon in the tab is removed.
         currentMediaTracks.forEach(t => t.stop())
         currentMediaTracks = []
