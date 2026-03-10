@@ -43,6 +43,18 @@ describe('parseApiPath', () => {
     it('should return null for paths not starting with /api/', () => {
         expect(parseApiPath('/other/path')).toBeNull()
     })
+
+    it('should return null for malformed percent-encoding', () => {
+        expect(parseApiPath('/api/recordings/%E0%A4%A')).toBeNull()
+    })
+
+    it('should return null for names with encoded forward slash', () => {
+        expect(parseApiPath('/api/recordings/foo%2Fbar.webm')).toBeNull()
+    })
+
+    it('should return null for names with encoded backslash', () => {
+        expect(parseApiPath('/api/recordings/foo%5Cbar.webm')).toBeNull()
+    })
 })
 
 // ---------- handleApiRequest – storage-estimate ----------
