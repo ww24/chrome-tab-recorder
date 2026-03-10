@@ -65,6 +65,8 @@ chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.M
 
 let output: Output | undefined
 let currentMediaTracks: MediaStreamTrack[] = []
+let recordingStartTime: number | undefined
+let recordingFileHandle: FileSystemFileHandle | undefined
 const getAudioContext = (() => {
     let audioCtx: AudioContext | undefined
     return (sampleRate: number): AudioContext => {
@@ -164,8 +166,8 @@ async function startRecording(startRecording: StartRecording) {
     const dirHandle = await navigator.storage.getDirectory()
     const ext = containerExtension(videoFormat.container)
     const fileName = `video-${Date.now()}${ext}`
-    const fileHandle = await dirHandle.getFileHandle(fileName, { create: true })
-    const writableStream = await fileHandle.createWritable()
+    recordingFileHandle = await dirHandle.getFileHandle(fileName, { create: true })
+    const writableStream = await recordingFileHandle.createWritable()
 
     // Create output with StreamTarget
     output = new Output({
@@ -287,7 +289,7 @@ async function startRecording(startRecording: StartRecording) {
     ]
 
     // Start output
-    const startTime = Date.now()
+    recordingStartTime = Date.now()
     await output.start()
 
     const outputMimeType = await output.getMimeType()
@@ -304,7 +306,7 @@ async function startRecording(startRecording: StartRecording) {
     tabTrack?.addEventListener('ended', async () => {
         console.debug('tabTrack ended, finalizing recording')
         try {
-            await finalizeRecording(startTime, fileHandle)
+            await finalizeRecording()
         } catch (e) {
             sendException(e, { exceptionSource: 'tabTrack.ended' })
             console.error(e)
@@ -315,30 +317,37 @@ async function startRecording(startRecording: StartRecording) {
     window.location.hash = 'recording'
 }
 
-async function finalizeRecording(startTime: number, fileHandle: FileSystemFileHandle) {
+async function finalizeRecording() {
     if (output?.state !== 'started') return
+
+    const startTime = recordingStartTime
+    const fileHandle = recordingFileHandle
 
     try {
         await output.finalize()
 
-        const file = await fileHandle.getFile()
-        const duration = Date.now() - startTime
-        console.info(`stopped: duration=${duration / 1000}s`)
+        if (startTime !== undefined && fileHandle !== undefined) {
+            const file = await fileHandle.getFile()
+            const duration = Date.now() - startTime
+            console.info(`stopped: duration=${duration / 1000}s`)
 
-        sendEvent({
-            type: 'stop_recording',
-            metrics: {
-                recording: {
-                    durationSec: duration / 1000,
-                    filesize: file.size,
+            sendEvent({
+                type: 'stop_recording',
+                metrics: {
+                    recording: {
+                        durationSec: duration / 1000,
+                        filesize: file.size,
+                    },
                 },
-            },
-        })
+            })
+        }
     } catch (e) {
         sendException(e, { exceptionSource: 'output.finalize' })
         console.error(e)
     } finally {
         output = undefined
+        recordingStartTime = undefined
+        recordingFileHandle = undefined
         // Stopping the tracks makes sure the recording icon in the tab is removed.
         currentMediaTracks.forEach(t => t.stop())
         currentMediaTracks = []
@@ -360,24 +369,7 @@ async function stopRecording() {
     // Stop preview
     preview.stop()
 
-    // Finalize the output (this closes the file stream)
-    try {
-        await output.finalize()
-    } catch (e) {
-        sendException(e, { exceptionSource: 'output.finalize.stop' })
-        console.error(e)
-    } finally {
-        output = undefined
-        // Stopping the tracks makes sure the recording icon in the tab is removed.
-        currentMediaTracks.forEach(t => t.stop())
-        currentMediaTracks = []
-        currentVideoTrack = null
-        window.location.hash = ''
-        const msg: CompleteRecordingMessage = {
-            type: 'complete-recording',
-        }
-        await chrome.runtime.sendMessage(msg)
-    }
+    await finalizeRecording()
 }
 
 // Preview control handler
