@@ -307,18 +307,16 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
         expect(body).toBe('9')
     })
 
-    it('should use first range from multi-range header', async () => {
+    it('should return 200 for multi-range header (multipart/byteranges not supported)', async () => {
         const req = new Request('https://ext.example/api/recordings/test.webm', {
             headers: { 'Range': 'bytes=0-2,5-7' },
         })
         const res = await handleApiRequest(req, storage)
 
-        expect(res.status).toBe(206)
-        expect(res.headers.get('Content-Range')).toBe(`bytes 0-2/${file.size}`)
-        expect(res.headers.get('Content-Length')).toBe('3')
-
-        const body = await res.text()
-        expect(body).toBe('012')
+        expect(res.status).toBe(200)
+        expect(res.headers.get('Accept-Ranges')).toBe('bytes')
+        expect(res.headers.get('Content-Length')).toBe(file.size.toString())
+        expect(res.headers.has('Content-Range')).toBe(false)
     })
 })
 

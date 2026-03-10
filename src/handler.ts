@@ -141,8 +141,11 @@ export async function handleApiRequest(request: Request, storage: RecordingStora
                 const rangeHeader = request.headers.get('Range')
                 if (rangeHeader) {
                     const rangeResult = parseRangeHeader(rangeHeader)
-                    if (rangeResult && rangeResult.type === 'bytes' && rangeResult.ranges.length > 0) {
-                        // Handle only the first range for simplicity
+                    if (rangeResult && rangeResult.type === 'bytes' && rangeResult.ranges.length === 1) {
+                        // Only single-range requests are supported;
+                        // multi-range would require multipart/byteranges responses,
+                        // so we ignore them and fall through to a full 200 response
+                        // (RFC 9110 Section 14.2).
                         const resolved = resolveByteRange(rangeResult.ranges[0], file.size)
                         if (resolved) {
                             const { start, end } = resolved
@@ -163,8 +166,8 @@ export async function handleApiRequest(request: Request, storage: RecordingStora
                             })
                         }
                     }
-                    // If range is syntactically invalid or unsupported unit,
-                    // ignore and return full response (RFC 9110 Section 14.2)
+                    // If range is syntactically invalid, unsupported unit, or
+                    // multi-range, ignore and return full response (RFC 9110 Section 14.2)
                 }
 
                 // Full response
