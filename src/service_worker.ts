@@ -14,6 +14,7 @@ import { ExtensionSyncStorage } from './storage'
 import { deepMerge } from './element/util'
 import { OPFSStorage } from './opfs_storage'
 import { getMimeTypeFromExtension } from './mime'
+import { parseRangeHeader } from './range'
 
 const recordingIcon = '/icons/recording.png'
 const recordingVideoOnlyIcon = '/icons/recording-video-only.png'
@@ -316,46 +317,6 @@ const recordingStorage = new OPFSStorage()
 const API_PREFIX = '/api/'
 
 /**
- * Parse Range header and return resolved byte range.
- * Supports single byte-range only (e.g. bytes=0-1023, bytes=500-, bytes=-500).
- * Returns null for invalid, unsatisfiable, or multi-range requests.
- */
-function parseRangeHeader(rangeHeader: string, fileSize: number): { start: number; end: number } | null {
-    const match = rangeHeader.match(/^bytes=(\d+)?-(\d+)?$/)
-    if (!match) return null
-
-    const [, startStr, endStr] = match
-    let start: number
-    let end: number
-
-    if (startStr != null && endStr != null) {
-        // bytes=start-end
-        start = parseInt(startStr, 10)
-        end = parseInt(endStr, 10)
-    } else if (startStr != null) {
-        // bytes=start-
-        start = parseInt(startStr, 10)
-        end = fileSize - 1
-    } else if (endStr != null) {
-        // bytes=-suffix (last N bytes)
-        const suffix = parseInt(endStr, 10)
-        if (suffix === 0) return null
-        start = Math.max(0, fileSize - suffix)
-        end = fileSize - 1
-    } else {
-        return null
-    }
-
-    // Validate range
-    if (start > end || start < 0 || start >= fileSize) return null
-
-    // Clamp end to file size
-    if (end >= fileSize) end = fileSize - 1
-
-    return { start, end }
-}
-
-/**
  * Parse API path and extract route information
  */
 function parseApiPath(pathname: string): { route: string; name?: string } | null {
@@ -467,8 +428,10 @@ async function handleApiRequest(request: Request): Promise<Response> {
                 // Handle Range requests
                 const rangeHeader = request.headers.get('Range')
                 if (rangeHeader) {
-                    const range = parseRangeHeader(rangeHeader, file.size)
-                    if (!range) {
+                    const result = parseRangeHeader(rangeHeader, file.size)
+                    if (result === null) {
+                        // Unknown unit or syntactically invalid — ignore Range header and return full response
+                    } else if (result.type === 'unsatisfiable') {
                         return new Response(null, {
                             status: 416,
                             headers: {
@@ -476,15 +439,44 @@ async function handleApiRequest(request: Request): Promise<Response> {
                                 'Accept-Ranges': 'bytes',
                             },
                         })
+                    } else {
+                        const { ranges } = result
+                        if (ranges.length === 1) {
+                            const { start, end } = ranges[0]
+                            const contentLength = end - start + 1
+                            headers['Content-Range'] = `bytes ${start}-${end}/${file.size}`
+                            headers['Content-Length'] = contentLength.toString()
+                            return new Response(file.slice(start, end + 1), {
+                                status: 206,
+                                headers,
+                            })
+                        } else {
+                            // Multiple ranges: multipart/byteranges response
+                            const boundary = `multipart-boundary-${crypto.randomUUID()}`
+                            const encoder = new TextEncoder()
+                            const parts: Uint8Array[] = []
+                            for (const { start, end } of ranges) {
+                                const partHeader = `--${boundary}\r\nContent-Type: ${mimeType}\r\nContent-Range: bytes ${start}-${end}/${file.size}\r\n\r\n`
+                                parts.push(encoder.encode(partHeader))
+                                parts.push(new Uint8Array(await file.slice(start, end + 1).arrayBuffer()))
+                                parts.push(encoder.encode('\r\n'))
+                            }
+                            parts.push(encoder.encode(`--${boundary}--\r\n`))
+                            const totalLength = parts.reduce((sum, p) => sum + p.length, 0)
+                            const body = new Uint8Array(totalLength)
+                            let offset = 0
+                            for (const part of parts) {
+                                body.set(part, offset)
+                                offset += part.length
+                            }
+                            headers['Content-Type'] = `multipart/byteranges; boundary=${boundary}`
+                            headers['Content-Length'] = totalLength.toString()
+                            return new Response(body, {
+                                status: 206,
+                                headers,
+                            })
+                        }
                     }
-                    const { start, end } = range
-                    const contentLength = end - start + 1
-                    headers['Content-Range'] = `bytes ${start}-${end}/${file.size}`
-                    headers['Content-Length'] = contentLength.toString()
-                    return new Response(file.slice(start, end + 1), {
-                        status: 206,
-                        headers,
-                    })
                 }
 
                 headers['Content-Length'] = file.size.toString()
