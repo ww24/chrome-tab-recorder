@@ -32,7 +32,18 @@ export function parseApiPath(pathname: string): { route: string; name?: string }
     // /api/recordings/:name
     const recordingMatch = path.match(/^recordings\/(.+)$/)
     if (recordingMatch) {
-        const name = decodeURIComponent(recordingMatch[1])
+        let name: string
+        try {
+            name = decodeURIComponent(recordingMatch[1])
+        } catch {
+            // Malformed percent-encoding in recording name
+            return null
+        }
+
+        // Reject decoded names containing path separators
+        if (name.includes('/') || name.includes('\\')) {
+            return null
+        }
         return { route: 'recording', name }
     }
 
