@@ -65,6 +65,9 @@ chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.M
 
 let output: Output | undefined
 let currentMediaTracks: MediaStreamTrack[] = []
+let recordingStartTime = 0
+let recordingFileHandle: FileSystemFileHandle | undefined
+let finalizingPromise: Promise<void> | undefined
 const getAudioContext = (() => {
     let audioCtx: AudioContext | undefined
     return (sampleRate: number): AudioContext => {
@@ -164,8 +167,8 @@ async function startRecording(startRecording: StartRecording) {
     const dirHandle = await navigator.storage.getDirectory()
     const ext = containerExtension(videoFormat.container)
     const fileName = `video-${Date.now()}${ext}`
-    const fileHandle = await dirHandle.getFileHandle(fileName, { create: true })
-    const writableStream = await fileHandle.createWritable()
+    recordingFileHandle = await dirHandle.getFileHandle(fileName, { create: true })
+    const writableStream = await recordingFileHandle.createWritable()
 
     // Create output with StreamTarget
     output = new Output({
@@ -287,7 +290,7 @@ async function startRecording(startRecording: StartRecording) {
     ]
 
     // Start output
-    const startTime = Date.now()
+    recordingStartTime = Date.now()
     await output.start()
 
     const outputMimeType = await output.getMimeType()
@@ -301,53 +304,70 @@ async function startRecording(startRecording: StartRecording) {
 
     // Listen for tab track ending to auto-finalize
     const [tabTrack] = tabMedia.getTracks()
-    tabTrack?.addEventListener('ended', async () => {
+    tabTrack?.addEventListener('ended', () => {
         console.debug('tabTrack ended, finalizing recording')
-        try {
-            await finalizeRecording(startTime, fileHandle)
-        } catch (e) {
+        finalizeRecording().catch(e => {
             sendException(e, { exceptionSource: 'tabTrack.ended' })
             console.error(e)
-        }
+        })
     })
 
     // ref. https://github.com/GoogleChrome/chrome-extensions-samples/blob/137cf71b9b4d631191cedbf96343d5b6a51c9a74/functional-samples/sample.tabcapture-recorder/offscreen.js#L71-L77
     window.location.hash = 'recording'
 }
 
-async function finalizeRecording(startTime: number, fileHandle: FileSystemFileHandle) {
+async function finalizeRecording(): Promise<void> {
+    // Re-entrancy guard: if finalization is already in progress, wait for it
+    if (finalizingPromise !== undefined) {
+        return finalizingPromise
+    }
     if (output?.state !== 'started') return
 
-    try {
-        await output.finalize()
+    const currentOutput = output
+    const startTime = recordingStartTime
+    const fileHandle = recordingFileHandle
 
-        const file = await fileHandle.getFile()
-        const duration = Date.now() - startTime
-        console.info(`stopped: duration=${duration / 1000}s`)
+    const promise = (async () => {
+        try {
+            await currentOutput.finalize()
 
-        sendEvent({
-            type: 'stop_recording',
-            metrics: {
-                recording: {
-                    durationSec: duration / 1000,
-                    filesize: file.size,
+            const file = await fileHandle?.getFile()
+            const duration = Date.now() - startTime
+            console.info(`stopped: duration=${duration / 1000}s`)
+
+            sendEvent({
+                type: 'stop_recording',
+                metrics: {
+                    recording: {
+                        durationSec: duration / 1000,
+                        filesize: file?.size ?? 0,
+                    },
                 },
-            },
-        })
-    } catch (e) {
-        sendException(e, { exceptionSource: 'output.finalize' })
-        console.error(e)
-    } finally {
-        output = undefined
-        // Stopping the tracks makes sure the recording icon in the tab is removed.
-        currentMediaTracks.forEach(t => t.stop())
-        currentMediaTracks = []
-        currentVideoTrack = null
-        window.location.hash = ''
-        const msg: CompleteRecordingMessage = {
-            type: 'complete-recording',
+            })
+        } catch (e) {
+            sendException(e, { exceptionSource: 'output.finalize' })
+            console.error(e)
+        } finally {
+            output = undefined
+            recordingFileHandle = undefined
+            recordingStartTime = 0
+            // Stopping the tracks makes sure the recording icon in the tab is removed.
+            currentMediaTracks.forEach(t => t.stop())
+            currentMediaTracks = []
+            currentVideoTrack = null
+            window.location.hash = ''
+            const msg: CompleteRecordingMessage = {
+                type: 'complete-recording',
+            }
+            await chrome.runtime.sendMessage(msg)
         }
-        await chrome.runtime.sendMessage(msg)
+    })()
+
+    finalizingPromise = promise
+    try {
+        await promise
+    } finally {
+        finalizingPromise = undefined
     }
 }
 
@@ -360,24 +380,8 @@ async function stopRecording() {
     // Stop preview
     preview.stop()
 
-    // Finalize the output (this closes the file stream)
-    try {
-        await output.finalize()
-    } catch (e) {
-        sendException(e, { exceptionSource: 'output.finalize.stop' })
-        console.error(e)
-    } finally {
-        output = undefined
-        // Stopping the tracks makes sure the recording icon in the tab is removed.
-        currentMediaTracks.forEach(t => t.stop())
-        currentMediaTracks = []
-        currentVideoTrack = null
-        window.location.hash = ''
-        const msg: CompleteRecordingMessage = {
-            type: 'complete-recording',
-        }
-        await chrome.runtime.sendMessage(msg)
-    }
+    // Use shared finalization path with re-entrancy guard
+    await finalizeRecording()
 }
 
 // Preview control handler
