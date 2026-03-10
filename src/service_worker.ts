@@ -13,7 +13,7 @@ import { Configuration, Resolution } from './configuration'
 import { ExtensionSyncStorage } from './storage'
 import { deepMerge } from './element/util'
 import { OPFSStorage } from './opfs_storage'
-import { getMimeTypeFromExtension } from './mime'
+import { handleApiRequest } from './handler'
 
 const recordingIcon = '/icons/recording.png'
 const recordingVideoOnlyIcon = '/icons/recording-video-only.png'
@@ -315,135 +315,6 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
 const recordingStorage = new OPFSStorage()
 const API_PREFIX = '/api/'
 
-/**
- * Parse API path and extract route information
- */
-function parseApiPath(pathname: string): { route: string; name?: string } | null {
-    if (!pathname.startsWith(API_PREFIX)) return null
-
-    const path = pathname.slice(API_PREFIX.length)
-
-    // GET /api/storage/estimate
-    if (path === 'storage/estimate') {
-        return { route: 'storage-estimate' }
-    }
-
-    // GET /api/recordings
-    if (path === 'recordings') {
-        return { route: 'recordings-list' }
-    }
-
-    // /api/recordings/:name
-    const recordingMatch = path.match(/^recordings\/(.+)$/)
-    if (recordingMatch) {
-        const name = decodeURIComponent(recordingMatch[1])
-        return { route: 'recording', name }
-    }
-
-    return null
-}
-
-/**
- * Handle API requests
- */
-async function handleApiRequest(request: Request): Promise<Response> {
-    const url = new URL(request.url)
-    const parsed = parseApiPath(url.pathname)
-
-    if (!parsed) {
-        return new Response(JSON.stringify({ error: 'Not Found' }), {
-            status: 404,
-            headers: { 'Content-Type': 'application/json' },
-        })
-    }
-
-    try {
-        switch (parsed.route) {
-            case 'storage-estimate': {
-                if (request.method !== 'GET') {
-                    return new Response(JSON.stringify({ error: 'Method Not Allowed' }), {
-                        status: 405,
-                        headers: { 'Content-Type': 'application/json' },
-                    })
-                }
-                const estimate = await recordingStorage.estimate()
-                return new Response(JSON.stringify(estimate), {
-                    status: 200,
-                    headers: { 'Content-Type': 'application/json' },
-                })
-            }
-
-            case 'recordings-list': {
-                if (request.method !== 'GET') {
-                    return new Response(JSON.stringify({ error: 'Method Not Allowed' }), {
-                        status: 405,
-                        headers: { 'Content-Type': 'application/json' },
-                    })
-                }
-                // Parse sort query parameter
-                const sortParam = url.searchParams.get('sort')
-                const sort = sortParam === 'desc' ? 'desc' : 'asc'
-                const recordings = await recordingStorage.list({ sort })
-                return new Response(JSON.stringify(recordings), {
-                    status: 200,
-                    headers: { 'Content-Type': 'application/json' },
-                })
-            }
-
-            case 'recording': {
-                const name = parsed.name!
-
-                if (request.method === 'DELETE') {
-                    await recordingStorage.delete(name)
-                    return new Response(null, { status: 204 })
-                }
-
-                if (request.method !== 'GET') {
-                    return new Response(JSON.stringify({ error: 'Method Not Allowed' }), {
-                        status: 405,
-                        headers: { 'Content-Type': 'application/json' },
-                    })
-                }
-
-                // GET /api/recordings/:name - return binary file
-                const file = await recordingStorage.getFile(name)
-                if (!file) {
-                    return new Response(JSON.stringify({ error: 'Not Found' }), {
-                        status: 404,
-                        headers: { 'Content-Type': 'application/json' },
-                    })
-                }
-                const mimeType = getMimeTypeFromExtension(name)
-                const headers: Record<string, string> = {
-                    'Content-Type': mimeType,
-                    'Content-Length': file.size.toString(),
-                }
-                // Add Content-Disposition header only when download=true is specified
-                if (url.searchParams.get('download') === 'true') {
-                    const encodedName = encodeURIComponent(name).replace(/'/g, '%27')
-                    headers['Content-Disposition'] = `attachment; filename*=UTF-8''${encodedName}`
-                }
-                return new Response(file, {
-                    status: 200,
-                    headers,
-                })
-            }
-
-            default:
-                return new Response(JSON.stringify({ error: 'Not Found' }), {
-                    status: 404,
-                    headers: { 'Content-Type': 'application/json' },
-                })
-        }
-    } catch (e) {
-        console.error('API error:', e)
-        return new Response(JSON.stringify({ error: 'Internal Server Error' }), {
-            status: 500,
-            headers: { 'Content-Type': 'application/json' },
-        })
-    }
-}
-
 // Fetch event listener for REST API
 // Using type assertion since Service Worker global scope supports 'fetch' event
 declare const self: ServiceWorkerGlobalScope
@@ -452,6 +323,6 @@ self.addEventListener('fetch', (event: FetchEvent) => {
 
     // Only intercept /api/* requests from the same origin
     if (url.origin === location.origin && url.pathname.startsWith(API_PREFIX)) {
-        event.respondWith(handleApiRequest(event.request))
+        event.respondWith(handleApiRequest(event.request, recordingStorage))
     }
 })
