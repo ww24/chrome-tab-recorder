@@ -112,3 +112,71 @@ export function resolveByteRange(range: ByteRangeSpec, size: number): ResolvedRa
         }
     }
 }
+
+/**
+ * Generate a boundary string for multipart responses.
+ * Uses crypto.randomUUID when available, otherwise falls back to Math.random.
+ */
+export function generateBoundary(): string {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID()
+    }
+    // Fallback for environments without crypto.randomUUID
+    return `boundary-${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
+/**
+ * Build a multipart/byteranges response body per RFC 9110 Section 14.6.
+ *
+ * Each part includes:
+ *   --<boundary>\r\n
+ *   Content-Type: <contentType>\r\n
+ *   Content-Range: bytes <start>-<end>/<size>\r\n
+ *   \r\n
+ *   <bytes>\r\n
+ *
+ * Final delimiter:
+ *   --<boundary>--\r\n
+ *
+ * @param file - The full file content (Blob-like object supporting slice)
+ * @param ranges - Resolved byte ranges to include
+ * @param contentType - MIME type of the original resource
+ * @param boundary - Boundary string for the multipart response
+ * @returns The complete multipart body as a Uint8Array
+ */
+export async function buildMultipartByteRangesBody(
+    file: Blob,
+    ranges: ResolvedRange[],
+    contentType: string,
+    boundary: string,
+): Promise<Uint8Array> {
+    const encoder = new TextEncoder()
+    const parts: Uint8Array[] = []
+
+    for (const range of ranges) {
+        const header =
+            `--${boundary}\r\n` +
+            `Content-Type: ${contentType}\r\n` +
+            `Content-Range: bytes ${range.start}-${range.end}/${file.size}\r\n` +
+            '\r\n'
+        parts.push(encoder.encode(header))
+
+        const slice = file.slice(range.start, range.end + 1)
+        const buffer = await slice.arrayBuffer()
+        parts.push(new Uint8Array(buffer))
+
+        parts.push(encoder.encode('\r\n'))
+    }
+
+    parts.push(encoder.encode(`--${boundary}--\r\n`))
+
+    // Concatenate all parts
+    const totalLength = parts.reduce((sum, part) => sum + part.length, 0)
+    const result = new Uint8Array(totalLength)
+    let offset = 0
+    for (const part of parts) {
+        result.set(part, offset)
+        offset += part.length
+    }
+    return result
+}

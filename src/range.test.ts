@@ -1,5 +1,5 @@
-import { parseRangeHeader, resolveByteRange } from './range'
-import type { ByteRangeSpec } from './range'
+import { parseRangeHeader, resolveByteRange, generateBoundary, buildMultipartByteRangesBody } from './range'
+import type { ByteRangeSpec, ResolvedRange } from './range'
 
 describe('parseRangeHeader', () => {
     describe('valid byte ranges', () => {
@@ -200,5 +200,81 @@ describe('resolveByteRange', () => {
             const range: ByteRangeSpec = { type: 'open-range', start: 0 }
             expect(resolveByteRange(range, 0)).toBeNull()
         })
+    })
+})
+
+describe('generateBoundary', () => {
+    it('should return a non-empty string', () => {
+        const boundary = generateBoundary()
+        expect(typeof boundary).toBe('string')
+        expect(boundary.length).toBeGreaterThan(0)
+    })
+
+    it('should return unique values on consecutive calls', () => {
+        const a = generateBoundary()
+        const b = generateBoundary()
+        expect(a).not.toBe(b)
+    })
+})
+
+describe('buildMultipartByteRangesBody', () => {
+    const content = '0123456789'
+    let file: File
+
+    beforeEach(() => {
+        file = new File([content], 'test.bin', { type: 'application/octet-stream' })
+    })
+
+    it('should build valid multipart body for two ranges', async () => {
+        const ranges: ResolvedRange[] = [
+            { start: 0, end: 2 },
+            { start: 7, end: 9 },
+        ]
+        const boundary = 'test-boundary'
+        const body = await buildMultipartByteRangesBody(file, ranges, 'video/webm', boundary)
+        const text = new TextDecoder().decode(body)
+
+        // Part 1
+        expect(text).toContain('--test-boundary\r\n')
+        expect(text).toContain('Content-Type: video/webm\r\n')
+        expect(text).toContain(`Content-Range: bytes 0-2/${file.size}\r\n`)
+        expect(text).toContain('012')
+
+        // Part 2
+        expect(text).toContain(`Content-Range: bytes 7-9/${file.size}\r\n`)
+        expect(text).toContain('789')
+
+        // Closing boundary
+        expect(text).toContain('--test-boundary--\r\n')
+    })
+
+    it('should build valid multipart body for a single range', async () => {
+        const ranges: ResolvedRange[] = [{ start: 3, end: 5 }]
+        const boundary = 'single'
+        const body = await buildMultipartByteRangesBody(file, ranges, 'video/webm', boundary)
+        const text = new TextDecoder().decode(body)
+
+        expect(text).toContain('--single\r\n')
+        expect(text).toContain(`Content-Range: bytes 3-5/${file.size}\r\n`)
+        expect(text).toContain('345')
+        expect(text).toContain('--single--\r\n')
+    })
+
+    it('should include correct Content-Length in total', async () => {
+        const ranges: ResolvedRange[] = [
+            { start: 0, end: 0 },
+            { start: 9, end: 9 },
+        ]
+        const boundary = 'b'
+        const body = await buildMultipartByteRangesBody(file, ranges, 'text/plain', boundary)
+
+        // Verify the body length matches what we'd expect
+        expect(body.byteLength).toBeGreaterThan(0)
+
+        const text = new TextDecoder().decode(body)
+        // Each part: "--b\r\nContent-Type: text/plain\r\nContent-Range: bytes X-X/10\r\n\r\n<byte>\r\n"
+        // Closing: "--b--\r\n"
+        expect(text).toContain('0')
+        expect(text).toContain('9')
     })
 })

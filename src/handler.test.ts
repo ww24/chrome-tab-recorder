@@ -307,16 +307,104 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
         expect(body).toBe('9')
     })
 
-    it('should return 200 for multi-range header (multipart/byteranges not supported)', async () => {
+    it('should return 206 with multipart/byteranges for multi-range header', async () => {
         const req = new Request('https://ext.example/api/recordings/test.webm', {
             headers: { 'Range': 'bytes=0-2,5-7' },
         })
         const res = await handleApiRequest(req, storage)
 
-        expect(res.status).toBe(200)
+        expect(res.status).toBe(206)
+        const contentType = res.headers.get('Content-Type')!
+        expect(contentType).toMatch(/^multipart\/byteranges; boundary=/)
+        const boundary = contentType.split('boundary=')[1]
+
+        const body = await res.text()
+        // Verify multipart structure
+        expect(body).toContain(`--${boundary}\r\n`)
+        expect(body).toContain(`--${boundary}--\r\n`)
+
+        // Verify first part
+        expect(body).toContain('Content-Type: video/webm\r\n')
+        expect(body).toContain(`Content-Range: bytes 0-2/${file.size}\r\n`)
+        expect(body).toContain('012')
+
+        // Verify second part
+        expect(body).toContain(`Content-Range: bytes 5-7/${file.size}\r\n`)
+        expect(body).toContain('567')
+    })
+
+    it('should return 206 with multipart/byteranges for three ranges', async () => {
+        const req = new Request('https://ext.example/api/recordings/test.webm', {
+            headers: { 'Range': 'bytes=0-1,4-5,8-9' },
+        })
+        const res = await handleApiRequest(req, storage)
+
+        expect(res.status).toBe(206)
+        const contentType = res.headers.get('Content-Type')!
+        expect(contentType).toMatch(/^multipart\/byteranges; boundary=/)
+        const boundary = contentType.split('boundary=')[1]
+
+        const body = await res.text()
+        // Count boundary occurrences (3 part boundaries + 1 closing)
+        const partBoundaries = body.split(`--${boundary}`).length - 1
+        expect(partBoundaries).toBe(4) // 3 parts + 1 closing
+
+        expect(body).toContain(`Content-Range: bytes 0-1/${file.size}\r\n`)
+        expect(body).toContain(`Content-Range: bytes 4-5/${file.size}\r\n`)
+        expect(body).toContain(`Content-Range: bytes 8-9/${file.size}\r\n`)
+    })
+
+    it('should return 416 when all ranges in multi-range are unsatisfiable', async () => {
+        const req = new Request('https://ext.example/api/recordings/test.webm', {
+            headers: { 'Range': 'bytes=100-200,300-400' },
+        })
+        const res = await handleApiRequest(req, storage)
+
+        expect(res.status).toBe(416)
+        expect(res.headers.get('Content-Range')).toBe(`bytes */${file.size}`)
+    })
+
+    it('should skip unsatisfiable ranges and serve only satisfiable ones in multipart', async () => {
+        const req = new Request('https://ext.example/api/recordings/test.webm', {
+            headers: { 'Range': 'bytes=0-2,100-200,7-9' },
+        })
+        const res = await handleApiRequest(req, storage)
+
+        expect(res.status).toBe(206)
+        const contentType = res.headers.get('Content-Type')!
+        expect(contentType).toMatch(/^multipart\/byteranges; boundary=/)
+
+        const body = await res.text()
+        expect(body).toContain(`Content-Range: bytes 0-2/${file.size}\r\n`)
+        expect(body).toContain(`Content-Range: bytes 7-9/${file.size}\r\n`)
+        // The unsatisfiable range 100-200 should not appear
+        expect(body).not.toContain('Content-Range: bytes 100-')
+    })
+
+    it('should return single-range 206 when multi-range has only one satisfiable range', async () => {
+        const req = new Request('https://ext.example/api/recordings/test.webm', {
+            headers: { 'Range': 'bytes=0-2,100-200' },
+        })
+        const res = await handleApiRequest(req, storage)
+
+        expect(res.status).toBe(206)
+        // Should be a single-range response, not multipart
+        expect(res.headers.get('Content-Type')).toBe('video/webm')
+        expect(res.headers.get('Content-Range')).toBe(`bytes 0-2/${file.size}`)
+        expect(res.headers.get('Content-Length')).toBe('3')
+
+        const body = await res.text()
+        expect(body).toBe('012')
+    })
+
+    it('should include Accept-Ranges in multipart response', async () => {
+        const req = new Request('https://ext.example/api/recordings/test.webm', {
+            headers: { 'Range': 'bytes=0-2,5-7' },
+        })
+        const res = await handleApiRequest(req, storage)
+
+        expect(res.status).toBe(206)
         expect(res.headers.get('Accept-Ranges')).toBe('bytes')
-        expect(res.headers.get('Content-Length')).toBe(file.size.toString())
-        expect(res.headers.has('Content-Range')).toBe(false)
     })
 })
 

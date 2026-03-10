@@ -7,7 +7,8 @@
 
 import type { RecordingStorage } from './storage'
 import { getMimeTypeFromExtension } from './mime'
-import { parseRangeHeader, resolveByteRange } from './range'
+import { parseRangeHeader, resolveByteRange, generateBoundary, buildMultipartByteRangesBody } from './range'
+import type { ResolvedRange } from './range'
 
 const API_PREFIX = '/api/'
 
@@ -141,23 +142,18 @@ export async function handleApiRequest(request: Request, storage: RecordingStora
                 const rangeHeader = request.headers.get('Range')
                 if (rangeHeader) {
                     const rangeResult = parseRangeHeader(rangeHeader)
-                    if (rangeResult && rangeResult.type === 'bytes' && rangeResult.ranges.length === 1) {
-                        // Only single-range requests are supported;
-                        // multi-range would require multipart/byteranges responses,
-                        // so we ignore them and fall through to a full 200 response
-                        // (RFC 9110 Section 14.2).
-                        const resolved = resolveByteRange(rangeResult.ranges[0], file.size)
-                        if (resolved) {
-                            const { start, end } = resolved
-                            const contentLength = end - start + 1
-                            headers['Content-Range'] = `bytes ${start}-${end}/${file.size}`
-                            headers['Content-Length'] = contentLength.toString()
-                            return new Response(file.slice(start, end + 1), {
-                                status: 206,
-                                headers,
-                            })
-                        } else {
-                            // Range not satisfiable (RFC 9110 Section 15.3.7)
+                    if (rangeResult && rangeResult.type === 'bytes' && rangeResult.ranges.length > 0) {
+                        // Resolve all ranges; collect satisfiable ones
+                        const resolvedRanges: ResolvedRange[] = []
+                        for (const spec of rangeResult.ranges) {
+                            const resolved = resolveByteRange(spec, file.size)
+                            if (resolved) {
+                                resolvedRanges.push(resolved)
+                            }
+                        }
+
+                        if (resolvedRanges.length === 0) {
+                            // No satisfiable ranges (RFC 9110 Section 15.3.7)
                             return new Response(null, {
                                 status: 416,
                                 headers: {
@@ -165,9 +161,34 @@ export async function handleApiRequest(request: Request, storage: RecordingStora
                                 },
                             })
                         }
+
+                        if (resolvedRanges.length === 1) {
+                            // Single satisfiable range
+                            const { start, end } = resolvedRanges[0]
+                            const contentLength = end - start + 1
+                            headers['Content-Range'] = `bytes ${start}-${end}/${file.size}`
+                            headers['Content-Length'] = contentLength.toString()
+                            return new Response(file.slice(start, end + 1), {
+                                status: 206,
+                                headers,
+                            })
+                        }
+
+                        // Multiple satisfiable ranges → multipart/byteranges (RFC 9110 Section 14.6)
+                        const boundary = generateBoundary()
+                        const body = await buildMultipartByteRangesBody(file, resolvedRanges, mimeType, boundary)
+                        const responseBody = body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength) as ArrayBuffer
+                        return new Response(responseBody, {
+                            status: 206,
+                            headers: {
+                                ...headers,
+                                'Content-Type': `multipart/byteranges; boundary=${boundary}`,
+                                'Content-Length': body.byteLength.toString(),
+                            },
+                        })
                     }
-                    // If range is syntactically invalid, unsupported unit, or
-                    // multi-range, ignore and return full response (RFC 9110 Section 14.2)
+                    // If range is syntactically invalid or unsupported unit,
+                    // ignore and return full response (RFC 9110 Section 14.2)
                 }
 
                 // Full response
