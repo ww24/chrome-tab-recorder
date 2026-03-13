@@ -9,6 +9,7 @@ import type { RecordingStorage } from './storage'
 import { getMimeTypeFromExtension } from './mime'
 import { parseRangeHeader, resolveByteRange, generateBoundary, buildMultipartByteRangesBody } from './range'
 import type { ResolvedRange } from './range'
+import type { Resolution } from './configuration'
 
 const API_PREFIX = '/api/'
 
@@ -51,6 +52,12 @@ export function parseApiPath(pathname: string): { route: string; name?: string }
     return null
 }
 
+export interface RecordingState {
+    isRecording: boolean;
+    startAtMs?: number;
+    screenSize?: Resolution;
+}
+
 /**
  * Handle API requests for recording storage
  *
@@ -60,7 +67,7 @@ export function parseApiPath(pathname: string): { route: string; name?: string }
  * - GET  /api/recordings/:name       - Download recording (with Range Request support)
  * - DELETE /api/recordings/:name     - Delete recording
  */
-export async function handleApiRequest(request: Request, storage: RecordingStorage): Promise<Response> {
+export async function handleApiRequest(request: Request, storage: RecordingStorage, state: RecordingState): Promise<Response> {
     const url = new URL(request.url)
     const parsed = parseApiPath(url.pathname)
 
@@ -97,7 +104,10 @@ export async function handleApiRequest(request: Request, storage: RecordingStora
                 // Parse sort query parameter
                 const sortParam = url.searchParams.get('sort')
                 const sort = sortParam === 'desc' ? 'desc' : 'asc'
-                const recordings = await storage.list({ sort })
+                const recordings = (await storage.list({ sort })).map(r => ({
+                    ...r,
+                    isRecording: state.isRecording && state.startAtMs != null && r.recordedAt === state.startAtMs,
+                }))
                 return new Response(JSON.stringify(recordings), {
                     status: 200,
                     headers: { 'Content-Type': 'application/json' },

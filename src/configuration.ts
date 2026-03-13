@@ -318,4 +318,8 @@ export class Configuration {
 
         return migrated
     }
+
+    static filename(startAtMs: number, ext: string) {
+        return `video-${startAtMs}${ext}`
+    }
 };

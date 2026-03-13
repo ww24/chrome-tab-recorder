@@ -75,6 +75,7 @@ export class OPFSStorage implements RecordingStorage {
             lastModified: file.lastModified,
             mimeType: getMimeTypeFromExtension(name),
             recordedAt,
+            isTemporary: name.endsWith('.crswap'), // Chrome swap file
         }
     }
 }

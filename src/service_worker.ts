@@ -13,16 +13,13 @@ import { Configuration, Resolution } from './configuration'
 import { ExtensionSyncStorage } from './storage'
 import { deepMerge } from './element/util'
 import { OPFSStorage } from './opfs_storage'
-import { handleApiRequest } from './handler'
+import { handleApiRequest, RecordingState } from './handler'
 
 const recordingIcon = '/icons/recording.png'
 const recordingVideoOnlyIcon = '/icons/recording-video-only.png'
 const recordingAudioOnlyIcon = '/icons/recording-audio-only.png'
 const notRecordingIcon = '/icons/not-recording.png'
 const storage = new ExtensionSyncStorage()
-
-// Track recording state for preview functionality
-let currentScreenSize: Resolution | null = null
 
 const CONTEXT_MENU_ID = 'start-recording'
 
@@ -64,12 +61,6 @@ async function getOffscreenDocument(): Promise<chrome.runtime.ExtensionContext |
     return existingContexts.find(c => c.contextType === 'OFFSCREEN_DOCUMENT')
 }
 
-
-async function isRecording(): Promise<boolean> {
-    const offscreenDocument = await getOffscreenDocument()
-    return offscreenDocument?.documentUrl?.endsWith('#recording') ?? false
-}
-
 async function createOffscreenDocument() {
     const offscreenDocument = await getOffscreenDocument()
     if (offscreenDocument) return
@@ -82,10 +73,30 @@ async function createOffscreenDocument() {
     })
 }
 
+async function getIsRecording(): Promise<boolean> {
+    const offscreenDocument = await getOffscreenDocument()
+    return offscreenDocument?.documentUrl?.endsWith('#recording') ?? false
+}
+
+// Persistent recording state
+const recordingStateKey = 'recordingState'
+async function getRecordingState(): Promise<RecordingState> {
+    const isRecording = await getIsRecording()
+    if (!isRecording) return { isRecording }
+
+    const recordingState = (await chrome.storage.local.get(recordingStateKey))[recordingStateKey]
+    if (!recordingState) return { isRecording }
+
+    return { ...recordingState, isRecording }
+}
+async function setRecordingState(state: RecordingState) {
+    await chrome.storage.local.set({ [recordingStateKey]: state })
+}
+
 // Action icon handler
 chrome.action.onClicked.addListener(async (tab: chrome.tabs.Tab) => {
     try {
-        if (await isRecording()) {
+        if (await getIsRecording()) {
             await stopRecording()
             return
         }
@@ -105,7 +116,7 @@ chrome.contextMenus.onClicked.addListener(async (info: chrome.contextMenus.OnCli
     if (info.menuItemId !== CONTEXT_MENU_ID || !tab) return
 
     try {
-        if (await isRecording()) {
+        if (await getIsRecording()) {
             await stopRecording()
             return
         }
@@ -126,17 +137,17 @@ chrome.commands.onCommand.addListener(async (command: string, tab?: chrome.tabs.
         switch (command) {
             case 'start-recording': {
                 if (!tab) return
-                if (await isRecording()) return
+                if (await getIsRecording()) return
                 await startRecording(tab)
                 break
             }
             case 'stop-recording': {
-                if (!(await isRecording())) return
+                if (!(await getIsRecording())) return
                 await stopRecording()
                 break
             }
             case 'toggle-recording': {
-                if (await isRecording()) {
+                if (await getIsRecording()) {
                     await stopRecording()
                     return
                 }
@@ -168,13 +179,20 @@ async function startRecording(tab: chrome.tabs.Tab) {
     })
 
     // Track screen size for preview functionality
-    currentScreenSize = { width: tab.width ?? 0, height: tab.height ?? 0 }
+    const screenSize = { width: tab.width ?? 0, height: tab.height ?? 0 }
+    const startAtMs = Date.now()
+    await setRecordingState({
+        isRecording: true,
+        startAtMs,
+        screenSize,
+    })
 
     // Send the stream ID to the offscreen document to start recording.
     const msg: StartRecordingMessage = {
         type: 'start-recording',
         data: {
-            tabSize: currentScreenSize,
+            startAtMs: startAtMs,
+            tabSize: screenSize,
             streamId,
         },
     }
@@ -197,8 +215,6 @@ async function stopRecording() {
     // Update action icon
     await chrome.action.setIcon({ path: notRecordingIcon })
 
-    // Update recording state and broadcast to option pages
-    currentScreenSize = null
     await broadcastRecordingState()
 
     // Update context menu title
@@ -216,7 +232,7 @@ async function stopRecording() {
 async function updateContextMenuTitle() {
     try {
         await chrome.contextMenus.update(CONTEXT_MENU_ID, {
-            title: (await isRecording()) ? 'Stop Recording' : 'Start Recording',
+            title: (await getIsRecording()) ? 'Stop Recording' : 'Start Recording',
         })
     } catch (e) {
         console.error('Failed to update context menu:', e)
@@ -225,10 +241,11 @@ async function updateContextMenuTitle() {
 
 // Broadcast recording state to all option pages
 async function broadcastRecordingState() {
+    const { screenSize } = await getRecordingState()
     const msg: RecordingStateMessage = {
         type: 'recording-state',
-        isRecording: await isRecording(),
-        screenSize: currentScreenSize ?? undefined,
+        isRecording: await getIsRecording(),
+        screenSize,
     }
     try {
         await chrome.runtime.sendMessage(msg)
@@ -342,6 +359,8 @@ self.addEventListener('fetch', (event: FetchEvent) => {
 
     // Only intercept /api/* requests from the same origin
     if (url.origin === location.origin && url.pathname.startsWith(API_PREFIX)) {
-        event.respondWith(handleApiRequest(event.request, recordingStorage))
+        event.respondWith((async () => {
+            return handleApiRequest(event.request, recordingStorage, await getRecordingState())
+        })())
     }
 })
