@@ -14,6 +14,8 @@ export interface RecordingMetadata {
     lastModified: number
     mimeType: string
     recordedAt?: number
+    isRecording?: boolean
+    isTemporary: boolean
 }
 
 /**

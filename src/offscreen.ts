@@ -4,7 +4,7 @@ import {
     MediaStreamVideoTrackSource,
     MediaStreamAudioTrackSource,
 } from 'mediabunny'
-import { resolveBitrate, createOutputFormat, hasVideo, hasAudio } from './configuration'
+import { Configuration, resolveBitrate, createOutputFormat, hasVideo, hasAudio, containerExtension } from './configuration'
 import { Settings } from './element/settings'
 import type {
     Message,
@@ -16,7 +16,6 @@ import type {
     UpdateCropRegionMessage,
 } from './message'
 import { sendEvent, sendException } from './sentry'
-import { containerExtension } from './configuration'
 import { Preview } from './preview'
 import { Crop } from './crop'
 
@@ -165,7 +164,7 @@ async function startRecording(startRecording: StartRecording) {
     // Prepare output file
     const dirHandle = await navigator.storage.getDirectory()
     const ext = containerExtension(videoFormat.container)
-    const fileName = `video-${Date.now()}${ext}`
+    const fileName = Configuration.filename(startRecording.startAtMs, ext)
     recordingFileHandle = await dirHandle.getFileHandle(fileName, { create: true })
     const writableStream = await recordingFileHandle.createWritable()
 
@@ -289,7 +288,7 @@ async function startRecording(startRecording: StartRecording) {
     ]
 
     // Start output
-    recordingStartTime = Date.now()
+    recordingStartTime = startRecording.startAtMs
     await output.start()
 
     const outputMimeType = await output.getMimeType()

@@ -1,4 +1,5 @@
 import { parseApiPath, handleApiRequest } from './handler'
+import { RecordingState } from './handler'
 import type { RecordingStorage, RecordingMetadata, StorageEstimateInfo, ListRecordingsOptions } from './storage'
 
 // ---------- helpers ----------
@@ -65,7 +66,8 @@ describe('handleApiRequest – storage-estimate', () => {
             estimate: jest.fn<Promise<StorageEstimateInfo>, []>().mockResolvedValue({ usage: 1024, quota: 1048576 }),
         })
         const req = new Request('https://ext.example/api/storage/estimate')
-        const res = await handleApiRequest(req, storage)
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState)
 
         expect(res.status).toBe(200)
         expect(res.headers.get('Content-Type')).toBe('application/json')
@@ -75,7 +77,8 @@ describe('handleApiRequest – storage-estimate', () => {
     it('should return 405 for POST', async () => {
         const storage = createMockStorage()
         const req = new Request('https://ext.example/api/storage/estimate', { method: 'POST' })
-        const res = await handleApiRequest(req, storage)
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState)
 
         expect(res.status).toBe(405)
     })
@@ -85,8 +88,17 @@ describe('handleApiRequest – storage-estimate', () => {
 
 describe('handleApiRequest – recordings-list', () => {
     const recordings: RecordingMetadata[] = [
-        { title: 'a.webm', size: 100, lastModified: 1, mimeType: 'video/webm', recordedAt: 1 },
-        { title: 'b.webm', size: 200, lastModified: 2, mimeType: 'video/webm', recordedAt: 2 },
+        { title: 'a.webm', size: 100, lastModified: 1, mimeType: 'video/webm', recordedAt: 1, isTemporary: false },
+        { title: 'b.webm', size: 200, lastModified: 2, mimeType: 'video/webm', recordedAt: 2, isTemporary: false },
+        { title: 'c.webm', size: 0, lastModified: 3, mimeType: 'video/webm', recordedAt: 3, isTemporary: false },
+        { title: 'c.webm.crswap', size: 0, lastModified: 3, mimeType: 'video/webm', recordedAt: 3, isTemporary: true },
+    ]
+    const recordingState: RecordingState = { isRecording: true, startAtMs: 3 }
+    const expected: RecordingMetadata[] = [
+        { title: 'a.webm', size: 100, lastModified: 1, mimeType: 'video/webm', recordedAt: 1, isTemporary: false, isRecording: false },
+        { title: 'b.webm', size: 200, lastModified: 2, mimeType: 'video/webm', recordedAt: 2, isTemporary: false, isRecording: false },
+        { title: 'c.webm', size: 0, lastModified: 3, mimeType: 'video/webm', recordedAt: 3, isTemporary: false, isRecording: true },
+        { title: 'c.webm.crswap', size: 0, lastModified: 3, mimeType: 'video/webm', recordedAt: 3, isTemporary: true, isRecording: true },
     ]
 
     it('should list recordings on GET', async () => {
@@ -94,10 +106,10 @@ describe('handleApiRequest – recordings-list', () => {
             list: jest.fn<Promise<RecordingMetadata[]>, [ListRecordingsOptions?]>().mockResolvedValue(recordings),
         })
         const req = new Request('https://ext.example/api/recordings')
-        const res = await handleApiRequest(req, storage)
+        const res = await handleApiRequest(req, storage, recordingState)
 
         expect(res.status).toBe(200)
-        expect(await res.json()).toEqual(recordings)
+        expect(await res.json()).toEqual(expected)
         expect(storage.list).toHaveBeenCalledWith({ sort: 'asc' })
     })
 
@@ -106,7 +118,7 @@ describe('handleApiRequest – recordings-list', () => {
             list: jest.fn<Promise<RecordingMetadata[]>, [ListRecordingsOptions?]>().mockResolvedValue(recordings),
         })
         const req = new Request('https://ext.example/api/recordings?sort=desc')
-        const res = await handleApiRequest(req, storage)
+        const res = await handleApiRequest(req, storage, recordingState)
 
         expect(res.status).toBe(200)
         expect(storage.list).toHaveBeenCalledWith({ sort: 'desc' })
@@ -115,7 +127,7 @@ describe('handleApiRequest – recordings-list', () => {
     it('should return 405 for DELETE', async () => {
         const storage = createMockStorage()
         const req = new Request('https://ext.example/api/recordings', { method: 'DELETE' })
-        const res = await handleApiRequest(req, storage)
+        const res = await handleApiRequest(req, storage, recordingState)
 
         expect(res.status).toBe(405)
     })
@@ -130,7 +142,8 @@ describe('handleApiRequest – recording GET (full response)', () => {
             getFile: jest.fn<Promise<File | null>, [string]>().mockResolvedValue(file),
         })
         const req = new Request('https://ext.example/api/recordings/test.webm')
-        const res = await handleApiRequest(req, storage)
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState)
 
         expect(res.status).toBe(200)
         expect(res.headers.get('Content-Type')).toBe('video/webm')
@@ -145,7 +158,8 @@ describe('handleApiRequest – recording GET (full response)', () => {
             getFile: jest.fn<Promise<File | null>, [string]>().mockResolvedValue(file),
         })
         const req = new Request('https://ext.example/api/recordings/my%20video.mp4?download=true')
-        const res = await handleApiRequest(req, storage)
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState)
 
         expect(res.status).toBe(200)
         expect(res.headers.get('Content-Disposition')).toContain('attachment')
@@ -154,7 +168,8 @@ describe('handleApiRequest – recording GET (full response)', () => {
     it('should return 404 when file not found', async () => {
         const storage = createMockStorage()
         const req = new Request('https://ext.example/api/recordings/missing.webm')
-        const res = await handleApiRequest(req, storage)
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState)
 
         expect(res.status).toBe(404)
     })
@@ -162,7 +177,8 @@ describe('handleApiRequest – recording GET (full response)', () => {
     it('should return 405 for PUT', async () => {
         const storage = createMockStorage()
         const req = new Request('https://ext.example/api/recordings/test.webm', { method: 'PUT' })
-        const res = await handleApiRequest(req, storage)
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState)
 
         expect(res.status).toBe(405)
     })
@@ -174,7 +190,8 @@ describe('handleApiRequest – recording DELETE', () => {
     it('should return 204 on successful delete', async () => {
         const storage = createMockStorage()
         const req = new Request('https://ext.example/api/recordings/test.webm', { method: 'DELETE' })
-        const res = await handleApiRequest(req, storage)
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState)
 
         expect(res.status).toBe(204)
         expect(storage.delete).toHaveBeenCalledWith('test.webm')
@@ -200,7 +217,8 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
         const req = new Request('https://ext.example/api/recordings/test.webm', {
             headers: { 'Range': 'bytes=0-4' },
         })
-        const res = await handleApiRequest(req, storage)
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState)
 
         expect(res.status).toBe(206)
         expect(res.headers.get('Content-Range')).toBe(`bytes 0-4/${file.size}`)
@@ -216,7 +234,8 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
         const req = new Request('https://ext.example/api/recordings/test.webm', {
             headers: { 'Range': 'bytes=-3' },
         })
-        const res = await handleApiRequest(req, storage)
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState)
 
         expect(res.status).toBe(206)
         expect(res.headers.get('Content-Range')).toBe(`bytes 7-9/${file.size}`)
@@ -230,7 +249,8 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
         const req = new Request('https://ext.example/api/recordings/test.webm', {
             headers: { 'Range': 'bytes=5-' },
         })
-        const res = await handleApiRequest(req, storage)
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState)
 
         expect(res.status).toBe(206)
         expect(res.headers.get('Content-Range')).toBe(`bytes 5-9/${file.size}`)
@@ -244,7 +264,8 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
         const req = new Request('https://ext.example/api/recordings/test.webm', {
             headers: { 'Range': 'bytes=0-99999' },
         })
-        const res = await handleApiRequest(req, storage)
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState)
 
         expect(res.status).toBe(206)
         expect(res.headers.get('Content-Range')).toBe(`bytes 0-9/${file.size}`)
@@ -255,7 +276,8 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
         const req = new Request('https://ext.example/api/recordings/test.webm', {
             headers: { 'Range': 'bytes=100-200' },
         })
-        const res = await handleApiRequest(req, storage)
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState)
 
         expect(res.status).toBe(416)
         expect(res.headers.get('Content-Range')).toBe(`bytes */${file.size}`)
@@ -265,7 +287,8 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
         const req = new Request('https://ext.example/api/recordings/test.webm', {
             headers: { 'Range': 'invalid' },
         })
-        const res = await handleApiRequest(req, storage)
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState)
 
         expect(res.status).toBe(200)
         expect(res.headers.get('Accept-Ranges')).toBe('bytes')
@@ -276,7 +299,8 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
         const req = new Request('https://ext.example/api/recordings/test.webm', {
             headers: { 'Range': 'items=0-5' },
         })
-        const res = await handleApiRequest(req, storage)
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState)
 
         expect(res.status).toBe(200)
     })
@@ -285,7 +309,8 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
         const req = new Request('https://ext.example/api/recordings/test.webm?download=true', {
             headers: { 'Range': 'bytes=0-4' },
         })
-        const res = await handleApiRequest(req, storage)
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState)
 
         expect(res.status).toBe(206)
         expect(res.headers.get('Content-Disposition')).toContain('attachment')
@@ -295,7 +320,8 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
         const req = new Request('https://ext.example/api/recordings/test.webm', {
             headers: { 'Range': 'bytes=0-0' },
         })
-        const res = await handleApiRequest(req, storage)
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState)
 
         expect(res.status).toBe(206)
         expect(res.headers.get('Content-Range')).toBe(`bytes 0-0/${file.size}`)
@@ -309,7 +335,8 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
         const req = new Request('https://ext.example/api/recordings/test.webm', {
             headers: { 'Range': 'bytes=9-9' },
         })
-        const res = await handleApiRequest(req, storage)
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState)
 
         expect(res.status).toBe(206)
         expect(res.headers.get('Content-Range')).toBe(`bytes 9-9/${file.size}`)
@@ -323,7 +350,8 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
         const req = new Request('https://ext.example/api/recordings/test.webm', {
             headers: { 'Range': 'bytes=0-2,5-7' },
         })
-        const res = await handleApiRequest(req, storage)
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState)
 
         expect(res.status).toBe(206)
         const contentType = res.headers.get('Content-Type')!
@@ -349,7 +377,8 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
         const req = new Request('https://ext.example/api/recordings/test.webm', {
             headers: { 'Range': 'bytes=0-1,4-5,8-9' },
         })
-        const res = await handleApiRequest(req, storage)
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState)
 
         expect(res.status).toBe(206)
         const contentType = res.headers.get('Content-Type')!
@@ -370,7 +399,8 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
         const req = new Request('https://ext.example/api/recordings/test.webm', {
             headers: { 'Range': 'bytes=100-200,300-400' },
         })
-        const res = await handleApiRequest(req, storage)
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState)
 
         expect(res.status).toBe(416)
         expect(res.headers.get('Content-Range')).toBe(`bytes */${file.size}`)
@@ -380,7 +410,8 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
         const req = new Request('https://ext.example/api/recordings/test.webm', {
             headers: { 'Range': 'bytes=0-2,100-200,7-9' },
         })
-        const res = await handleApiRequest(req, storage)
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState)
 
         expect(res.status).toBe(206)
         const contentType = res.headers.get('Content-Type')!
@@ -397,7 +428,8 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
         const req = new Request('https://ext.example/api/recordings/test.webm', {
             headers: { 'Range': 'bytes=0-2,100-200' },
         })
-        const res = await handleApiRequest(req, storage)
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState)
 
         expect(res.status).toBe(206)
         // Should be a single-range response, not multipart
@@ -413,7 +445,8 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
         const req = new Request('https://ext.example/api/recordings/test.webm', {
             headers: { 'Range': 'bytes=0-2,5-7' },
         })
-        const res = await handleApiRequest(req, storage)
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState)
 
         expect(res.status).toBe(206)
         expect(res.headers.get('Accept-Ranges')).toBe('bytes')
@@ -426,7 +459,8 @@ describe('handleApiRequest – not found', () => {
     it('should return 404 for unknown API path', async () => {
         const storage = createMockStorage()
         const req = new Request('https://ext.example/api/unknown')
-        const res = await handleApiRequest(req, storage)
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState)
 
         expect(res.status).toBe(404)
     })
@@ -440,7 +474,8 @@ describe('handleApiRequest – internal error', () => {
             list: jest.fn<Promise<RecordingMetadata[]>, [ListRecordingsOptions?]>().mockRejectedValue(new Error('disk error')),
         })
         const req = new Request('https://ext.example/api/recordings')
-        const res = await handleApiRequest(req, storage)
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState)
 
         expect(res.status).toBe(500)
         expect(await res.json()).toEqual({ error: 'Internal Server Error' })

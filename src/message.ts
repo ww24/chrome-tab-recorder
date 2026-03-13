@@ -27,6 +27,7 @@ export interface StartRecordingMessage {
     data: StartRecording;
 }
 export interface StartRecording {
+    startAtMs: number; // unix timestamp [ms]
     tabSize: Resolution;
     streamId: string;
 }

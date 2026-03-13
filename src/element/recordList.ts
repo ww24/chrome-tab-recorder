@@ -28,6 +28,7 @@ export interface RecordEntry {
     size: number;
     selected: boolean;
     recordedAt?: Date;
+    isRecording: boolean;
 }
 
 /**
@@ -70,6 +71,9 @@ export class RecordList extends LitElement {
         }
         .sort-chip {
             min-width: 90px;
+        }
+        .recording {
+            color: #d93025;
         }
     `
 
@@ -114,8 +118,6 @@ export class RecordList extends LitElement {
         try {
             switch (message.type) {
                 case 'recording-state':
-                    // Update UI when recording completed
-                    if (message.isRecording) return
                     await this.updateRecord()
                     await this.updateEstimate()
                     return
@@ -133,11 +135,14 @@ export class RecordList extends LitElement {
             return html`
             ${idx > 0 ? html`<md-divider></md-divider>` : ''}
             <md-list-item class="list-item">
-                <md-checkbox touch-target="wrapper" slot="start" ?checked=${record.selected} @input=${this.selectRecord(record)}></md-checkbox>
-                <a href="${downloadUrl}">${record.title}</a>
+                <md-checkbox touch-target="wrapper" slot="start" ?disabled=${record.isRecording} ?checked=${record.selected} @input=${this.selectRecord(record)}></md-checkbox>
+                ${record.isRecording
+                    ? html`<span aria-disabled="true">${record.title}</span>`
+                    : html`<a href="${downloadUrl}">${record.title}</a>`}
                 <div class="meta" title="file size"><md-icon>storage</md-icon> ${formatNum(record.size / 1024 / 1024, 2)} MB</div>
                 ${record.recordedAt != null ? html`<div class="meta" title="recorded at"><md-icon>schedule</md-icon> ${RecordList.dateTimeFormat.format(record.recordedAt)}</div>` : ''}
-                <md-filled-icon-button slot="end" @click=${this.playRecord(record)}>
+                ${record.isRecording ? html`<div class="meta recording" title="recording"><md-icon>screen_record</md-icon> Recording</div>` : ''}
+                <md-filled-icon-button slot="end" ?disabled=${record.isRecording} @click=${this.playRecord(record)}>
                     <md-icon>play_arrow</md-icon>
                 </md-filled-icon-button>
             </md-list-item>`
@@ -177,11 +182,14 @@ export class RecordList extends LitElement {
         // Fetch recordings from API
         const recordings = await recordingApi.listRecordings({ sort: this.sortOrder })
 
-        const result: Array<RecordEntry> = recordings.map(meta => ({
+        const result: Array<RecordEntry> = recordings.filter(meta => {
+            return !meta.isRecording || meta.isTemporary
+        }).map(meta => ({
             title: meta.title,
             size: meta.size,
             selected: false,
             recordedAt: meta.recordedAt != null ? new Date(meta.recordedAt) : undefined,
+            isRecording: meta.isRecording ?? false,
         }))
 
         const oldVal = [...this.records]
@@ -231,6 +239,7 @@ export class RecordList extends LitElement {
         const selected = e.target.selected
         const oldVal = [...this.records]
         this.records = this.records.map(record => {
+            if (record.isRecording) return record // ignore recording entry
             record.selected = selected
             return record
         })
