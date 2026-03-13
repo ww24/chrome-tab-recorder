@@ -8,6 +8,8 @@ import { Configuration, resolveBitrate, createOutputFormat, hasVideo, hasAudio, 
 import { Settings } from './element/settings'
 import type {
     Message,
+    Trigger,
+    StartTrigger,
     StartRecording,
     UpdateRecordingIconMessage,
     TabTrackEndedMessage,
@@ -35,10 +37,10 @@ chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.M
         try {
             switch (message.type) {
                 case 'start-recording':
-                    await startRecording(message.data)
+                    await startRecording(message.trigger, message.data)
                     return
                 case 'stop-recording':
-                    await stopRecording()
+                    await stopRecording(message.trigger)
                     return
                 case 'save-config-local':
                     Settings.mergeRemoteConfiguration(message.data)
@@ -133,7 +135,7 @@ function createMixedMediaStream(tabStream: MediaStream, micStream: MediaStream |
     return finalStream
 }
 
-async function startRecording(startRecording: StartRecording) {
+async function startRecording(trigger: StartTrigger, startRecording: StartRecording) {
     if (output?.state === 'started') {
         throw new Error('Called startRecording while recording is in progress.')
     }
@@ -146,6 +148,7 @@ async function startRecording(startRecording: StartRecording) {
     sendEvent({
         type: 'start_recording',
         tags: {
+            trigger,
             state: {
                 opfsPersisted,
             },
@@ -319,7 +322,7 @@ async function startRecording(startRecording: StartRecording) {
     window.location.hash = 'recording'
 }
 
-async function stopRecording() {
+async function stopRecording(trigger: Trigger) {
     if (output == null) {
         window.location.hash = ''
         return
@@ -337,6 +340,7 @@ async function stopRecording() {
         await sendEvent({
             type: 'stop_recording',
             metrics: {
+                trigger,
                 recording: {
                     durationSec: duration / 1000,
                     filesize: file?.size ?? 0,
