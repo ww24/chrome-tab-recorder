@@ -3,6 +3,8 @@ import { v7 as uuidv7 } from 'uuid'
 import type { getMediaStreamId } from './type'
 import type {
     Message,
+    Trigger,
+    StartTrigger,
     StartRecordingMessage,
     StopRecordingMessage,
     SaveConfigLocalMessage,
@@ -95,12 +97,13 @@ async function setRecordingState(state: RecordingState) {
 
 // Action icon handler
 chrome.action.onClicked.addListener(async (tab: chrome.tabs.Tab) => {
+    const trigger = 'action-icon'
     try {
         if (await getIsRecording()) {
-            await stopRecording()
+            await stopRecording(trigger)
             return
         }
-        await startRecording(tab)
+        await startRecording(tab, trigger)
     } catch (e) {
         console.error(e)
         const msg: ExceptionMessage = {
@@ -114,13 +117,13 @@ chrome.action.onClicked.addListener(async (tab: chrome.tabs.Tab) => {
 // Context menu click handler
 chrome.contextMenus.onClicked.addListener(async (info: chrome.contextMenus.OnClickData, tab?: chrome.tabs.Tab) => {
     if (info.menuItemId !== CONTEXT_MENU_ID || !tab) return
-
+    const trigger = 'context-menu'
     try {
         if (await getIsRecording()) {
-            await stopRecording()
+            await stopRecording(trigger)
             return
         }
-        await startRecording(tab)
+        await startRecording(tab, trigger)
     } catch (e) {
         console.error(e)
         const msg: ExceptionMessage = {
@@ -133,26 +136,27 @@ chrome.contextMenus.onClicked.addListener(async (info: chrome.contextMenus.OnCli
 
 // Keyboard shortcut handler
 chrome.commands.onCommand.addListener(async (command: string, tab?: chrome.tabs.Tab) => {
+    const trigger = 'keyboard-shortcut'
     try {
         switch (command) {
             case 'start-recording': {
                 if (!tab) return
                 if (await getIsRecording()) return
-                await startRecording(tab)
+                await startRecording(tab, trigger)
                 break
             }
             case 'stop-recording': {
                 if (!(await getIsRecording())) return
-                await stopRecording()
+                await stopRecording(trigger)
                 break
             }
             case 'toggle-recording': {
                 if (await getIsRecording()) {
-                    await stopRecording()
+                    await stopRecording(trigger)
                     return
                 }
                 if (!tab) return
-                await startRecording(tab)
+                await startRecording(tab, trigger)
                 break
             }
             case 'open-option-page': {
@@ -170,7 +174,7 @@ chrome.commands.onCommand.addListener(async (command: string, tab?: chrome.tabs.
     }
 })
 
-async function startRecording(tab: chrome.tabs.Tab) {
+async function startRecording(tab: chrome.tabs.Tab, trigger: StartTrigger) {
     await createOffscreenDocument()
 
     // Get a MediaStream for the active tab.
@@ -190,6 +194,7 @@ async function startRecording(tab: chrome.tabs.Tab) {
     // Send the stream ID to the offscreen document to start recording.
     const msg: StartRecordingMessage = {
         type: 'start-recording',
+        trigger,
         data: {
             startAtMs: startAtMs,
             tabSize: screenSize,
@@ -205,10 +210,11 @@ async function startRecording(tab: chrome.tabs.Tab) {
     await updateContextMenuTitle()
 }
 
-async function stopRecording() {
+async function stopRecording(trigger: Trigger) {
     // Send stop-recording message to offscreen document
     const msg: StopRecordingMessage = {
         type: 'stop-recording',
+        trigger,
     }
     await chrome.runtime.sendMessage(msg)
 
@@ -277,7 +283,7 @@ chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.M
                 case 'tab-track-ended':
                     // Fire-and-forget: stopRecording closes the Offscreen Document,
                     // so it must not be awaited inside the message listener.
-                    stopRecording().catch(async e => {
+                    stopRecording('tab-track-ended').catch(async e => {
                         console.error(e)
                         const msg: ExceptionMessage = {
                             type: 'exception',

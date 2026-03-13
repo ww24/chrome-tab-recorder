@@ -22,9 +22,14 @@ export interface ExceptionMessage {
     data: unknown;
 }
 
+export type Trigger = 'action-icon' | 'context-menu' | 'keyboard-shortcut' | 'tab-track-ended'
+
+export type StartTrigger = Exclude<Trigger, 'tab-track-ended'>
+
 export interface StartRecordingMessage {
     type: 'start-recording';
     data: StartRecording;
+    trigger: StartTrigger;
 }
 export interface StartRecording {
     startAtMs: number; // unix timestamp [ms]
@@ -43,6 +48,7 @@ export interface TabTrackEndedMessage {
 
 export interface StopRecordingMessage {
     type: 'stop-recording';
+    trigger: Trigger;
 }
 
 export interface ResizeWindowMessage {
