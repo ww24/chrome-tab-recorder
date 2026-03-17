@@ -11,6 +11,11 @@ updates:
       semver-major-days: 14
       semver-minor-days: 5
       semver-patch-days: 3
+    groups:
+      mediabunny:
+        patterns:
+          - mediabunny
+          - @mediabunny/*
 
   - package-ecosystem: "github-actions"
     directory: "/"
