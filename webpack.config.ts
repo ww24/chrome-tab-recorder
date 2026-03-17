@@ -33,6 +33,7 @@ const config: webpack.Configuration = {
         new webpack.SourceMapDevToolPlugin({}),
         new Dotenv(),
         new webpack.DefinePlugin({
+            'process.env.PKG_NAME': `"${pkg.name}"`,
             'process.env.VERSION': `"${pkg.version}"`,
             'process.env.ENV_NAME': `"${envName}"`,
         }),
