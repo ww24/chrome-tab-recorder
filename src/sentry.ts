@@ -27,6 +27,7 @@ const client = new BrowserClient({
     integrations: integrations,
     enableLogs: true,
     environment: process.env.ENV_NAME,
+    release: `${process.env.PKG_NAME}@${process.env.VERSION}`,
 })
 
 const scope = new Scope()
