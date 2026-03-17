@@ -35,7 +35,7 @@ jobs:
         name: List the state of node modules
         continue-on-error: true
         run: npm list
-      - name: install dependeicies
+      - name: install dependencies
         run: npm ci
       - name: eslint
         run: npm run lint
@@ -70,7 +70,7 @@ jobs:
         name: List the state of node modules
         continue-on-error: true
         run: npm list
-      - name: install dependeicies
+      - name: install dependencies
         run: npm install
       - name: build
         run: npm run build
