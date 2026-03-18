@@ -23,7 +23,7 @@
     "@sentry/browser": "^10.43.0",
     "@mediabunny/flac-encoder": "^1.38.1",
     "lit": "^3.3.2",
-    "mediabunny": "^1.38.1",
+    "mediabunny": "^1.39.2",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
