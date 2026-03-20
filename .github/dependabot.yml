@@ -14,8 +14,8 @@ updates:
     groups:
       mediabunny:
         patterns:
-          - mediabunny
-          - @mediabunny/*
+          - "mediabunny"
+          - "@mediabunny/*"
 
   - package-ecosystem: "github-actions"
     directory: "/"
