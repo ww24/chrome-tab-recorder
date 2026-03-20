@@ -92,17 +92,59 @@ export function resolveBitrate(preset: BitratePreset, customValue: number): numb
     }
 }
 
-export interface VideoFormat {
-    audioBitrate: number; // bps (used when audioBitratePreset is 'custom')
-    audioBitratePreset: BitratePreset;
-    videoBitrate: number; // bps (used when videoBitratePreset is 'custom')
-    videoBitratePreset: BitratePreset;
-    audioSampleRate: number; // Hz
-    frameRate: number; // fps
-    container: ContainerFormat;
-    videoCodec: VideoCodecType;
-    audioCodec: AudioCodecType;
-    recordingMode: VideoRecordingMode;
+export class VideoFormat {
+    constructor(
+        public recordingMode: VideoRecordingMode,
+        public container: ContainerFormat,
+        public audioCodec: AudioCodecType,
+        public audioBitratePreset: BitratePreset,
+        public audioBitrate: number, // bps (used when audioBitratePreset is 'custom')
+        public audioSampleRate: number,
+        public videoCodec: VideoCodecType,
+        public videoBitratePreset: BitratePreset,
+        public videoBitrate: number, // bps (used when videoBitratePreset is 'custom')
+        public frameRate: number // fps
+    ) { }
+
+    static toReport(vf: VideoFormat): VideoFormatReport {
+        const report: VideoFormatReport = { ...vf }
+        const { recordingMode, audioBitratePreset, videoBitratePreset } = vf
+        switch (recordingMode) {
+            case 'audio-only':
+                report.videoCodec = undefined
+                report.videoBitratePreset = undefined
+                report.videoBitrate = undefined
+                report.frameRate = undefined
+                break
+            case 'video-only':
+                report.audioCodec = undefined
+                report.audioBitratePreset = undefined
+                report.audioBitrate = undefined
+                report.audioSampleRate = undefined
+                break
+        }
+        if (audioBitratePreset !== 'custom') {
+            report.audioBitrate = undefined
+        }
+        if (videoBitratePreset !== 'custom') {
+            report.videoBitrate = undefined
+        }
+        return report
+    }
+}
+
+export type VideoFormatReport = Pick<VideoFormat, 'recordingMode' | 'container'> & {
+    // audio
+    audioCodec?: AudioCodecType;
+    audioBitratePreset?: BitratePreset;
+    audioBitrate?: number; // bps (used when audioBitratePreset is 'custom')
+    audioSampleRate?: number; // Hz
+
+    // video
+    videoCodec?: VideoCodecType;
+    videoBitratePreset?: BitratePreset;
+    videoBitrate?: number; // bps (used when videoBitratePreset is 'custom')
+    frameRate?: number; // fps
 }
 
 /**
@@ -169,8 +211,9 @@ export function isAudioOnly(mode: VideoRecordingMode): boolean {
 // Configuration type for sync storage (excludes device-specific settings)
 export type SyncConfiguration = Omit<Configuration, 'microphone' | 'cropping'>
 
-export type ReportConfiguration =
-    Pick<Configuration, 'windowSize' | 'screenRecordingSize' | 'videoFormat' | 'openOptionPage' | 'muteRecordingTab' | 'recordingSortOrder'>
+export type ConfigurationReport =
+    Pick<Configuration, 'windowSize' | 'screenRecordingSize' | 'openOptionPage' | 'muteRecordingTab' | 'recordingSortOrder'>
+    & { videoFormat: VideoFormatReport }
     & { microphone: Omit<Microphone, 'deviceId'> }
     & { cropping: Pick<CroppingConfig, 'enabled'> & { region: Pick<CropRegion, 'width' | 'height'> } }
 
@@ -198,18 +241,18 @@ export class Configuration {
             auto: true,
             scale: 2,
         }
-        this.videoFormat = {
-            audioBitrate: 256 * 1000, // 256kbps
-            audioBitratePreset: 'high',
-            videoBitrate: 8 * 1000 * 1000, // 8mbps
-            videoBitratePreset: 'high',
-            audioSampleRate: 44100, // 44.1kHz
-            frameRate: 30, // 30fps
-            container: 'webm',
-            videoCodec: 'vp9',
-            audioCodec: 'opus',
-            recordingMode: 'video-and-audio',
-        }
+        this.videoFormat = new VideoFormat(
+            'video-and-audio', // recordingMode
+            'webm', // container
+            'opus', // audioCodec
+            'high', // audioBitratePreset
+            256 * 1000, // audioBitrate (256kbps)
+            44100, // audioSampleRate (44.1kHz)
+            'vp9', // videoCodec
+            'high', // videoBitratePreset
+            8 * 1000 * 1000, // videoBitrate (8mbps)
+            30, // frameRate (30fps)
+        )
         this.enableBugTracking = true
         this.updatedAt = 0
         this.userId = ''
@@ -241,19 +284,10 @@ export class Configuration {
         const { microphone: _m, cropping: _c, ...rest } = config
         return { ...rest }
     }
-    static filterForReport(config: Configuration): ReportConfiguration {
-        let { videoFormat, cropping, microphone } = config
+    static filterForReport(config: Configuration): ConfigurationReport {
+        let { cropping, microphone } = config
         // Normalize values to reduce cardinality
-        if (videoFormat.audioBitratePreset !== 'custom') {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { audioBitrate: _, ...rest } = videoFormat
-            videoFormat = { audioBitrate: 0, ...rest }
-        }
-        if (videoFormat.videoBitratePreset !== 'custom') {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { videoBitrate: _, ...rest } = videoFormat
-            videoFormat = { videoBitrate: 0, ...rest }
-        }
+        const videoFormat = VideoFormat.toReport(config.videoFormat)
         if (!cropping.enabled) {
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { region: _, ...rest } = cropping

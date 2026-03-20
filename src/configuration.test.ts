@@ -5,7 +5,7 @@ jest.mock('@mediabunny/flac-encoder', () => ({
     registerFlacEncoder: jest.fn(),
 }))
 
-import { migrateFromMimeType } from './configuration'
+import { migrateFromMimeType, VideoFormat } from './configuration'
 
 describe('migrateFromMimeType', () => {
     describe('WebM container', () => {
@@ -106,6 +106,100 @@ describe('migrateFromMimeType', () => {
         it('should handle empty', () => {
             const result = migrateFromMimeType('')
             expect(result).toEqual({ container: 'webm', videoCodec: 'vp9', audioCodec: 'opus' })
+        })
+    })
+})
+
+describe('VideoFormat.toReport', () => {
+    const base: Omit<VideoFormat, 'recordingMode'> = {
+        container: 'webm',
+        audioCodec: 'opus',
+        audioBitratePreset: 'high',
+        audioBitrate: 256000,
+        audioSampleRate: 44100,
+        videoCodec: 'vp9',
+        videoBitratePreset: 'high',
+        videoBitrate: 8000000,
+        frameRate: 30,
+    }
+
+    it('should include all fields for video-and-audio mode', () => {
+        const vf: VideoFormat = { ...base, recordingMode: 'video-and-audio', audioBitratePreset: 'custom', videoBitratePreset: 'custom' }
+        expect(VideoFormat.toReport(vf)).toEqual({
+            recordingMode: 'video-and-audio',
+            container: 'webm',
+            audioCodec: 'opus',
+            audioBitratePreset: 'custom',
+            audioBitrate: 256000,
+            audioSampleRate: 44100,
+            videoCodec: 'vp9',
+            videoBitratePreset: 'custom',
+            videoBitrate: 8000000,
+            frameRate: 30,
+        })
+    })
+
+    it('should omit video fields for audio-only mode', () => {
+        const vf: VideoFormat = { ...base, recordingMode: 'audio-only' }
+        expect(VideoFormat.toReport(vf)).toEqual({
+            recordingMode: 'audio-only',
+            container: 'webm',
+            audioCodec: 'opus',
+            audioBitratePreset: 'high',
+            audioBitrate: undefined,
+            audioSampleRate: 44100,
+            videoCodec: undefined,
+            videoBitratePreset: undefined,
+            videoBitrate: undefined,
+            frameRate: undefined,
+        })
+    })
+
+    it('should omit audio fields for video-only mode', () => {
+        const vf: VideoFormat = { ...base, recordingMode: 'video-only' }
+        expect(VideoFormat.toReport(vf)).toEqual({
+            recordingMode: 'video-only',
+            container: 'webm',
+            audioCodec: undefined,
+            audioBitratePreset: undefined,
+            audioBitrate: undefined,
+            audioSampleRate: undefined,
+            videoCodec: 'vp9',
+            videoBitratePreset: 'high',
+            videoBitrate: undefined,
+            frameRate: 30,
+        })
+    })
+
+    it('should include custom audioBitrate when preset is custom', () => {
+        const vf: VideoFormat = { ...base, recordingMode: 'video-and-audio', audioBitratePreset: 'custom', audioBitrate: 128000 }
+        expect(VideoFormat.toReport(vf)).toEqual({
+            recordingMode: 'video-and-audio',
+            container: 'webm',
+            audioCodec: 'opus',
+            audioBitratePreset: 'custom',
+            audioBitrate: 128000,
+            audioSampleRate: 44100,
+            videoCodec: 'vp9',
+            videoBitratePreset: 'high',
+            videoBitrate: undefined,
+            frameRate: 30,
+        })
+    })
+
+    it('should include custom videoBitrate when preset is custom', () => {
+        const vf: VideoFormat = { ...base, recordingMode: 'video-and-audio', videoBitratePreset: 'custom', videoBitrate: 4000000 }
+        expect(VideoFormat.toReport(vf)).toEqual({
+            recordingMode: 'video-and-audio',
+            container: 'webm',
+            audioCodec: 'opus',
+            audioBitratePreset: 'high',
+            audioBitrate: undefined,
+            audioSampleRate: 44100,
+            videoCodec: 'vp9',
+            videoBitratePreset: 'custom',
+            videoBitrate: 4000000,
+            frameRate: 30,
         })
     })
 })

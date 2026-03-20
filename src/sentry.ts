@@ -50,6 +50,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function flatten(obj: Record<string, unknown>, prefix = ''): Record<string, unknown> {
     const result: Record<string, unknown> = {}
     for (const [key, value] of Object.entries(obj)) {
+        if (value === undefined) continue
         const newKey = prefix ? `${prefix}.${key}` : key
         if (isRecord(value)) {
             Object.assign(result, flatten(value, newKey))
