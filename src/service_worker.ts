@@ -10,6 +10,7 @@ import type {
     SaveConfigLocalMessage,
     ExceptionMessage,
     RecordingStateMessage,
+    CancelRecordingMessage,
 } from './message'
 import { Configuration, Resolution } from './configuration'
 import { ExtensionSyncStorage } from './storage'
@@ -234,6 +235,23 @@ async function stopRecording(trigger: Trigger) {
     await chrome.offscreen.closeDocument()
 }
 
+async function cancelRecording() {
+    // Send cancel-recording message to offscreen document
+    const msg: CancelRecordingMessage = { type: 'cancel-recording' }
+    await chrome.runtime.sendMessage(msg)
+
+    // Update action icon
+    await chrome.action.setIcon({ path: notRecordingIcon })
+
+    await broadcastRecordingState()
+
+    // Update context menu title
+    await updateContextMenuTitle()
+
+    // Close offscreen document
+    await chrome.offscreen.closeDocument()
+}
+
 // Update context menu title based on recording state
 async function updateContextMenuTitle() {
     try {
@@ -291,6 +309,9 @@ chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.M
                         }
                         await chrome.runtime.sendMessage(msg)
                     })
+                    return
+                case 'unexpected-recording-state':
+                    await cancelRecording()
                     return
                 case 'save-config-sync':
                     await storage.set(Configuration.key, message.data)
