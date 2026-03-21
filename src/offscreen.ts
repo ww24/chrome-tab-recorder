@@ -16,8 +16,9 @@ import type {
     PreviewFrameMessage,
     PreviewControlMessage,
     UpdateCropRegionMessage,
+    UnexpectedRecordingStateMessage,
 } from './message'
-import { sendEvent, sendException } from './sentry'
+import { flush, sendEvent, sendException } from './sentry'
 import { Preview } from './preview'
 import { Crop } from './crop'
 
@@ -41,9 +42,15 @@ chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.M
                     return
                 case 'stop-recording':
                     await stopRecording(message.trigger)
+                    await flush()
+                    return
+                case 'cancel-recording':
+                    await cancelRecording()
+                    await flush()
                     return
                 case 'save-config-local':
                     Settings.mergeRemoteConfiguration(message.data)
+                    await flush()
                     return
                 case 'exception':
                     throw message.data
@@ -55,8 +62,11 @@ chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.M
                     return
             }
         } catch (e) {
-            sendException(e, { exceptionSource: 'offscreen.onMessage' })
             console.error(e)
+            sendException(e, {
+                exceptionSource: 'offscreen.onMessage',
+                additionalMetadata: { messageType: message.type },
+            })
         } finally {
             sendResponse()
         }
@@ -244,6 +254,8 @@ async function startRecording(trigger: StartTrigger, startRecording: StartRecord
         source.connect(playbackCtx.destination)
     }
 
+    const errorPromises: Promise<void>[] = []
+
     // Add video track to output
     if (hasVideo(videoFormat.recordingMode)) {
         const mediaVideoTrack = media.getVideoTracks()[0]
@@ -257,10 +269,12 @@ async function startRecording(trigger: StartTrigger, startRecording: StartRecord
                 },
             )
             output.addVideoTrack(videoSource)
-            videoSource.errorPromise.catch(e => {
-                sendException(e, { exceptionSource: 'videoSource.error' })
-                console.error('Video source error:', e)
-            })
+            errorPromises.push(
+                videoSource.errorPromise.catch(e => {
+                    console.error('Video source error:', e)
+                    throw e
+                })
+            )
         }
     }
 
@@ -277,10 +291,12 @@ async function startRecording(trigger: StartTrigger, startRecording: StartRecord
                 },
             )
             output.addAudioTrack(audioSource)
-            audioSource.errorPromise.catch(e => {
-                sendException(e, { exceptionSource: 'audioSource.error' })
-                console.error('Audio source error:', e)
-            })
+            errorPromises.push(
+                audioSource.errorPromise.catch(e => {
+                    console.error('Audio source error:', e)
+                    throw e
+                })
+            )
         }
     }
 
@@ -290,31 +306,33 @@ async function startRecording(trigger: StartTrigger, startRecording: StartRecord
         ...(micStream?.getTracks() ?? []),
     ]
 
+    // Handle media source errors
+    Promise.race(errorPromises).catch(async e => {
+        sendException(e, {
+            exceptionSource: 'offscreen.startRecording',
+        })
+        const errorMessage = e instanceof Error ? e.message : String(e)
+        const msg: UnexpectedRecordingStateMessage = { type: 'unexpected-recording-state', error: errorMessage }
+        await chrome.runtime.sendMessage(msg)
+    }).catch(e => {
+        console.error(e)
+        sendException(e, { exceptionSource: 'offscreen.startRecording.sendMessage' })
+    })
+
     // Start output
     recordingStartTime = startRecording.startAtMs
     await output.start()
-
-    const outputMimeType = await output.getMimeType()
-    console.info('container:', videoFormat.container)
-    console.info('mimeType:', outputMimeType)
-    console.info('videoCodec:', videoFormat.videoCodec)
-    console.info('audioCodec:', videoFormat.audioCodec)
-    console.info('videoBitRate:', videoFormat.videoBitrate)
-    console.info('audioBitRate:', videoFormat.audioBitrate)
-    console.info('audioSampleRate:', videoFormat.audioSampleRate)
 
     // Listen for tab track ending to auto-finalize
     const [tabTrack] = tabMedia.getTracks()
     tabTrack?.addEventListener('ended', async () => {
         console.debug('tabTrack ended, event triggered')
         try {
-            const msg: TabTrackEndedMessage = {
-                type: 'tab-track-ended',
-            }
+            const msg: TabTrackEndedMessage = { type: 'tab-track-ended' }
             await chrome.runtime.sendMessage(msg)
         } catch (e) {
-            sendException(e, { exceptionSource: 'tabTrack.ended' })
             console.error(e)
+            sendException(e, { exceptionSource: 'tabTrack.ended' })
         }
     })
 
@@ -337,7 +355,7 @@ async function stopRecording(trigger: Trigger) {
         const duration = Date.now() - recordingStartTime
         console.info(`stopped: duration=${duration / 1000}s`)
 
-        await sendEvent({
+        sendEvent({
             type: 'stop_recording',
             metrics: {
                 trigger,
@@ -348,17 +366,46 @@ async function stopRecording(trigger: Trigger) {
             },
         })
     } catch (e) {
-        sendException(e, { exceptionSource: 'offscreen.stopRecording' })
         console.error(e)
+        sendException(e, { exceptionSource: 'offscreen.stopRecording' })
     } finally {
-        output = undefined
-        recordingStartTime = 0
-        recordingFileHandle = undefined
-        currentMediaTracks.forEach(t => t.stop())
-        currentMediaTracks = []
-        currentVideoTrack = null
-        window.location.hash = ''
+        cleanupRecordingState()
     }
+}
+
+async function cancelRecording() {
+    console.warn('cancel recording...')
+    try {
+        preview.stop()
+        await output?.cancel()
+
+        const duration = recordingStartTime > 0 ? Date.now() - recordingStartTime : 0
+        console.info(`canceled: duration=${duration / 1000}s`)
+
+        sendEvent({
+            type: 'unexpected_stop',
+            metrics: {
+                recording: {
+                    durationSec: duration / 1000,
+                },
+            },
+        })
+    } catch (e) {
+        console.error(e)
+        sendException(e, { exceptionSource: 'offscreen.cancelRecording' })
+    } finally {
+        cleanupRecordingState()
+    }
+}
+
+function cleanupRecordingState() {
+    output = undefined
+    recordingStartTime = 0
+    recordingFileHandle = undefined
+    currentMediaTracks.forEach(t => t.stop())
+    currentMediaTracks = []
+    currentVideoTrack = null
+    window.location.hash = ''
 }
 
 // Preview control handler

@@ -109,6 +109,10 @@ export class Settings extends LitElement {
         this.updateMicPermission()
     }
 
+    async firstUpdated() {
+        await this.validateEncoding()
+    }
+
     public render() {
         return html`
         <h2>Window Size</h2>

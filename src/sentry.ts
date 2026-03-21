@@ -62,8 +62,9 @@ function flatten(obj: Record<string, unknown>, prefix = ''): Record<string, unkn
 }
 
 export function sendException(e: unknown, meta: ExceptionMetadata) {
-    const { exceptionSource } = meta
-    getScope()?.captureException(e, { captureContext: { tags: { exceptionSource } } })
+    console.debug('sentry:', e)
+    const { exceptionSource, additionalMetadata } = meta
+    getScope()?.captureException(e, { captureContext: { tags: { ...additionalMetadata, exceptionSource } } })
 }
 
 export type FeedbackType = 'bug-report' | 'feature-request'
@@ -86,7 +87,7 @@ const METRICS = {
     EXTERNAL_LINK: 'external_link.click',
 }
 
-export async function sendEvent(e: Event) {
+export function sendEvent(e: Event) {
     const scope = getScope()
     if (scope == null) return
 
@@ -126,10 +127,12 @@ export async function sendEvent(e: Event) {
             logger.info(e.type, { ...flatten(e.tags) }, { scope })
             break
     }
+}
 
-    // Flushing is generally fire-and-forget, but must be awaited when called
-    // right before the Offscreen Document is closed; otherwise pending events
-    // may be lost.
+// Flushing is generally fire-and-forget, but must be awaited when called
+// right before the Offscreen Document is closed; otherwise pending events
+// may be lost.
+export async function flush() {
     const ok = await client.flush(1000) // timeout 1s
     if (!ok) {
         console.error('sentry: flush failed')

@@ -6,6 +6,8 @@ export type Message =
     | UpdateRecordingIconMessage
     | TabTrackEndedMessage
     | StopRecordingMessage
+    | UnexpectedRecordingStateMessage
+    | CancelRecordingMessage
     | ResizeWindowMessage
     | FetchConfigMessage
     | SaveConfigLocalMessage
@@ -49,6 +51,15 @@ export interface TabTrackEndedMessage {
 export interface StopRecordingMessage {
     type: 'stop-recording';
     trigger: Trigger;
+}
+
+export interface UnexpectedRecordingStateMessage {
+    type: 'unexpected-recording-state';
+    error: string;
+}
+
+export interface CancelRecordingMessage {
+    type: 'cancel-recording';
 }
 
 export interface ResizeWindowMessage {

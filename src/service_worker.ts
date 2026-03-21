@@ -10,6 +10,7 @@ import type {
     SaveConfigLocalMessage,
     ExceptionMessage,
     RecordingStateMessage,
+    CancelRecordingMessage,
 } from './message'
 import { Configuration, Resolution } from './configuration'
 import { ExtensionSyncStorage } from './storage'
@@ -234,6 +235,29 @@ async function stopRecording(trigger: Trigger) {
     await chrome.offscreen.closeDocument()
 }
 
+async function cancelRecording(error: string) {
+    // Send cancel-recording message to offscreen document
+    const msg: CancelRecordingMessage = { type: 'cancel-recording' }
+    await chrome.runtime.sendMessage(msg)
+
+    // Update action icon
+    await chrome.action.setIcon({ path: notRecordingIcon })
+
+    await broadcastRecordingState()
+
+    // Update context menu title
+    await updateContextMenuTitle()
+
+    // Close offscreen document
+    await chrome.offscreen.closeDocument()
+
+    if (error === '') return
+    // Persist error for option page to display
+    await chrome.storage.local.set({ lastRecordingError: error })
+    // Open option page to show the error
+    await chrome.runtime.openOptionsPage()
+}
+
 // Update context menu title based on recording state
 async function updateContextMenuTitle() {
     try {
@@ -284,6 +308,18 @@ chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.M
                     // Fire-and-forget: stopRecording closes the Offscreen Document,
                     // so it must not be awaited inside the message listener.
                     stopRecording('tab-track-ended').catch(async e => {
+                        console.error(e)
+                        const msg: ExceptionMessage = {
+                            type: 'exception',
+                            data: e,
+                        }
+                        await chrome.runtime.sendMessage(msg)
+                    })
+                    return
+                case 'unexpected-recording-state':
+                    // Fire-and-forget: cancelRecording closes the Offscreen Document,
+                    // so it must not be awaited inside the message listener.
+                    cancelRecording(message.error).catch(async e => {
                         console.error(e)
                         const msg: ExceptionMessage = {
                             type: 'exception',
