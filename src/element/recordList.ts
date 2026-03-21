@@ -15,6 +15,7 @@ import { MdDialog } from '@material/web/dialog/dialog'
 import { MdCheckbox } from '@material/web/checkbox/checkbox'
 import { MdFilterChip } from '@material/web/chips/filter-chip'
 import Confirm from './confirm'
+import Alert from './alert'
 import type { ShowDirectoryPickerOptions } from '../type'
 import { Message, SaveConfigSyncMessage } from '../message'
 import { sendException } from '../sentry'
@@ -102,14 +103,15 @@ export class RecordList extends LitElement {
         this.sortOrder = Settings.getConfiguration().recordingSortOrder
     }
 
-    public async connectedCallback() {
+    connectedCallback() {
         super.connectedCallback()
-        await this.updateRecord()
-        await this.updateEstimate()
+        this.updateRecord()
+        this.updateEstimate()
+        this.checkStoredRecordingError()
         chrome.runtime.onMessage.addListener(this.handleMessage)
     }
 
-    public disconnectedCallback() {
+    disconnectedCallback() {
         super.disconnectedCallback()
         chrome.runtime.onMessage.removeListener(this.handleMessage)
     }
@@ -120,12 +122,35 @@ export class RecordList extends LitElement {
                 case 'recording-state':
                     await this.updateRecord()
                     await this.updateEstimate()
+                    await this.checkStoredRecordingError()
                     return
             }
         } catch (e) {
             console.error(e)
             sendException(e, { exceptionSource: 'option.recordList.onMessage' })
         }
+    }
+
+    private async checkStoredRecordingError() {
+        try {
+            const result = await chrome.storage.local.get('lastRecordingError')
+            const lastRecordingError = result.lastRecordingError as string | undefined
+            if (lastRecordingError) {
+                await chrome.storage.local.remove('lastRecordingError')
+                RecordList.showRecordingError(lastRecordingError)
+            }
+        } catch (e) {
+            console.error(e)
+            sendException(e, { exceptionSource: 'option.recordList.checkStoredRecordingError' })
+        }
+    }
+
+    private static showRecordingError(error: string) {
+        const alertDialog = document.getElementById('alert-dialog') as Alert | null
+        if (alertDialog == null) return
+        alertDialog.setContent('Recording Failed', error)
+        const dialog = alertDialog.shadowRoot?.querySelector('md-dialog') as MdDialog | null
+        dialog?.show()
     }
 
     public render() {

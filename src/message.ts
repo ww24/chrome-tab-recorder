@@ -55,6 +55,7 @@ export interface StopRecordingMessage {
 
 export interface UnexpectedRecordingStateMessage {
     type: 'unexpected-recording-state';
+    error: string;
 }
 
 export interface CancelRecordingMessage {

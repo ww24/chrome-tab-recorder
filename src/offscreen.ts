@@ -254,7 +254,7 @@ async function startRecording(trigger: StartTrigger, startRecording: StartRecord
         source.connect(playbackCtx.destination)
     }
 
-    const errorPromises = []
+    const errorPromises: Promise<void>[] = []
 
     // Add video track to output
     if (hasVideo(videoFormat.recordingMode)) {
@@ -306,6 +306,19 @@ async function startRecording(trigger: StartTrigger, startRecording: StartRecord
         ...(micStream?.getTracks() ?? []),
     ]
 
+    // Handle media source errors
+    Promise.race(errorPromises).catch(async e => {
+        sendException(e, {
+            exceptionSource: 'offscreen.startRecording',
+        })
+        const errorMessage = e instanceof Error ? e.message : String(e)
+        const msg: UnexpectedRecordingStateMessage = { type: 'unexpected-recording-state', error: errorMessage }
+        await chrome.runtime.sendMessage(msg)
+    }).catch(e => {
+        console.error(e)
+        sendException(e, { exceptionSource: 'offscreen.startRecording.sendMessage' })
+    })
+
     // Start output
     recordingStartTime = startRecording.startAtMs
     await output.start()
@@ -321,18 +334,6 @@ async function startRecording(trigger: StartTrigger, startRecording: StartRecord
             console.error(e)
             sendException(e, { exceptionSource: 'tabTrack.ended' })
         }
-    })
-
-    // Handle media source errors
-    Promise.race(errorPromises).catch(e => {
-        sendException(e, {
-            exceptionSource: 'offscreen.startRecording',
-        })
-        const msg: UnexpectedRecordingStateMessage = { type: 'unexpected-recording-state' }
-        chrome.runtime.sendMessage(msg).catch(async e => {
-            console.error(e)
-            sendException(e, { exceptionSource: 'offscreen.startRecording.sendMessage' })
-        })
     })
 
     // ref. https://github.com/GoogleChrome/chrome-extensions-samples/blob/137cf71b9b4d631191cedbf96343d5b6a51c9a74/functional-samples/sample.tabcapture-recorder/offscreen.js#L71-L77

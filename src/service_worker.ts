@@ -235,7 +235,7 @@ async function stopRecording(trigger: Trigger) {
     await chrome.offscreen.closeDocument()
 }
 
-async function cancelRecording() {
+async function cancelRecording(error: string) {
     // Send cancel-recording message to offscreen document
     const msg: CancelRecordingMessage = { type: 'cancel-recording' }
     await chrome.runtime.sendMessage(msg)
@@ -250,6 +250,12 @@ async function cancelRecording() {
 
     // Close offscreen document
     await chrome.offscreen.closeDocument()
+
+    if (error === '') return
+    // Persist error for option page to display
+    await chrome.storage.local.set({ lastRecordingError: error })
+    // Open option page to show the error
+    await chrome.runtime.openOptionsPage()
 }
 
 // Update context menu title based on recording state
@@ -311,7 +317,16 @@ chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.M
                     })
                     return
                 case 'unexpected-recording-state':
-                    await cancelRecording()
+                    // Fire-and-forget: cancelRecording closes the Offscreen Document,
+                    // so it must not be awaited inside the message listener.
+                    cancelRecording(message.error).catch(async e => {
+                        console.error(e)
+                        const msg: ExceptionMessage = {
+                            type: 'exception',
+                            data: e,
+                        }
+                        await chrome.runtime.sendMessage(msg)
+                    })
                     return
                 case 'save-config-sync':
                     await storage.set(Configuration.key, message.data)
