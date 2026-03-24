@@ -1,9 +1,8 @@
-import type { Resolution, Configuration, SyncConfiguration, CropRegion } from './configuration'
+import type { Resolution, Configuration, SyncConfiguration, CropRegion, VideoRecordingMode } from './configuration'
 
 export type Message =
     | ExceptionMessage
     | StartRecordingMessage
-    | UpdateRecordingIconMessage
     | TabTrackEndedMessage
     | StopRecordingMessage
     | UnexpectedRecordingStateMessage
@@ -17,6 +16,7 @@ export type Message =
     | PreviewFrameMessage
     | PreviewControlMessage
     | UpdateCropRegionMessage
+    | RecordingTickMessage
     ;
 
 export interface ExceptionMessage {
@@ -34,14 +34,13 @@ export interface StartRecordingMessage {
     trigger: StartTrigger;
 }
 export interface StartRecording {
-    startAtMs: number; // unix timestamp [ms]
     tabSize: Resolution;
     streamId: string;
 }
-
-export interface UpdateRecordingIconMessage {
-    type: 'update-recording-icon';
-    icon: 'video-and-audio' | 'audio-only' | 'video-only';
+export interface StartRecordingResponse {
+    startAtMs: number;
+    recordingMode: VideoRecordingMode;
+    micEnabled: boolean;
 }
 
 export interface TabTrackEndedMessage {
@@ -86,6 +85,7 @@ export interface RecordingStateMessage {
     type: 'recording-state';
     isRecording: boolean;
     screenSize?: Resolution;
+    startAtMs?: number;
 }
 
 // Request current recording state (option page → service_worker)
@@ -110,4 +110,9 @@ export interface PreviewControlMessage {
 export interface UpdateCropRegionMessage {
     type: 'update-crop-region';
     region: CropRegion;
+}
+
+// Periodic tick during recording (offscreen → service_worker)
+export interface RecordingTickMessage {
+    type: 'recording-tick';
 }

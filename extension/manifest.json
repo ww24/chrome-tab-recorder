@@ -11,7 +11,8 @@
         "128": "icons/icon128.png"
     },
     "action": {
-        "default_icon": "icons/not-recording.png"
+        "default_icon": "icons/not-recording.png",
+        "default_title": "Instant Tab Recorder\nClick to start recording."
     },
     "background": {
         "service_worker": "dist/service_worker.js"
