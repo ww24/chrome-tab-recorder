@@ -171,6 +171,22 @@ describe('VideoFormat.toReport', () => {
         })
     })
 
+    it('should include audio fields for video-only mode with microphone enabled', () => {
+        const vf: VideoFormat = { ...base, recordingMode: 'video-only' }
+        expect(VideoFormat.toReport(vf, true)).toEqual({
+            recordingMode: 'video-only',
+            container: 'webm',
+            audioCodec: 'opus',
+            audioBitratePreset: 'high',
+            audioBitrate: undefined,
+            audioSampleRate: 44100,
+            videoCodec: 'vp9',
+            videoBitratePreset: 'high',
+            videoBitrate: undefined,
+            frameRate: 30,
+        })
+    })
+
     it('should include custom audioBitrate when preset is custom', () => {
         const vf: VideoFormat = { ...base, recordingMode: 'video-and-audio', audioBitratePreset: 'custom', audioBitrate: 128000 }
         expect(VideoFormat.toReport(vf)).toEqual({
