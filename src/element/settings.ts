@@ -161,22 +161,22 @@ export class Settings extends LitElement {
                 <div slot="headline">FLAC</div>
             </md-select-option>
         </md-filled-select>
-        <md-filled-select class="codec-select audio-codec-settings" label="audio codec" .value=${live(this.config.videoFormat.audioCodec)} ?disabled=${live(!hasAudio(this.config.videoFormat.recordingMode))} @input=${this.updateProp('videoFormat', 'audioCodec')}>
+        <md-filled-select class="codec-select audio-codec-settings" label="audio codec" .value=${live(this.config.videoFormat.audioCodec)} ?disabled=${live(!this.audioSettingsEnabled)} @input=${this.updateProp('videoFormat', 'audioCodec')}>
             ${ALL_AUDIO_CODECS.map(c => html`
                 <md-select-option value=${c} ?disabled=${!this.availableAudioCodecs.includes(c)}>
                     <div slot="headline">${this.codecDisplayName(c)}</div>
                 </md-select-option>
             `)}
         </md-filled-select>
-        <md-filled-text-field class="video-format-input audio-codec-settings" label="audio sampling rate" type="number" min="8" step="0.01" suffix-text="kHz" ?disabled=${live(!hasAudio(this.config.videoFormat.recordingMode))} .value=${live((this.config.videoFormat.audioSampleRate / 1000).toFixed(2))} @change=${this.updateProp('videoFormat', 'audioSampleRate')}></md-filled-text-field>
+        <md-filled-text-field class="video-format-input audio-codec-settings" label="audio sampling rate" type="number" min="8" step="0.01" suffix-text="kHz" ?disabled=${live(!this.audioSettingsEnabled)} .value=${live((this.config.videoFormat.audioSampleRate / 1000).toFixed(2))} @change=${this.updateProp('videoFormat', 'audioSampleRate')}></md-filled-text-field>
         <div>
-            <md-filled-select class="codec-select audio-codec-settings" label="audio bitrate" .value=${live(this.config.videoFormat.audioBitratePreset)} ?disabled=${live(!hasAudio(this.config.videoFormat.recordingMode))} @input=${this.updateProp('videoFormat', 'audioBitratePreset')}>
+            <md-filled-select class="codec-select audio-codec-settings" label="audio bitrate" .value=${live(this.config.videoFormat.audioBitratePreset)} ?disabled=${live(!this.audioSettingsEnabled)} @input=${this.updateProp('videoFormat', 'audioBitratePreset')}>
                 <md-select-option value="high"><div slot="headline">High</div></md-select-option>
                 <md-select-option value="medium"><div slot="headline">Medium</div></md-select-option>
                 <md-select-option value="low"><div slot="headline">Low</div></md-select-option>
                 <md-select-option value="custom"><div slot="headline">Custom</div></md-select-option>
             </md-filled-select>
-            <md-filled-text-field class="video-format-input audio-codec-settings" style="visibility: ${this.config.videoFormat.audioBitratePreset === 'custom' ? 'visible' : 'hidden'}" label="custom audio bitrate" type="number" min="1" step="0.01" suffix-text="kbps" ?disabled=${live(!hasAudio(this.config.videoFormat.recordingMode))} .value=${live((this.config.videoFormat.audioBitrate / 1000).toFixed(2))} @change=${this.updateProp('videoFormat', 'audioBitrate')}></md-filled-text-field>
+            <md-filled-text-field class="video-format-input audio-codec-settings" style="visibility: ${this.config.videoFormat.audioBitratePreset === 'custom' ? 'visible' : 'hidden'}" label="custom audio bitrate" type="number" min="1" step="0.01" suffix-text="kbps" ?disabled=${live(!this.audioSettingsEnabled)} .value=${live((this.config.videoFormat.audioBitrate / 1000).toFixed(2))} @change=${this.updateProp('videoFormat', 'audioBitrate')}></md-filled-text-field>
         </div>
         <md-filled-select class="codec-select video-codec-settings" label="video codec" .value=${live(this.config.videoFormat.videoCodec)} ?disabled=${live(!hasVideo(this.config.videoFormat.recordingMode))} @input=${this.updateProp('videoFormat', 'videoCodec')}>
             ${ALL_VIDEO_CODECS.map(c => html`
@@ -372,10 +372,14 @@ export class Settings extends LitElement {
             Settings.setConfiguration(this.config)
             await Settings.syncConfiguration(this.config)
 
-            if (key1 === 'videoFormat') {
+            if (key1 === 'videoFormat' || (key1 === 'microphone' && key2 === 'enabled')) {
                 await this.validateEncoding()
             }
         }
+    }
+
+    private get audioSettingsEnabled(): boolean {
+        return hasAudio(this.config.videoFormat.recordingMode) || this.config.microphone.enabled
     }
 
     private get availableVideoCodecs(): VideoCodecType[] {
@@ -417,7 +421,7 @@ export class Settings extends LitElement {
             }
         }
 
-        if (vf.recordingMode !== 'video-only') {
+        if (this.audioSettingsEnabled) {
             try {
                 const ok = await canEncodeAudio(vf.audioCodec, {
                     ...(vf.audioSampleRate > 0 ? { sampleRate: vf.audioSampleRate } : {}),
