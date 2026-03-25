@@ -11,12 +11,13 @@ import type {
     Trigger,
     StartTrigger,
     StartRecording,
-    UpdateRecordingIconMessage,
+    StartRecordingResponse,
     TabTrackEndedMessage,
     PreviewFrameMessage,
     PreviewControlMessage,
     UpdateCropRegionMessage,
     UnexpectedRecordingStateMessage,
+    RecordingTickMessage,
 } from './message'
 import { flush, sendEvent, sendException } from './sentry'
 import { Preview } from './preview'
@@ -33,12 +34,13 @@ const preview = new Preview(async ({ image, width, height }) => {
 })
 const crop = new Crop()
 
-chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.MessageSender, sendResponse: () => void) => {
+chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.MessageSender, sendResponse: (response?: StartRecordingResponse) => void) => {
     (async () => {
+        let response: StartRecordingResponse | undefined
         try {
             switch (message.type) {
                 case 'start-recording':
-                    await startRecording(message.trigger, message.data)
+                    response = await startRecording(message.trigger, message.data)
                     return
                 case 'stop-recording':
                     await stopRecording(message.trigger)
@@ -68,7 +70,7 @@ chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.M
                 additionalMetadata: { messageType: message.type },
             })
         } finally {
-            sendResponse()
+            sendResponse(response)
         }
     })()
     return true // asynchronous flag
@@ -78,6 +80,7 @@ let output: Output | undefined
 let currentMediaTracks: MediaStreamTrack[] = []
 let recordingStartTime = 0
 let recordingFileHandle: FileSystemFileHandle | undefined
+let recordingTickTimerId: ReturnType<typeof setInterval> | undefined
 const getAudioContext = (() => {
     let audioCtx: AudioContext | undefined
     return (sampleRate: number): AudioContext => {
@@ -145,10 +148,12 @@ function createMixedMediaStream(tabStream: MediaStream, micStream: MediaStream |
     return finalStream
 }
 
-async function startRecording(trigger: StartTrigger, startRecording: StartRecording) {
+async function startRecording(trigger: StartTrigger, startRecording: StartRecording): Promise<StartRecordingResponse> {
     if (output?.state === 'started') {
         throw new Error('Called startRecording while recording is in progress.')
     }
+
+    const startAtMs = Date.now()
 
     const opfsPersisted = await navigator.storage.persisted()
     if (!opfsPersisted) {
@@ -167,17 +172,10 @@ async function startRecording(trigger: StartTrigger, startRecording: StartRecord
 
     const { videoFormat, recordingSize } = Settings.getRecordingInfo(startRecording.tabSize)
 
-    // update recording icon
-    const msg: UpdateRecordingIconMessage = {
-        type: 'update-recording-icon',
-        icon: videoFormat.recordingMode,
-    }
-    await chrome.runtime.sendMessage(msg)
-
     // Prepare output file
     const dirHandle = await navigator.storage.getDirectory()
     const ext = containerExtension(videoFormat.container)
-    const fileName = Configuration.filename(startRecording.startAtMs, ext)
+    const fileName = Configuration.filename(startAtMs, ext)
     recordingFileHandle = await dirHandle.getFileHandle(fileName, { create: true })
     const writableStream = await recordingFileHandle.createWritable()
 
@@ -320,7 +318,7 @@ async function startRecording(trigger: StartTrigger, startRecording: StartRecord
     })
 
     // Start output
-    recordingStartTime = startRecording.startAtMs
+    recordingStartTime = startAtMs
     await output.start()
 
     // Listen for tab track ending to auto-finalize
@@ -338,6 +336,22 @@ async function startRecording(trigger: StartTrigger, startRecording: StartRecord
 
     // ref. https://github.com/GoogleChrome/chrome-extensions-samples/blob/137cf71b9b4d631191cedbf96343d5b6a51c9a74/functional-samples/sample.tabcapture-recorder/offscreen.js#L71-L77
     window.location.hash = 'recording'
+
+    // Start periodic tick to keep service worker alive for tooltip updates
+    recordingTickTimerId = setInterval(async () => {
+        try {
+            const tickMsg: RecordingTickMessage = { type: 'recording-tick' }
+            await chrome.runtime.sendMessage(tickMsg)
+        } catch (e) {
+            console.error('Failed to send recording tick:', e)
+        }
+    }, 60_000)
+
+    return {
+        startAtMs,
+        recordingMode: videoFormat.recordingMode,
+        micEnabled: microphone.enabled && micStream != null,
+    }
 }
 
 async function stopRecording(trigger: Trigger) {
@@ -399,6 +413,10 @@ async function cancelRecording() {
 }
 
 function cleanupRecordingState() {
+    if (recordingTickTimerId != null) {
+        clearInterval(recordingTickTimerId)
+        recordingTickTimerId = undefined
+    }
     output = undefined
     recordingStartTime = 0
     recordingFileHandle = undefined

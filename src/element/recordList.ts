@@ -1,5 +1,5 @@
 import { html, css, LitElement } from 'lit'
-import { customElement, property } from 'lit/decorators.js'
+import { customElement, property, state } from 'lit/decorators.js'
 import { repeat } from 'lit/directives/repeat.js'
 import { formatNum, formatRate, checkFileHandlePermission } from './util'
 import '@material/web/list/list'
@@ -23,6 +23,7 @@ import { recordingApi } from '../api_client'
 import type { StorageEstimateInfo } from '../storage'
 import { Settings } from './settings'
 import { Configuration, RecordingSortOrder } from '../configuration'
+import { formatElapsedTime } from '../format'
 
 export interface RecordEntry {
     title: string;
@@ -96,6 +97,12 @@ export class RecordList extends LitElement {
     @property()
     private sortOrder: RecordingSortOrder
 
+    @state()
+    private elapsedTimeText: string = formatElapsedTime(0)
+
+    private recordingStartAtMs: number | null = null
+    private elapsedTimerId?: ReturnType<typeof setInterval>
+
     public constructor() {
         super()
         this.estimate = { usage: 0, quota: 0 }
@@ -104,22 +111,34 @@ export class RecordList extends LitElement {
     }
 
     connectedCallback() {
-        super.connectedCallback()
-        this.updateRecord()
-        this.updateEstimate()
-        this.checkStoredRecordingError()
+        super.connectedCallback();
+        (async () => {
+            await this.updateRecord()
+            this.syncElapsedTimer()
+            await this.updateEstimate()
+            await this.checkStoredRecordingError()
+        })().catch(e => {
+            console.error(e)
+            sendException(e, { exceptionSource: 'option.recordList.connectedCallback' })
+        })
         chrome.runtime.onMessage.addListener(this.handleMessage)
     }
 
     disconnectedCallback() {
         super.disconnectedCallback()
         chrome.runtime.onMessage.removeListener(this.handleMessage)
+        this.stopElapsedTimer()
     }
 
     private handleMessage = async (message: Message) => {
         try {
             switch (message.type) {
                 case 'recording-state':
+                    if (message.isRecording && message.startAtMs != null) {
+                        this.startElapsedTimer(message.startAtMs)
+                    } else {
+                        this.stopElapsedTimer()
+                    }
                     await this.updateRecord()
                     await this.updateEstimate()
                     await this.checkStoredRecordingError()
@@ -166,7 +185,7 @@ export class RecordList extends LitElement {
                     : html`<a href="${downloadUrl}">${record.title}</a>`}
                 <div class="meta" title="file size"><md-icon>storage</md-icon> ${formatNum(record.size / 1024 / 1024, 2)} MB</div>
                 ${record.recordedAt != null ? html`<div class="meta" title="recorded at"><md-icon>schedule</md-icon> ${RecordList.dateTimeFormat.format(record.recordedAt)}</div>` : ''}
-                ${record.isRecording ? html`<div class="meta recording" title="recording"><md-icon>screen_record</md-icon> Recording</div>` : ''}
+                ${record.isRecording ? html`<div class="meta recording" title="recording"><md-icon>screen_record</md-icon> Recording ${this.elapsedTimeText}</div>` : ''}
                 <md-filled-icon-button slot="end" ?disabled=${record.isRecording} @click=${this.playRecord(record)}>
                     <md-icon>play_arrow</md-icon>
                 </md-filled-icon-button>
@@ -225,6 +244,36 @@ export class RecordList extends LitElement {
         const oldVal = this.estimate
         this.estimate = await recordingApi.getStorageEstimate()
         this.requestUpdate('estimate', oldVal)
+    }
+
+    private syncElapsedTimer() {
+        const recordingEntry = this.records.find(r => r.isRecording && r.recordedAt)
+        if (recordingEntry?.recordedAt) {
+            this.startElapsedTimer(recordingEntry.recordedAt.getTime())
+        }
+    }
+
+    private startElapsedTimer(startAtMs: number) {
+        if (this.recordingStartAtMs === startAtMs && this.elapsedTimerId != null) return
+        this.stopElapsedTimer()
+        this.recordingStartAtMs = startAtMs
+        this.updateElapsedTime()
+        this.elapsedTimerId = setInterval(() => this.updateElapsedTime(), 1000)
+    }
+
+    private stopElapsedTimer() {
+        if (this.elapsedTimerId != null) {
+            clearInterval(this.elapsedTimerId)
+            this.elapsedTimerId = undefined
+        }
+        this.recordingStartAtMs = null
+        this.elapsedTimeText = ''
+    }
+
+    private updateElapsedTime() {
+        if (this.recordingStartAtMs == null) return
+        const elapsed = Date.now() - this.recordingStartAtMs
+        this.elapsedTimeText = formatElapsedTime(elapsed)
     }
     private async toggleSortOrder() {
         const newOrder: RecordingSortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc'

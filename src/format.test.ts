@@ -1,0 +1,146 @@
+import { formatElapsedHHMM, buildRecordingTitle, formatElapsedTime } from './format'
+import type { RecordingState } from './handler'
+
+describe('formatElapsedHHMM', () => {
+    it('returns 00:00 for 0 ms', () => {
+        expect(formatElapsedHHMM(0)).toBe('00:00')
+    })
+
+    it('returns 00:00 for negative values', () => {
+        expect(formatElapsedHHMM(-1000)).toBe('00:00')
+    })
+
+    it('returns 00:01 for 1 minute', () => {
+        expect(formatElapsedHHMM(60_000)).toBe('00:01')
+    })
+
+    it('returns 00:00 for 59 seconds (rounds down)', () => {
+        expect(formatElapsedHHMM(59_999)).toBe('00:00')
+    })
+
+    it('returns 01:00 for 1 hour', () => {
+        expect(formatElapsedHHMM(3_600_000)).toBe('01:00')
+    })
+
+    it('returns 01:30 for 1.5 hours', () => {
+        expect(formatElapsedHHMM(5_400_000)).toBe('01:30')
+    })
+
+    it('returns 23:59 for exactly 23:59', () => {
+        expect(formatElapsedHHMM(23 * 3_600_000 + 59 * 60_000)).toBe('23:59')
+    })
+
+    it('returns 23:59+ when exceeding 23:59', () => {
+        expect(formatElapsedHHMM(24 * 3_600_000)).toBe('23:59+')
+    })
+
+    it('returns 23:59+ for very large values', () => {
+        expect(formatElapsedHHMM(100 * 3_600_000)).toBe('23:59+')
+    })
+})
+
+describe('formatElapsedTime', () => {
+    it('returns 00:00:00 for 0 ms', () => {
+        expect(formatElapsedTime(0)).toBe('00:00:00')
+    })
+
+    it('returns 00:00:00 for negative values', () => {
+        expect(formatElapsedTime(-5000)).toBe('00:00:00')
+    })
+
+    it('returns 00:00:01 for 1 second', () => {
+        expect(formatElapsedTime(1_000)).toBe('00:00:01')
+    })
+
+    it('returns 00:00:59 for 59 seconds', () => {
+        expect(formatElapsedTime(59_000)).toBe('00:00:59')
+    })
+
+    it('returns 00:01:00 for 1 minute', () => {
+        expect(formatElapsedTime(60_000)).toBe('00:01:00')
+    })
+
+    it('returns 00:01:30 for 1 minute 30 seconds', () => {
+        expect(formatElapsedTime(90_000)).toBe('00:01:30')
+    })
+
+    it('returns 01:00:00 for 1 hour', () => {
+        expect(formatElapsedTime(3_600_000)).toBe('01:00:00')
+    })
+
+    it('returns 12:34:56 for 12h 34m 56s', () => {
+        expect(formatElapsedTime(12 * 3_600_000 + 34 * 60_000 + 56_000)).toBe('12:34:56')
+    })
+
+    it('returns 23:59:59 for exactly 23:59:59', () => {
+        expect(formatElapsedTime(23 * 3_600_000 + 59 * 60_000 + 59_000)).toBe('23:59:59')
+    })
+
+    it('returns 23:59:59+ when exceeding 23:59:59', () => {
+        expect(formatElapsedTime(24 * 3_600_000)).toBe('23:59:59+')
+    })
+
+    it('returns 23:59:59+ for very large values', () => {
+        expect(formatElapsedTime(100 * 3_600_000)).toBe('23:59:59+')
+    })
+
+    it('rounds down sub-second values', () => {
+        expect(formatElapsedTime(1_999)).toBe('00:00:01')
+    })
+})
+
+describe('buildRecordingTitle', () => {
+    const appName = 'Instant Tab Recorder'
+    const baseState: RecordingState = {
+        isRecording: true,
+        startAtMs: 1000,
+        recordingMode: 'video-and-audio',
+        micEnabled: false,
+    }
+
+    it('shows video: on / audio: on / mic: off for video-and-audio mode', () => {
+        const title = buildRecordingTitle(appName, baseState, 1000)
+        expect(title).toBe([
+            'Instant Tab Recorder',
+            'Recording (00:00)',
+            'video: on / audio: on / mic: off',
+            'Click to stop recording.',
+        ].join('\n'))
+    })
+
+    it('shows video: on / audio: off / mic: off for video-only mode', () => {
+        const state: RecordingState = { ...baseState, recordingMode: 'video-only' }
+        const title = buildRecordingTitle(appName, state, 1000)
+        expect(title).toContain('video: on / audio: off / mic: off')
+    })
+
+    it('shows video: off / audio: on / mic: off for audio-only mode', () => {
+        const state: RecordingState = { ...baseState, recordingMode: 'audio-only' }
+        const title = buildRecordingTitle(appName, state, 1000)
+        expect(title).toContain('video: off / audio: on / mic: off')
+    })
+
+    it('shows mic: on when micEnabled is true', () => {
+        const state: RecordingState = { ...baseState, micEnabled: true }
+        const title = buildRecordingTitle(appName, state, 1000)
+        expect(title).toContain('mic: on')
+    })
+
+    it('shows elapsed time based on startAtMs and now', () => {
+        const state: RecordingState = { ...baseState, startAtMs: 0 }
+        const title = buildRecordingTitle(appName, state, 90 * 60_000) // 90 minutes
+        expect(title).toContain('Recording (01:30)')
+    })
+
+    it('shows 00:00 when startAtMs is undefined', () => {
+        const state: RecordingState = { ...baseState, startAtMs: undefined }
+        const title = buildRecordingTitle(appName, state, 999999)
+        expect(title).toContain('Recording (00:00)')
+    })
+
+    it('defaults to video on / audio on / mic off when mode is undefined', () => {
+        const state: RecordingState = { isRecording: true }
+        const title = buildRecordingTitle(appName, state, 0)
+        expect(title).toContain('video: on / audio: on / mic: off')
+    })
+})

@@ -9,7 +9,7 @@ import type { RecordingStorage } from './storage'
 import { getMimeTypeFromExtension } from './mime'
 import { parseRangeHeader, resolveByteRange, generateBoundary, buildMultipartByteRangesBody } from './range'
 import type { ResolvedRange } from './range'
-import type { Resolution } from './configuration'
+import type { Resolution, VideoRecordingMode } from './configuration'
 
 const API_PREFIX = '/api/'
 
@@ -56,6 +56,8 @@ export interface RecordingState {
     isRecording: boolean;
     startAtMs?: number;
     screenSize?: Resolution;
+    recordingMode?: VideoRecordingMode;
+    micEnabled?: boolean;
 }
 
 /**
