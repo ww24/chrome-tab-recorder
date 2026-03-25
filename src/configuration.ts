@@ -106,7 +106,7 @@ export class VideoFormat {
         public frameRate: number // fps
     ) { }
 
-    static toReport(vf: VideoFormat): VideoFormatReport {
+    static toReport(vf: VideoFormat, micEnabled: boolean = false): VideoFormatReport {
         const report: VideoFormatReport = { ...vf }
         const { recordingMode, audioBitratePreset, videoBitratePreset } = vf
         switch (recordingMode) {
@@ -117,10 +117,12 @@ export class VideoFormat {
                 report.frameRate = undefined
                 break
             case 'video-only':
-                report.audioCodec = undefined
-                report.audioBitratePreset = undefined
-                report.audioBitrate = undefined
-                report.audioSampleRate = undefined
+                if (!micEnabled) {
+                    report.audioCodec = undefined
+                    report.audioBitratePreset = undefined
+                    report.audioBitrate = undefined
+                    report.audioSampleRate = undefined
+                }
                 break
         }
         if (audioBitratePreset !== 'custom') {
@@ -287,7 +289,7 @@ export class Configuration {
     static filterForReport(config: Configuration): ConfigurationReport {
         let { cropping, microphone } = config
         // Normalize values to reduce cardinality
-        const videoFormat = VideoFormat.toReport(config.videoFormat)
+        const videoFormat = VideoFormat.toReport(config.videoFormat, config.microphone.enabled)
         if (!cropping.enabled) {
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { region: _, ...rest } = cropping
