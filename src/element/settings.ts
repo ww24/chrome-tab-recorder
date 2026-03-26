@@ -236,6 +236,13 @@ export class Settings extends LitElement {
             <md-slider id="mic-gain" min="0" max="10" step="0.1" .value=${live(this.config.microphone.gain)} @input=${this.updateProp('microphone', 'gain')}></md-slider>
         </div>
         ` : ''}
+        <h2>Audio Separation</h2>
+        <div>
+            <label style="line-height: 32px; font-size: 1.5em" title="Save separated tab audio and microphone audio files alongside the main recording.">
+                Save separated audio files (tab / mic)
+                <md-switch ?selected=${live(this.config.audioSeparation.enabled ?? false)} @input=${this.updateProp('audioSeparation', 'enabled')}></md-switch>
+            </label>
+        </div>
         <h2>Option</h2>
         <div>
             <label style="line-height: 32px; font-size: 1.5em">
@@ -357,6 +364,15 @@ export class Settings extends LitElement {
                         case 'deviceId':
                             if (!(e.target instanceof MdFilledSelect)) return
                             this.config[key1][key2] = e.target.value === 'default' ? null : e.target.value
+                            break
+                    }
+                    break
+                case 'audioSeparation':
+                    if (key2 == null) return
+                    switch (key2) {
+                        case 'enabled':
+                            if (!(e.target instanceof MdSwitch)) return
+                            this.config[key1][key2] = e.target.selected
                             break
                     }
                     break

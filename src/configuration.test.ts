@@ -5,7 +5,7 @@ jest.mock('@mediabunny/flac-encoder', () => ({
     registerFlacEncoder: jest.fn(),
 }))
 
-import { migrateFromMimeType, VideoFormat } from './configuration'
+import { migrateFromMimeType, VideoFormat, Configuration, audioSeparationContainer } from './configuration'
 
 describe('migrateFromMimeType', () => {
     describe('WebM container', () => {
@@ -217,5 +217,33 @@ describe('VideoFormat.toReport', () => {
             videoBitrate: 4000000,
             frameRate: 30,
         })
+    })
+})
+
+describe('Configuration.audioFilename', () => {
+    it('should generate tab audio filename', () => {
+        expect(Configuration.audioFilename(1704067200000, 'tab', '.ogg')).toBe('video-1704067200000-tab.ogg')
+    })
+
+    it('should generate mic audio filename', () => {
+        expect(Configuration.audioFilename(1704067200000, 'mic', '.aac')).toBe('video-1704067200000-mic.aac')
+    })
+})
+
+describe('audioSeparationContainer', () => {
+    it('should map opus to ogg', () => {
+        expect(audioSeparationContainer('opus')).toBe('ogg')
+    })
+
+    it('should map aac to adts', () => {
+        expect(audioSeparationContainer('aac')).toBe('adts')
+    })
+
+    it('should map flac to flac', () => {
+        expect(audioSeparationContainer('flac')).toBe('flac')
+    })
+
+    it('should fallback to mp4 for unknown codec', () => {
+        expect(audioSeparationContainer('unknown' as never)).toBe('mp4')
     })
 })

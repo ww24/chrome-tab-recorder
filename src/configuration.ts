@@ -186,6 +186,9 @@ export interface Microphone {
     gain: number
     deviceId: string | null // null = default device, string = specific device ID
 }
+export interface AudioSeparation {
+    enabled: boolean
+}
 export interface RecordingInfo {
     videoFormat: VideoFormat
     recordingSize: Resolution
@@ -213,6 +216,19 @@ export function isAudioOnly(mode: VideoRecordingMode): boolean {
 // Configuration type for sync storage (excludes device-specific settings)
 export type SyncConfiguration = Omit<Configuration, 'microphone' | 'cropping'>
 
+/**
+ * Resolve the container format for separated audio files.
+ * Determined solely by the audio codec: opus → ogg, aac → adts, flac → flac.
+ */
+export function audioSeparationContainer(audioCodec: AudioCodecType): ContainerFormat {
+    switch (audioCodec) {
+        case 'opus': return 'ogg'
+        case 'aac': return 'adts'
+        case 'flac': return 'flac'
+        default: return 'mp4'
+    }
+}
+
 export type ConfigurationReport =
     Pick<Configuration, 'windowSize' | 'screenRecordingSize' | 'openOptionPage' | 'muteRecordingTab' | 'recordingSortOrder'>
     & { videoFormat: VideoFormatReport }
@@ -232,6 +248,7 @@ export class Configuration {
     microphone: Microphone
     cropping: CroppingConfig
     recordingSortOrder: RecordingSortOrder
+    audioSeparation: AudioSeparation
     constructor() {
         this.windowSize = {
             width: 1920,
@@ -275,6 +292,9 @@ export class Configuration {
             },
         }
         this.recordingSortOrder = 'asc'
+        this.audioSeparation = {
+            enabled: false,
+        }
     }
     static restoreDefault({ userId }: Configuration): Configuration {
         const config = new Configuration()
@@ -357,5 +377,8 @@ export class Configuration {
 
     static filename(startAtMs: number, ext: string) {
         return `video-${startAtMs}${ext}`
+    }
+    static audioFilename(startAtMs: number, suffix: 'tab' | 'mic', ext: string) {
+        return `video-${startAtMs}-${suffix}${ext}`
     }
 };
