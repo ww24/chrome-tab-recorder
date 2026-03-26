@@ -31,6 +31,8 @@ export interface RecordEntry {
     selected: boolean;
     recordedAt?: Date;
     isRecording: boolean;
+    subFiles: string[];  // Related audio separation files (e.g. video-{ts}-tab.ogg, video-{ts}-mic.ogg)
+    subFilesSize: number; // Total size of sub-files in bytes
 }
 
 /**
@@ -38,6 +40,14 @@ export interface RecordEntry {
  */
 function getRecordingFileUrl(title: string): string {
     return `/api/recordings/${encodeURIComponent(title)}`
+}
+
+/** Pattern to extract startAtMs and optional suffix (tab/mic) from filename */
+const filePattern = /^video-([0-9]+)(?:-(tab|mic))?\./
+
+function isSubFile(title: string): boolean {
+    const m = title.match(filePattern)
+    return m != null && m[2] != null
 }
 
 function selected(record: RecordEntry): boolean {
@@ -76,6 +86,11 @@ export class RecordList extends LitElement {
         }
         .recording {
             color: #d93025;
+        }
+        .sub-file-icon {
+            color: #3f4948;
+            margin-left: 4px;
+            vertical-align: middle;
         }
     `
 
@@ -183,7 +198,13 @@ export class RecordList extends LitElement {
                 ${record.isRecording
                     ? html`<span aria-disabled="true">${record.title}</span>`
                     : html`<a href="${downloadUrl}">${record.title}</a>`}
-                <div class="meta" title="file size"><md-icon>storage</md-icon> ${formatNum(record.size / 1024 / 1024, 2)} MB</div>
+                ${record.isRecording ? '' : record.subFiles.map(sub => {
+                        const subUrl = `${getRecordingFileUrl(sub)}?download=true`
+                        const label = sub.includes('-tab') ? 'Tab audio' : 'Mic audio'
+                        const icon = sub.includes('-tab') ? 'headphones' : 'mic'
+                        return html`<a href="${subUrl}" title="${label}" aria-label="Download ${label}" class="sub-file-icon"><md-icon>${icon}</md-icon></a>`
+                    })}
+                <div class="meta" title="file size"><md-icon>storage</md-icon> ${formatNum((record.size + record.subFilesSize) / 1024 / 1024, 2)} MB ${record.subFilesSize > 0 ? html` <span title="separated audio file size">(${formatNum(record.subFilesSize / 1024 / 1024, 2)} MB separated)</span>` : ''}</div>
                 ${record.recordedAt != null ? html`<div class="meta" title="recorded at"><md-icon>schedule</md-icon> ${RecordList.dateTimeFormat.format(record.recordedAt)}</div>` : ''}
                 ${record.isRecording ? html`<div class="meta recording" title="recording"><md-icon>screen_record</md-icon> Recording ${this.elapsedTimeText}</div>` : ''}
                 <md-filled-icon-button slot="end" ?disabled=${record.isRecording} @click=${this.playRecord(record)}>
@@ -226,15 +247,36 @@ export class RecordList extends LitElement {
         // Fetch recordings from API
         const recordings = await recordingApi.listRecordings({ sort: this.sortOrder })
 
+        // Group sub-files by startAtMs
+        const subFileMap = new Map<string, string[]>() // startAtMs -> sub-file titles
+        const subFileSizeMap = new Map<string, number>() // startAtMs -> total sub-file size
+        for (const meta of recordings) {
+            const m = meta.title.match(filePattern)
+            if (m && m[2] != null) {
+                const ts = m[1]
+                const arr = subFileMap.get(ts) ?? []
+                arr.push(meta.title)
+                subFileMap.set(ts, arr)
+                subFileSizeMap.set(ts, (subFileSizeMap.get(ts) ?? 0) + meta.size)
+            }
+        }
+
         const result: Array<RecordEntry> = recordings.filter(meta => {
+            if (isSubFile(meta.title)) return false  // Exclude sub-files from main list
             return !meta.isRecording || meta.isTemporary
-        }).map(meta => ({
-            title: meta.title,
-            size: meta.size,
-            selected: false,
-            recordedAt: meta.recordedAt != null ? new Date(meta.recordedAt) : undefined,
-            isRecording: meta.isRecording ?? false,
-        }))
+        }).map(meta => {
+            const m = meta.title.match(filePattern)
+            const ts = m?.[1]
+            return {
+                title: meta.title,
+                size: meta.size,
+                selected: false,
+                recordedAt: meta.recordedAt != null ? new Date(meta.recordedAt) : undefined,
+                isRecording: meta.isRecording ?? false,
+                subFiles: ts ? (subFileMap.get(ts) ?? []) : [],
+                subFilesSize: ts ? (subFileSizeMap.get(ts) ?? 0) : 0,
+            }
+        })
 
         const oldVal = [...this.records]
         this.records = result
@@ -334,6 +376,7 @@ export class RecordList extends LitElement {
         const selectedRecords = this.records.filter(selected)
 
         for (const record of selectedRecords) {
+            // Save main file
             console.log('Copy:', record.title)
             const fileHandle = await dirHandle.getFileHandle(record.title, { create: true })
             const blob = await recordingApi.getRecordingFile(record.title)
@@ -347,6 +390,23 @@ export class RecordList extends LitElement {
             } catch (e) {
                 writableStream.close()
                 throw e
+            }
+            // Save related sub-files
+            for (const subFile of record.subFiles) {
+                console.log('Copy sub-file:', subFile)
+                const subHandle = await dirHandle.getFileHandle(subFile, { create: true })
+                const subBlob = await recordingApi.getRecordingFile(subFile)
+                if (!subBlob) {
+                    console.warn('Sub-file not found:', subFile)
+                    continue
+                }
+                const subWritable = await subHandle.createWritable()
+                try {
+                    await subBlob.stream().pipeTo(subWritable)
+                } catch (e) {
+                    subWritable.close()
+                    throw e
+                }
             }
         }
         console.log('done')
@@ -367,7 +427,13 @@ export class RecordList extends LitElement {
                     await Promise.all(selectedRecords.map(async record => {
                         console.log('Delete:', record.title)
 
-                        // Delete via API
+                        // Delete related sub-files first
+                        for (const subFile of record.subFiles) {
+                            console.log('Delete sub-file:', subFile)
+                            await recordingApi.deleteRecording(subFile)
+                        }
+
+                        // Delete main file via API
                         await recordingApi.deleteRecording(record.title)
                         // remove from UI
                         this.removeRecord(record)
