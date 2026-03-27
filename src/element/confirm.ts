@@ -41,7 +41,7 @@ export default class Confirm extends LitElement {
             <md-list>
               ${this.records.map((record, i) => html`
                   ${i > 0 ? html`<md-divider></md-divider>` : html``}
-                  <md-list-item>${record.title} <div slot="end">(size: ${formatNum(record.size / 1024 / 1024, 2)} MB)</div></md-list-item>
+                  <md-list-item>${record.title} <div slot="end">(size: ${formatNum((record.size + record.subFilesSize) / 1024 / 1024, 2)} MB)</div></md-list-item>
               `)}
             </md-list>
           </form>
