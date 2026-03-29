@@ -1,7 +1,6 @@
 import fs from 'fs'
 import path from 'path'
 import webpack from 'webpack'
-import Dotenv from 'dotenv-webpack'
 import pkg from './package.json' with { type: 'json' }
 import manifest from './extension/manifest.json' with { type: 'json' }
 
@@ -14,6 +13,11 @@ if (manifest.version !== pkg.version) {
 
 const envName = process.env.ENV_NAME === 'production' ? 'production' : 'develop'
 console.log(`${envName} build`)
+
+const sentryDSN = process.env.SENTRY_DSN
+if (!sentryDSN) {
+    console.warn('WARNING: SENTRY_DSN environment variable is not set. Sentry error reporting will be disabled.')
+}
 
 const config: webpack.Configuration = {
     entry: {
@@ -40,13 +44,13 @@ const config: webpack.Configuration = {
     devtool: false,
     plugins: [
         new webpack.SourceMapDevToolPlugin({}),
-        new Dotenv(),
         new webpack.DefinePlugin({
             'process.env.PKG_NAME': JSON.stringify(pkg.name),
             'process.env.VERSION': JSON.stringify(pkg.version),
             'process.env.ENV_NAME': JSON.stringify(envName),
             'process.env.APP_NAME': JSON.stringify(manifest.name),
             'process.env.DEFAULT_TITLE': JSON.stringify(manifest.action.default_title),
+            'process.env.SENTRY_DSN': JSON.stringify(sentryDSN),
         }),
     ],
 }
