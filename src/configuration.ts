@@ -230,7 +230,7 @@ export function audioSeparationContainer(audioCodec: AudioCodecType): ContainerF
 }
 
 export type ConfigurationReport =
-    Pick<Configuration, 'windowSize' | 'screenRecordingSize' | 'openOptionPage' | 'muteRecordingTab' | 'recordingSortOrder'>
+    Pick<Configuration, 'windowSize' | 'screenRecordingSize' | 'openOptionPage' | 'muteRecordingTab' | 'recordingSortOrder' | 'audioSeparation'>
     & { videoFormat: VideoFormatReport }
     & { microphone: Omit<Microphone, 'deviceId'> }
     & { cropping: Pick<CroppingConfig, 'enabled'> & { region: Pick<CropRegion, 'width' | 'height'> } }
@@ -320,7 +320,7 @@ export class Configuration {
             const { gain: _, ...rest } = microphone
             microphone = { gain: 0, ...rest }
         }
-        const { windowSize, screenRecordingSize, openOptionPage, muteRecordingTab, recordingSortOrder } = config
+        const { windowSize, screenRecordingSize, openOptionPage, muteRecordingTab, recordingSortOrder, audioSeparation } = config
         return {
             windowSize,
             screenRecordingSize,
@@ -330,6 +330,7 @@ export class Configuration {
             microphone: { enabled: microphone.enabled, gain: microphone.gain },
             cropping: { enabled: cropping.enabled, region: { width: cropping.region.width, height: cropping.region.height } },
             recordingSortOrder,
+            audioSeparation,
         }
     }
     static screenRecordingSize(screenRecordingSize: ScreenRecordingSize, base: Resolution): Resolution {
