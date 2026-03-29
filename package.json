@@ -1,5 +1,5 @@
 {
-  "name": "chrome-tab-recorder",
+  "name": "instant-tab-recorder",
   "version": "1.4.0",
   "description": "Google Chrome Extensions Screen Recorder",
   "scripts": {
@@ -13,7 +13,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "github.com/ww24/chrome-tab-recorder"
+    "url": "https://github.com/ww24/instant-tab-recorder.git"
   },
   "homepage": "https://recorder.appcloud.info/",
   "author": "ww24",
