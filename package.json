@@ -5,9 +5,9 @@
   "description": "Google Chrome Extensions Screen Recorder",
   "scripts": {
     "build": "webpack --mode=production",
-    "build:prod": "ENV_NAME=production webpack --mode=production && rm extension.zip && zip -r extension.zip extension",
+    "build:prod": "rm -f extension.zip && ENV_NAME=production webpack --mode=production && zip -r extension.zip extension",
     "watch": "webpack --mode=development -w",
-    "lint": "eslint {src,*.{mjs,ts}}",
+    "lint": "eslint {src,scripts,*.{mjs,ts}}",
     "test": "jest",
     "site": "serve -p 8080 docs/dist",
     "site:build": "webpack --config docs/webpack.config.ts --mode=production"
@@ -21,13 +21,14 @@
   "license": "MIT",
   "dependencies": {
     "@material/web": "^2.4.1",
-    "@sentry/browser": "^10.45.0",
     "@mediabunny/flac-encoder": "^1.40.1",
+    "@sentry/browser": "^10.45.0",
     "lit": "^3.3.2",
     "mediabunny": "^1.40.1",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
+    "@googleapis/chromewebstore": "^2.0.2",
     "@types/chrome": "^0.1.38",
     "@types/dom-mediacapture-transform": "^0.1.11",
     "@types/dotenv-webpack": "^7.0.8",
@@ -39,6 +40,7 @@
     "dotenv-webpack": "^9.0.0",
     "eslint": "^10.1.0",
     "globals": "^17.4.0",
+    "google-auth-library": "^10.6.2",
     "html-webpack-plugin": "^5.6.6",
     "jest": "^30.3.0",
     "marked": "^17.0.5",

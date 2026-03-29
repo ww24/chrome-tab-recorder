@@ -1,3 +1,6 @@
+# Ignore generated credentials from google-github-actions/auth
+gha-creds-*.json
+
 # https://github.com/github/gitignore/blob/main/Node.gitignore
 # Logs
 logs
