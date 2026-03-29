@@ -1,4 +1,4 @@
-# chrome-tab-recorder
+# instant-tab-recorder
 
 Google Chrome Extensions Tab Recorder
 
