@@ -1,8 +1,16 @@
+import fs from 'fs'
 import path from 'path'
 import webpack from 'webpack'
 import Dotenv from 'dotenv-webpack'
 import pkg from './package.json'
 import manifest from './extension/manifest.json'
+
+const manifestPath = path.join(__dirname, 'extension/manifest.json')
+if (manifest.version !== pkg.version) {
+    manifest.version = pkg.version
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 4) + '\n')
+    console.log(`Updated manifest.json version to ${pkg.version}`)
+}
 
 const envName = process.env.ENV_NAME === 'production' ? 'production' : 'develop'
 console.log(`${envName} build`)
