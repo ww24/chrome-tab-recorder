@@ -2,10 +2,10 @@ import fs from 'fs'
 import path from 'path'
 import webpack from 'webpack'
 import Dotenv from 'dotenv-webpack'
-import pkg from './package.json'
-import manifest from './extension/manifest.json'
+import pkg from './package.json' with { type: 'json' }
+import manifest from './extension/manifest.json' with { type: 'json' }
 
-const manifestPath = path.join(__dirname, 'extension/manifest.json')
+const manifestPath = path.join(import.meta.dirname, 'extension/manifest.json')
 if (manifest.version !== pkg.version) {
     manifest.version = pkg.version
     fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 4) + '\n')
@@ -17,9 +17,9 @@ console.log(`${envName} build`)
 
 const config: webpack.Configuration = {
     entry: {
-        offscreen: path.join(__dirname, 'src/offscreen.ts'),
-        option: path.join(__dirname, 'src/option.ts'),
-        service_worker: path.join(__dirname, 'src/service_worker.ts'),
+        offscreen: path.join(import.meta.dirname, 'src/offscreen.ts'),
+        option: path.join(import.meta.dirname, 'src/option.ts'),
+        service_worker: path.join(import.meta.dirname, 'src/service_worker.ts'),
     },
     module: {
         rules: [
@@ -33,7 +33,7 @@ const config: webpack.Configuration = {
         extensions: ['.ts', '.js'],
     },
     output: {
-        path: path.join(__dirname, 'extension/dist'),
+        path: path.join(import.meta.dirname, 'extension/dist'),
         filename: '[name].js',
         clean: true,
     },
