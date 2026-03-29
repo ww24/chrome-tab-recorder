@@ -1,6 +1,7 @@
 {
   "name": "instant-tab-recorder",
   "version": "1.4.0",
+  "type": "module",
   "description": "Google Chrome Extensions Screen Recorder",
   "scripts": {
     "build": "webpack --mode=production",

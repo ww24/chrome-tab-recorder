@@ -10,13 +10,13 @@ function loadMarkdown(filePath: string): string {
     return marked.parse(markdown) as string
 }
 
-const privacyEn = loadMarkdown(path.join(__dirname, 'PRIVACY.md'))
-const privacyJa = loadMarkdown(path.join(__dirname, 'PRIVACY_JA.md'))
+const privacyEn = loadMarkdown(path.join(import.meta.dirname, 'PRIVACY.md'))
+const privacyJa = loadMarkdown(path.join(import.meta.dirname, 'PRIVACY_JA.md'))
 
 const config: webpack.Configuration = {
-    entry: path.join(__dirname, 'src/site.ts'),
+    entry: path.join(import.meta.dirname, 'src/site.ts'),
     output: {
-        path: path.join(__dirname, 'dist'),
+        path: path.join(import.meta.dirname, 'dist'),
         filename: 'site.js',
         clean: true,
     },
@@ -27,7 +27,7 @@ const config: webpack.Configuration = {
                 use: {
                     loader: 'ts-loader',
                     options: {
-                        configFile: path.join(__dirname, 'tsconfig.json'),
+                        configFile: path.join(import.meta.dirname, 'tsconfig.json'),
                     },
                 },
             },
@@ -38,7 +38,7 @@ const config: webpack.Configuration = {
     },
     plugins: [
         new HtmlWebpackPlugin({
-            template: path.join(__dirname, 'index.html'),
+            template: path.join(import.meta.dirname, 'index.html'),
             templateParameters: {
                 privacyEn,
                 privacyJa,
@@ -47,7 +47,7 @@ const config: webpack.Configuration = {
             minify: false,
         }),
         new HtmlWebpackPlugin({
-            template: path.join(__dirname, 'privacy.html'),
+            template: path.join(import.meta.dirname, 'privacy.html'),
             filename: 'PRIVACY.html',
             templateParameters: {
                 lang: 'en',
@@ -58,7 +58,7 @@ const config: webpack.Configuration = {
             minify: false,
         }),
         new HtmlWebpackPlugin({
-            template: path.join(__dirname, 'privacy.html'),
+            template: path.join(import.meta.dirname, 'privacy.html'),
             filename: 'PRIVACY_JA.html',
             templateParameters: {
                 lang: 'ja',
@@ -70,7 +70,7 @@ const config: webpack.Configuration = {
         }),
         new CopyWebpackPlugin({
             patterns: [
-                { from: path.join(__dirname, '..', 'extension/icons/icon128.png'), to: 'icon128.png' },
+                { from: path.join(import.meta.dirname, '..', 'extension/icons/icon128.png'), to: 'icon128.png' },
             ],
         }),
     ],

@@ -38,7 +38,7 @@ jobs:
                   SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
             - name: Get version from package.json
               id: version
-              run: echo "version=$(node -p 'require("./package.json").name + "@" + require("./package.json").version')" >> "$GITHUB_OUTPUT"
+              run: echo "version=$(node -e 'import("./package.json",{with:{type:"json"}}).then(m=>process.stdout.write(m.default.name+"@"+m.default.version))')" >> "$GITHUB_OUTPUT"
             - name: Create Sentry release
               uses: getsentry/action-release@dab6548b3c03c4717878099e43782cf5be654289 # v3.5.0
               env:
