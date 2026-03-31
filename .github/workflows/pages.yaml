@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: Deploy LP to GitHub Pages
 
 on:
   push:
@@ -17,7 +17,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: ${{ github.workflow }}
   cancel-in-progress: false
 
 jobs:
@@ -54,6 +54,6 @@ jobs:
         uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4.0.0
         with:
           path: docs/dist
-      - name: Deploy to GitHub Pages
+      - name: Deploy LP to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
