@@ -1,7 +1,11 @@
-name: Upload to Chrome Web Store
+name: Upload Package to Chrome Web Store
 
 on:
     workflow_dispatch:
+
+concurrency:
+    group: ${{ github.workflow }}
+    cancel-in-progress: false
 
 jobs:
     upload:
@@ -47,7 +51,7 @@ jobs:
               env:
                   SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
-            - name: Upload to Chrome Web Store
+            - name: Upload Package to Chrome Web Store
               run: node scripts/upload-cws.mjs
               env:
                   CWS_PUBLISHER_ID: ${{ secrets.CWS_PUBLISHER_ID }}

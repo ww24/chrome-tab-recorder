@@ -1,9 +1,13 @@
-name: Sentry Release
+name: Create Sentry Release
 
 on:
     push:
         tags:
             - "v*"
+
+concurrency:
+    group: ${{ github.workflow }}
+    cancel-in-progress: false
 
 jobs:
     release:
@@ -39,7 +43,7 @@ jobs:
             - name: Get version from package.json
               id: version
               run: echo "version=$(node -e 'import("./package.json",{with:{type:"json"}}).then(m=>process.stdout.write(m.default.name+"@"+m.default.version))')" >> "$GITHUB_OUTPUT"
-            - name: Create Sentry release
+            - name: Create Sentry Release
               uses: getsentry/action-release@dab6548b3c03c4717878099e43782cf5be654289 # v3.5.0
               env:
                   SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
