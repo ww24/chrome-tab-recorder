@@ -5,24 +5,25 @@ import '@material/web/button/text-button'
 
 @customElement('extension-alert')
 export default class Alert extends LitElement {
-    static readonly styles = css`
+  static readonly styles = css`
     md-dialog {
       width: 520px;
+      --md-dialog-container-color: var(--theme-dialog-bg, var(--md-sys-color-surface-container-high));
     }
   `
 
-    @property({ noAccessor: true })
-    private headline: string = 'Alert'
+  @property({ noAccessor: true })
+  private headline: string = 'Alert'
 
-    @property({ noAccessor: true })
-    private content: string = ''
+  @property({ noAccessor: true })
+  private content: string = ''
 
-    public constructor() {
-        super()
-    }
+  public constructor() {
+    super()
+  }
 
-    public render() {
-        return html`
+  public render() {
+    return html`
         <md-dialog>
           <div slot="headline">${this.headline}</div>
           <form id="form" slot="content" method="dialog">
@@ -33,20 +34,20 @@ export default class Alert extends LitElement {
           </div>
         </md-dialog>
       `
-    }
+  }
 
-    public setContent(headline: string, content: string) {
-        const oldHeadline = this.headline
-        this.headline = headline
-        this.requestUpdate('headline', oldHeadline)
-        const oldContent = this.content
-        this.content = content
-        this.requestUpdate('content', oldContent)
-    }
+  public setContent(headline: string, content: string) {
+    const oldHeadline = this.headline
+    this.headline = headline
+    this.requestUpdate('headline', oldHeadline)
+    const oldContent = this.content
+    this.content = content
+    this.requestUpdate('content', oldContent)
+  }
 };
 
 declare global {
-    interface HTMLElementTagNameMap {
-        'extension-alert': Alert;
-    }
+  interface HTMLElementTagNameMap {
+    'extension-alert': Alert;
+  }
 }

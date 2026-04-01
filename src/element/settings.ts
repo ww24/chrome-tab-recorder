@@ -13,13 +13,14 @@ import { MdSwitch } from '@material/web/switch/switch'
 import { MdSlider } from '@material/web/slider/slider'
 import { MdDialog } from '@material/web/dialog/dialog'
 import type { ResizeWindowMessage, SaveConfigSyncMessage } from '../message'
-import { Configuration, Resolution, RecordingInfo, isVideoRecordingMode, isContainerFormat, isVideoCodec, isAudioCodec, isBitratePreset, getContainerCodecs, resolveBitrate, hasVideo, hasAudio, isAudioOnly, ALL_VIDEO_CODECS, ALL_AUDIO_CODECS, AUDIO_ONLY_CONTAINERS } from '../configuration'
+import { Configuration, Resolution, RecordingInfo, isVideoRecordingMode, isContainerFormat, isVideoCodec, isAudioCodec, isBitratePreset, getContainerCodecs, resolveBitrate, hasVideo, hasAudio, isAudioOnly, ALL_VIDEO_CODECS, ALL_AUDIO_CODECS, AUDIO_ONLY_CONTAINERS, isUITheme } from '../configuration'
 import type { ContainerFormat, VideoCodecType, AudioCodecType } from '../configuration'
 import { canEncodeVideo, canEncodeAudio } from 'mediabunny'
 import { WebLocalStorage } from '../storage'
 import type { FetchConfigMessage } from '../message'
 import { deepMerge, formatNum } from './util'
 import Alert from './alert'
+import { applyTheme } from '../theme'
 
 @customElement('extension-settings')
 export class Settings extends LitElement {
@@ -84,10 +85,13 @@ export class Settings extends LitElement {
         width: 280px;
     }
     .encode-error {
-        color: #b00020;
+        color: var(--theme-error, #b00020);
         font-size: 0.9em;
         margin-bottom: 1em;
         white-space: pre-wrap;
+    }
+    .theme-select {
+        width: 280px;
     }
     `
 
@@ -106,6 +110,7 @@ export class Settings extends LitElement {
     public constructor() {
         super()
         this.config = Settings.getConfiguration()
+        applyTheme(this.config.uiTheme)
         this.updateMicPermission()
     }
 
@@ -115,6 +120,21 @@ export class Settings extends LitElement {
 
     public render() {
         return html`
+        <h2>Appearance</h2>
+        <md-filled-select class="theme-select" label="UI Theme" .value=${live(this.config.uiTheme)} @input=${this.updateProp('uiTheme')}>
+            <md-select-option value="classic">
+                <div slot="headline">Classic</div>
+            </md-select-option>
+            <md-select-option value="light">
+                <div slot="headline">Light</div>
+            </md-select-option>
+            <md-select-option value="dark">
+                <div slot="headline">Dark</div>
+            </md-select-option>
+            <md-select-option value="auto">
+                <div slot="headline">Auto (System)</div>
+            </md-select-option>
+        </md-filled-select>
         <h2>Window Size</h2>
         <md-filled-text-field label="width" type="number" suffix-text="px" .value=${live(this.config.windowSize.width)} @change=${this.updateProp('windowSize', 'width')}></md-filled-text-field>
         <md-filled-text-field label="height" type="number" suffix-text="px" .value=${live(this.config.windowSize.height)} @change=${this.updateProp('windowSize', 'height')}></md-filled-text-field>
@@ -206,7 +226,7 @@ export class Settings extends LitElement {
             </label>
         </div>
         ${this.config.microphone.enabled ? html`
-        <div style="margin-bottom: 8px; font-size: 1.2em; color: ${this.microphonePermissionGranted ? '#4caf50' : '#f44336'};">
+        <div style="margin-bottom: 8px; font-size: 1.2em; color: ${this.microphonePermissionGranted ? 'var(--theme-success, #4caf50)' : 'var(--theme-error, #f44336)'};">
             Status: ${this.microphonePermissionGranted ? 'Permission granted' : 'Permission required'}
         </div>
         ${this.availableMicrophones.length > 0 ? html`
@@ -382,6 +402,12 @@ export class Settings extends LitElement {
                     if (!(e.target instanceof MdSwitch)) return
                     this.config[key1] = e.target.selected
                     break
+                case 'uiTheme':
+                    if (!(e.target instanceof MdFilledSelect)) return
+                    if (!isUITheme(e.target.value)) return
+                    this.config[key1] = e.target.value
+                    applyTheme(e.target.value)
+                    break
             }
 
             this.requestUpdate('config', oldVal)
@@ -535,6 +561,7 @@ export class Settings extends LitElement {
         this.config = deepMerge(oldVal, Configuration.filterForSync(config))
         this.requestUpdate('config', oldVal)
         Settings.setConfiguration(this.config)
+        applyTheme(this.config.uiTheme)
     }
 
     private async restore() {
@@ -543,6 +570,7 @@ export class Settings extends LitElement {
         this.requestUpdate('config', oldVal)
         this.resetValidityError()
         Settings.setConfiguration(this.config)
+        applyTheme(this.config.uiTheme)
         await Settings.syncConfiguration(this.config)
     }
 
