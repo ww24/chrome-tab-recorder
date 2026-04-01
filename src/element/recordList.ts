@@ -58,10 +58,10 @@ function selected(record: RecordEntry): boolean {
 export class RecordList extends LitElement {
     static readonly styles = css`
         md-list {
-            --md-list-container-color: #f4fbfa;
-            --md-list-item-label-text-color: #161d1d;
-            --md-list-item-supporting-text-color: #3f4948;
-            --md-list-item-trailing-supporting-text-color: #3f4948;
+            --md-list-container-color: var(--theme-surface, #f4fbfa);
+            --md-list-item-label-text-color: var(--theme-text, #161d1d);
+            --md-list-item-supporting-text-color: var(--theme-text-secondary, #3f4948);
+            --md-list-item-trailing-supporting-text-color: var(--theme-text-secondary, #3f4948);
             --md-list-item-label-text-font: system-ui;
             --md-list-item-supporting-text-font: system-ui;
             --md-list-item-trailing-supporting-text-font: system-ui;
@@ -69,6 +69,7 @@ export class RecordList extends LitElement {
         .meta {
             display: flex;
             align-items: center;
+            color: var(--theme-text-secondary, inherit);
         }
         .meta > md-icon {
             padding: 1px 2px 1px 0;
@@ -77,6 +78,7 @@ export class RecordList extends LitElement {
         .storage-heading {
             height: 40px;
             line-height: 40px;
+            color: var(--theme-text, inherit);
         }
         .selected-actions {
             margin: 1em 0;
@@ -85,12 +87,15 @@ export class RecordList extends LitElement {
             min-width: 90px;
         }
         .recording {
-            color: #d93025;
+            color: var(--theme-recording, #d93025);
         }
         .sub-file-icon {
-            color: #3f4948;
+            color: var(--theme-text-secondary, #3f4948);
             margin-left: 4px;
             vertical-align: middle;
+        }
+        a {
+            color: var(--theme-link, inherit);
         }
     `
 

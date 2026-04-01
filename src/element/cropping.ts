@@ -33,15 +33,15 @@ export class Cropping extends LitElement {
             font-size: 1.2em;
         }
         .message {
-            color: #666;
+            color: var(--theme-text-secondary, #666);
             font-style: italic;
             margin: 1em 0;
         }
         .message.warning {
-            color: #f44336;
+            color: var(--theme-error, #f44336);
         }
         .hint {
-            color: #666;
+            color: var(--theme-text-secondary, #666);
             font-size: 0.9em;
             margin: 0.5em 0 1em 0;
         }

@@ -38,32 +38,32 @@ export class Support extends LitElement {
             width: 100%;
         }
         .warning-message {
-            color: #f44336;
+            color: var(--theme-error, #f44336);
             margin-bottom: 1em;
             font-size: 1.1em;
         }
         .section-description {
             font-size: 1.1em;
             margin-bottom: 1em;
-            color: #666;
+            color: var(--theme-text-secondary, #666);
         }
         .notice {
             font-size: 0.95em;
-            color: #888;
+            color: var(--theme-notice-text, #888);
             margin-bottom: 1em;
             padding: 0.5em;
-            background-color: #f5f5f5;
+            background-color: var(--theme-notice-bg, #f5f5f5);
             border-radius: 4px;
         }
         .char-count {
             font-size: 0.9em;
-            color: #666;
+            color: var(--theme-text-secondary, #666);
             text-align: right;
             margin-top: -0.8em;
             margin-bottom: 1em;
         }
         .char-count.over-limit {
-            color: #f44336;
+            color: var(--theme-error, #f44336);
         }
         .review-section p {
             font-size: 1.1em;
@@ -72,13 +72,14 @@ export class Support extends LitElement {
         .support-section p {
             font-size: 1.1em;
             margin-bottom: 1em;
-            color: #666;
+            color: var(--theme-text-secondary, #666);
         }
         .buymeacoffee-link img {
             max-height: 60px;
         }
         a {
             text-decoration: none;
+            color: var(--theme-link, inherit);
         }
     `
 

@@ -5,7 +5,7 @@ jest.mock('@mediabunny/flac-encoder', () => ({
     registerFlacEncoder: jest.fn(),
 }))
 
-import { migrateFromMimeType, VideoFormat, Configuration, audioSeparationContainer } from './configuration'
+import { migrateFromMimeType, VideoFormat, Configuration, audioSeparationContainer, isUITheme } from './configuration'
 
 describe('migrateFromMimeType', () => {
     describe('WebM container', () => {
@@ -245,5 +245,67 @@ describe('audioSeparationContainer', () => {
 
     it('should fallback to mp4 for unknown codec', () => {
         expect(audioSeparationContainer('unknown' as never)).toBe('mp4')
+    })
+})
+
+describe('isUITheme', () => {
+    it('should accept valid themes', () => {
+        expect(isUITheme('classic')).toBe(true)
+        expect(isUITheme('light')).toBe(true)
+        expect(isUITheme('dark')).toBe(true)
+        expect(isUITheme('auto')).toBe(true)
+    })
+
+    it('should reject invalid values', () => {
+        expect(isUITheme('invalid')).toBe(false)
+        expect(isUITheme('')).toBe(false)
+        expect(isUITheme(null)).toBe(false)
+        expect(isUITheme(undefined)).toBe(false)
+        expect(isUITheme(42)).toBe(false)
+    })
+})
+
+describe('Configuration.uiTheme', () => {
+    it('should default to auto for new configurations', () => {
+        const config = new Configuration()
+        expect(config.uiTheme).toBe('auto')
+    })
+
+    it('should migrate existing users without uiTheme to classic', () => {
+        const config = new Configuration()
+        const stored = { videoFormat: { container: 'webm' } } as Record<string, unknown>
+        const migrated = Configuration.migrate(config, stored)
+        expect(migrated).toBe(true)
+        expect(config.uiTheme).toBe('classic')
+    })
+
+    it('should not migrate when stored config has uiTheme', () => {
+        const config = new Configuration()
+        config.uiTheme = 'dark'
+        const stored = { uiTheme: 'dark', videoFormat: { container: 'webm' } } as Record<string, unknown>
+        const migrated = Configuration.migrate(config, stored)
+        expect(migrated).toBe(false)
+        expect(config.uiTheme).toBe('dark')
+    })
+
+    it('should not migrate when stored is null (new install)', () => {
+        const config = new Configuration()
+        const migrated = Configuration.migrate(config, null)
+        expect(migrated).toBe(false)
+        expect(config.uiTheme).toBe('auto')
+    })
+
+    it('should include uiTheme in filterForReport', () => {
+        const config = new Configuration()
+        config.uiTheme = 'dark'
+        const report = Configuration.filterForReport(config)
+        expect(report.uiTheme).toBe('dark')
+    })
+
+    it('should include uiTheme in filterForSync', () => {
+        const config = new Configuration()
+        config.uiTheme = 'light'
+        const synced = Configuration.filterForSync(config)
+        expect(synced.uiTheme).toBe('light')
     })
 })

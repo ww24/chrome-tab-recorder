@@ -198,6 +198,15 @@ export interface RecordingInfo {
  * Sort order for recording list
  */
 export type RecordingSortOrder = 'asc' | 'desc'
+
+/**
+ * UI Theme for option page
+ */
+const uiThemes = ['classic', 'light', 'dark', 'auto'] as const
+export type UITheme = (typeof uiThemes)[number]
+export function isUITheme(v: unknown): v is UITheme {
+    return uiThemes.some(t => v === t)
+}
 const videoRecordingMode = ['video-and-audio', 'video-only', 'audio-only'] as const
 export type VideoRecordingMode = (typeof videoRecordingMode)[number];
 export function isVideoRecordingMode(v: unknown): v is VideoRecordingMode {
@@ -230,7 +239,7 @@ export function audioSeparationContainer(audioCodec: AudioCodecType): ContainerF
 }
 
 export type ConfigurationReport =
-    Pick<Configuration, 'windowSize' | 'screenRecordingSize' | 'openOptionPage' | 'muteRecordingTab' | 'recordingSortOrder' | 'audioSeparation'>
+    Pick<Configuration, 'windowSize' | 'screenRecordingSize' | 'openOptionPage' | 'muteRecordingTab' | 'recordingSortOrder' | 'audioSeparation' | 'uiTheme'>
     & { videoFormat: VideoFormatReport }
     & { microphone: Omit<Microphone, 'deviceId'> }
     & { cropping: Pick<CroppingConfig, 'enabled'> & { region: Pick<CropRegion, 'width' | 'height'> } }
@@ -249,6 +258,7 @@ export class Configuration {
     cropping: CroppingConfig
     recordingSortOrder: RecordingSortOrder
     audioSeparation: AudioSeparation
+    uiTheme: UITheme
     constructor() {
         this.windowSize = {
             width: 1920,
@@ -295,6 +305,7 @@ export class Configuration {
         this.audioSeparation = {
             enabled: false,
         }
+        this.uiTheme = 'auto'
     }
     static restoreDefault({ userId }: Configuration): Configuration {
         const config = new Configuration()
@@ -320,7 +331,7 @@ export class Configuration {
             const { gain: _, ...rest } = microphone
             microphone = { gain: 0, ...rest }
         }
-        const { windowSize, screenRecordingSize, openOptionPage, muteRecordingTab, recordingSortOrder, audioSeparation } = config
+        const { windowSize, screenRecordingSize, openOptionPage, muteRecordingTab, recordingSortOrder, audioSeparation, uiTheme } = config
         return {
             windowSize,
             screenRecordingSize,
@@ -331,6 +342,7 @@ export class Configuration {
             cropping: { enabled: cropping.enabled, region: { width: cropping.region.width, height: cropping.region.height } },
             recordingSortOrder,
             audioSeparation,
+            uiTheme,
         }
     }
     static screenRecordingSize(screenRecordingSize: ScreenRecordingSize, base: Resolution): Resolution {
@@ -370,6 +382,12 @@ export class Configuration {
         if (config.videoFormat.videoBitrate === 0) {
             config.videoFormat.videoBitratePreset = 'high'
             config.videoFormat.videoBitrate = defaultConfig.videoFormat.videoBitrate
+            migrated = true
+        }
+
+        // Migrate: existing users without uiTheme get 'classic'
+        if (stored != null && !('uiTheme' in stored)) {
+            config.uiTheme = 'classic'
             migrated = true
         }
 

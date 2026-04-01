@@ -16,7 +16,7 @@ export class CroppingPreview extends LitElement {
         }
         .preview-container {
             position: relative;
-            background: #1a1a1a;
+            background: var(--theme-preview-bg, #1a1a1a);
             border-radius: 8px;
             overflow: hidden;
             min-height: 200px;
@@ -30,7 +30,7 @@ export class CroppingPreview extends LitElement {
             left: 0;
             transform: translate(0, -100%);
             width: 100%;
-            color: #999;
+            color: var(--theme-preview-message, #999);
             font-style: italic;
             pointer-events: none;
             text-align: center;
@@ -55,27 +55,27 @@ export class CroppingPreview extends LitElement {
         }
         .crop-overlay {
             position: absolute;
-            border: 2px solid #2196f3;
-            background: rgba(33, 150, 243, 0.1);
+            border: 2px solid var(--theme-crop-border, #2196f3);
+            background: var(--theme-crop-bg, rgba(33, 150, 243, 0.1));
             box-sizing: border-box;
             cursor: move;
         }
         .crop-overlay.disabled {
             cursor: default;
-            border-color: #666;
+            border-color: var(--theme-crop-disabled, #666);
             background: rgba(102, 102, 102, 0.1);
         }
         .resize-handle {
             position: absolute;
             width: 12px;
             height: 12px;
-            background: #2196f3;
-            border: 2px solid #fff;
+            background: var(--theme-crop-handle, #2196f3);
+            border: 2px solid var(--theme-crop-handle-border, #fff);
             border-radius: 2px;
             box-sizing: border-box;
         }
         .resize-handle.disabled {
-            background: #666;
+            background: var(--theme-crop-disabled, #666);
         }
         .resize-handle.nw { top: -6px; left: -6px; cursor: nw-resize; }
         .resize-handle.ne { top: -6px; right: -6px; cursor: ne-resize; }
@@ -84,7 +84,7 @@ export class CroppingPreview extends LitElement {
         .resize-handle.disabled { cursor: default; }
         .dim-overlay {
             position: absolute;
-            background: rgba(0, 0, 0, 0.5);
+            background: var(--theme-overlay-dim, rgba(0, 0, 0, 0.5));
             pointer-events: none;
         }
     `
