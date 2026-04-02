@@ -58,6 +58,7 @@ export interface RecordingState {
     screenSize?: Resolution;
     recordingMode?: VideoRecordingMode;
     micEnabled?: boolean;
+    stopAtMs?: number;
 }
 
 /**

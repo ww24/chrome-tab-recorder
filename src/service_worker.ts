@@ -13,12 +13,14 @@ import type {
     RecordingStateMessage,
     CancelRecordingMessage,
 } from './message'
+import { TIMER_STOP_CONFIRM_PENDING_KEY, TIMER_STOP_TRIGGER_KEY } from './message'
 import { Configuration, Resolution } from './configuration'
 import { ExtensionSyncStorage } from './storage'
 import { deepMerge } from './element/util'
 import { OPFSStorage } from './opfs_storage'
 import { handleApiRequest, RecordingState } from './handler'
 import { buildRecordingTitle } from './format'
+import { handleMessage, type ServiceWorkerDeps } from './service_worker_handler'
 
 const recordingIcon = '/icons/recording.png'
 const recordingVideoOnlyIcon = '/icons/recording-video-only.png'
@@ -211,13 +213,28 @@ async function startRecording(tab: chrome.tabs.Tab, trigger: StartTrigger) {
         startAtMs: response.startAtMs,
         recordingMode: response.recordingMode,
         micEnabled: response.micEnabled,
+        stopAtMs: response.stopAtMs,
     })
 
     await updateRecordingIndications()
     await broadcastRecordingState()
 }
 
-async function stopRecording(trigger: Trigger) {
+async function stopRecording(trigger: Trigger, skipConfirmation = false) {
+    // Check if timer confirmation is needed
+    if (!skipConfirmation) {
+        const config = await getConfiguration()
+        if (config.recordingTimer.enabled && !config.recordingTimer.skipStopConfirmation) {
+            const state = await getRecordingState()
+            if (state.isRecording && state.stopAtMs != null) {
+                // Timer is active: open option page for confirmation instead of stopping
+                await chrome.storage.local.set({ [TIMER_STOP_CONFIRM_PENDING_KEY]: true, [TIMER_STOP_TRIGGER_KEY]: trigger })
+                await chrome.runtime.openOptionsPage()
+                return
+            }
+        }
+    }
+
     // Send stop-recording message to offscreen document
     const msg: StopRecordingMessage = {
         type: 'stop-recording',
@@ -304,18 +321,32 @@ async function updateContextMenuTitle(state: RecordingState) {
 
 // Broadcast recording state to all option pages
 async function broadcastRecordingState() {
-    const { isRecording, screenSize, startAtMs } = await getRecordingState()
+    const { isRecording, screenSize, startAtMs, stopAtMs } = await getRecordingState()
     const msg: RecordingStateMessage = {
         type: 'recording-state',
         isRecording,
         screenSize,
         startAtMs,
+        stopAtMs,
     }
     try {
         await chrome.runtime.sendMessage(msg)
     } catch (e) {
         console.error('Failed to send recording state:', e)
     }
+}
+
+const messageHandlerDeps: ServiceWorkerDeps = {
+    getRecordingState,
+    setRecordingState,
+    getConfiguration,
+    getRemoteConfiguration,
+    stopRecording,
+    cancelRecording,
+    broadcastRecordingState,
+    updateActionTitle,
+    resizeWindow,
+    storageSyncSet: (key, value) => storage.set(key, value),
 }
 
 chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.MessageSender, sendResponse: (response?: Configuration) => void) => {
@@ -329,54 +360,19 @@ chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.M
             }
         })()
         try {
-            switch (message.type) {
-                case 'resize-window':
-                    if (typeof message.data !== 'object' || message.data == null) return
-                    await resizeWindow(message.data)
-                    return
-                case 'recording-tick':
-                    const state = await getRecordingState()
-                    await updateActionTitle(state)
-                    return
-                case 'tab-track-ended':
-                    // Fire-and-forget: stopRecording closes the Offscreen Document,
-                    // so it must not be awaited inside the message listener.
-                    stopRecording('tab-track-ended').catch(async e => {
-                        console.error(e)
-                        const msg: ExceptionMessage = {
-                            type: 'exception',
-                            data: e,
-                        }
-                        await chrome.runtime.sendMessage(msg)
-                    })
-                    return
-                case 'unexpected-recording-state':
-                    // Fire-and-forget: cancelRecording closes the Offscreen Document,
-                    // so it must not be awaited inside the message listener.
-                    cancelRecording(message.error).catch(async e => {
-                        console.error(e)
-                        const msg: ExceptionMessage = {
-                            type: 'exception',
-                            data: e,
-                        }
-                        await chrome.runtime.sendMessage(msg)
-                    })
-                    return
-                case 'save-config-sync':
-                    await storage.set(Configuration.key, message.data)
-                    return
-                case 'fetch-config':
-                    const defaultConfig = new Configuration()
-                    const remoteConfig = await getRemoteConfiguration()
-                    if (remoteConfig == null) return
-                    const config = deepMerge(defaultConfig, remoteConfig)
-                    console.debug('fetch:', config)
-                    respond(config)
-                    return
-                case 'request-recording-state':
-                    // Respond with current recording state
-                    await broadcastRecordingState()
-                    return
+            const result = await handleMessage(message, messageHandlerDeps)
+            if (result.response != null) {
+                respond(result.response)
+            }
+            if (result.fireAndForget != null) {
+                result.fireAndForget.catch(async e => {
+                    console.error(e)
+                    const msg: ExceptionMessage = {
+                        type: 'exception',
+                        data: e,
+                    }
+                    await chrome.runtime.sendMessage(msg)
+                })
             }
         } catch (e) {
             console.error(e)

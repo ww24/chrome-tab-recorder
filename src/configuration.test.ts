@@ -5,7 +5,7 @@ jest.mock('@mediabunny/flac-encoder', () => ({
     registerFlacEncoder: jest.fn(),
 }))
 
-import { migrateFromMimeType, VideoFormat, Configuration, audioSeparationContainer, isUITheme } from './configuration'
+import { migrateFromMimeType, VideoFormat, Configuration, audioSeparationContainer, isUITheme, type RecordingTimerReport } from './configuration'
 
 describe('migrateFromMimeType', () => {
     describe('WebM container', () => {
@@ -307,5 +307,41 @@ describe('Configuration.uiTheme', () => {
         config.uiTheme = 'light'
         const synced = Configuration.filterForSync(config)
         expect(synced.uiTheme).toBe('light')
+    })
+})
+
+describe('Configuration.recordingTimer', () => {
+    it('should default to disabled with 30 minutes and skipStopConfirmation false', () => {
+        const config = new Configuration()
+        expect(config.recordingTimer).toEqual({ enabled: false, durationMinutes: 30, skipStopConfirmation: false })
+    })
+
+    it('should include recordingTimer in filterForSync', () => {
+        const config = new Configuration()
+        config.recordingTimer = { enabled: true, durationMinutes: 60, skipStopConfirmation: true }
+        const synced = Configuration.filterForSync(config)
+        expect(synced.recordingTimer).toEqual({ enabled: true, durationMinutes: 60, skipStopConfirmation: true })
+    })
+
+    it('should include durationMinutes in report when enabled', () => {
+        const config = new Configuration()
+        config.recordingTimer = { enabled: true, durationMinutes: 45, skipStopConfirmation: false }
+        const report = Configuration.filterForReport(config)
+        expect(report.recordingTimer).toEqual({ enabled: true, durationMinutes: 45, skipStopConfirmation: false } satisfies RecordingTimerReport)
+    })
+
+    it('should omit durationMinutes, skipStopConfirmation in report when disabled', () => {
+        const config = new Configuration()
+        config.recordingTimer = { enabled: false, durationMinutes: 45, skipStopConfirmation: true }
+        const report = Configuration.filterForReport(config)
+        expect(report.recordingTimer).toEqual({ enabled: false, durationMinutes: undefined, skipStopConfirmation: undefined } satisfies RecordingTimerReport)
+        expect(report.recordingTimer.durationMinutes).toBeUndefined()
+    })
+
+    it('should reset recordingTimer on restoreDefault', () => {
+        const config = new Configuration()
+        config.recordingTimer = { enabled: true, durationMinutes: 120, skipStopConfirmation: true }
+        const restored = Configuration.restoreDefault(config)
+        expect(restored.recordingTimer).toEqual({ enabled: false, durationMinutes: 30, skipStopConfirmation: false })
     })
 })

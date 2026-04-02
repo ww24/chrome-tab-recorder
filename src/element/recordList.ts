@@ -86,6 +86,9 @@ export class RecordList extends LitElement {
         .sort-chip {
             min-width: 90px;
         }
+        .list-item {
+            font-variant-numeric: tabular-nums;
+        }
         .recording {
             color: var(--theme-recording, #d93025);
         }
@@ -120,7 +123,11 @@ export class RecordList extends LitElement {
     @state()
     private elapsedTimeText: string = formatElapsedTime(0)
 
+    @state()
+    private timerStopText: string = ''
+
     private recordingStartAtMs: number | null = null
+    private recordingStopAtMs: number | null = null
     private elapsedTimerId?: ReturnType<typeof setInterval>
 
     public constructor() {
@@ -156,6 +163,8 @@ export class RecordList extends LitElement {
                 case 'recording-state':
                     if (message.isRecording && message.startAtMs != null) {
                         this.startElapsedTimer(message.startAtMs)
+                        this.recordingStopAtMs = message.stopAtMs ?? null
+                        this.updateTimerStopText()
                     } else {
                         this.stopElapsedTimer()
                     }
@@ -211,7 +220,7 @@ export class RecordList extends LitElement {
                     })}
                 <div class="meta" title="file size"><md-icon>storage</md-icon> ${formatNum((record.size + record.subFilesSize) / 1024 / 1024, 2)} MB ${record.subFilesSize > 0 ? html` <span title="separated audio file size">(${formatNum(record.subFilesSize / 1024 / 1024, 2)} MB separated)</span>` : ''}</div>
                 ${record.recordedAt != null ? html`<div class="meta" title="recorded at"><md-icon>schedule</md-icon> ${RecordList.dateTimeFormat.format(record.recordedAt)}</div>` : ''}
-                ${record.isRecording ? html`<div class="meta recording" title="recording"><md-icon>screen_record</md-icon> Recording ${this.elapsedTimeText}</div>` : ''}
+                ${record.isRecording ? html`<div class="meta recording" title="recording"><md-icon>screen_record</md-icon> Recording ${this.elapsedTimeText}${this.timerStopText ? html` <span title="timer stop time">(⏱ stops at ${this.timerStopText})</span>` : ''}</div>` : ''}
                 <md-filled-icon-button slot="end" ?disabled=${record.isRecording} @click=${this.playRecord(record)}>
                     <md-icon>play_arrow</md-icon>
                 </md-filled-icon-button>
@@ -314,13 +323,24 @@ export class RecordList extends LitElement {
             this.elapsedTimerId = undefined
         }
         this.recordingStartAtMs = null
+        this.recordingStopAtMs = null
         this.elapsedTimeText = ''
+        this.timerStopText = ''
     }
 
     private updateElapsedTime() {
         if (this.recordingStartAtMs == null) return
         const elapsed = Date.now() - this.recordingStartAtMs
         this.elapsedTimeText = formatElapsedTime(elapsed)
+        this.updateTimerStopText()
+    }
+
+    private updateTimerStopText() {
+        if (this.recordingStopAtMs == null) {
+            this.timerStopText = ''
+            return
+        }
+        this.timerStopText = new Date(this.recordingStopAtMs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
     private async toggleSortOrder() {
         const newOrder: RecordingSortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc'

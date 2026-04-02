@@ -1,5 +1,8 @@
 import type { Resolution, Configuration, SyncConfiguration, CropRegion, VideoRecordingMode } from './configuration'
 
+export const TIMER_STOP_CONFIRM_PENDING_KEY = 'timerStopConfirmPending'
+export const TIMER_STOP_TRIGGER_KEY = 'timerStopTrigger'
+
 export type Message =
     | ExceptionMessage
     | StartRecordingMessage
@@ -17,6 +20,10 @@ export type Message =
     | PreviewControlMessage
     | UpdateCropRegionMessage
     | RecordingTickMessage
+    | TimerExpiredMessage
+    | TimerUpdatedMessage
+    | ConfirmTimerStopMessage
+    | UpdateRecordingTimerMessage
     ;
 
 export interface ExceptionMessage {
@@ -24,9 +31,9 @@ export interface ExceptionMessage {
     data: unknown;
 }
 
-export type Trigger = 'action-icon' | 'context-menu' | 'keyboard-shortcut' | 'tab-track-ended'
+export type Trigger = 'action-icon' | 'context-menu' | 'keyboard-shortcut' | 'tab-track-ended' | 'timer'
 
-export type StartTrigger = Exclude<Trigger, 'tab-track-ended'>
+export type StartTrigger = Exclude<Trigger, 'tab-track-ended' | 'timer'>
 
 export interface StartRecordingMessage {
     type: 'start-recording';
@@ -41,6 +48,7 @@ export interface StartRecordingResponse {
     startAtMs: number;
     recordingMode: VideoRecordingMode;
     micEnabled: boolean;
+    stopAtMs?: number;
 }
 
 export interface TabTrackEndedMessage {
@@ -86,6 +94,7 @@ export interface RecordingStateMessage {
     isRecording: boolean;
     screenSize?: Resolution;
     startAtMs?: number;
+    stopAtMs?: number;
 }
 
 // Request current recording state (option page → service_worker)
@@ -115,4 +124,28 @@ export interface UpdateCropRegionMessage {
 // Periodic tick during recording (offscreen → service_worker)
 export interface RecordingTickMessage {
     type: 'recording-tick';
+}
+
+// Timer expired notification (offscreen → service_worker)
+export interface TimerExpiredMessage {
+    type: 'timer-expired';
+}
+
+// Timer updated notification (offscreen → service_worker)
+export interface TimerUpdatedMessage {
+    type: 'timer-updated';
+    stopAtMs: number | null;
+}
+
+// Confirm timer stop (option page → service_worker)
+export interface ConfirmTimerStopMessage {
+    type: 'confirm-timer-stop';
+    trigger: Trigger;
+}
+
+// Update recording timer (option page → offscreen)
+export interface UpdateRecordingTimerMessage {
+    type: 'update-recording-timer';
+    enabled: boolean;
+    durationMinutes: number;
 }
