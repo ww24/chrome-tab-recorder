@@ -82,13 +82,13 @@ describe('FileManager', () => {
         })
     })
 
-    describe('directory caching', () => {
-        test('calls getDirectory only once across multiple operations', async () => {
+    describe('directory access', () => {
+        test('calls getDirectory for each operation', async () => {
             const fm = new FileManager()
             await fm.createRecordingFile(1, 'webm')
             await fm.createAudioFile('test.ogg')
 
-            expect(navigator.storage.getDirectory).toHaveBeenCalledTimes(1)
+            expect(navigator.storage.getDirectory).toHaveBeenCalledTimes(2)
         })
     })
 })
