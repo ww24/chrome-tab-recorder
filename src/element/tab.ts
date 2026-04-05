@@ -53,7 +53,7 @@ export class OptionTab extends LitElement {
         }
     }
 
-    public render() {
+    public override render() {
         return html`
         <md-tabs @change=${OptionTab.changeTab}>
             <md-primary-tab id="tab-main" aria-controls="panel-main" inline-icon active>

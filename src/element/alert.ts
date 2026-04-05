@@ -5,7 +5,7 @@ import '@material/web/button/text-button'
 
 @customElement('extension-alert')
 export default class Alert extends LitElement {
-  static readonly styles = css`
+  static override readonly styles = css`
     md-dialog {
       width: 520px;
       --md-dialog-container-color: var(--theme-dialog-bg, var(--md-sys-color-surface-container-high));
@@ -22,7 +22,7 @@ export default class Alert extends LitElement {
     super()
   }
 
-  public render() {
+  public override render() {
     return html`
         <md-dialog>
           <div slot="headline">${this.headline}</div>

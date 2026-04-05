@@ -56,7 +56,7 @@ function selected(record: RecordEntry): boolean {
 
 @customElement('record-list')
 export class RecordList extends LitElement {
-    static readonly styles = css`
+    static override readonly styles = css`
         md-list {
             --md-list-container-color: var(--theme-surface, #f4fbfa);
             --md-list-item-label-text-color: var(--theme-text, #161d1d);
@@ -137,7 +137,7 @@ export class RecordList extends LitElement {
         this.sortOrder = Settings.getConfiguration().recordingSortOrder
     }
 
-    connectedCallback() {
+    override connectedCallback() {
         super.connectedCallback();
         (async () => {
             await this.updateRecord()
@@ -151,7 +151,7 @@ export class RecordList extends LitElement {
         chrome.runtime.onMessage.addListener(this.handleMessage)
     }
 
-    disconnectedCallback() {
+    override disconnectedCallback() {
         super.disconnectedCallback()
         chrome.runtime.onMessage.removeListener(this.handleMessage)
         this.stopElapsedTimer()
@@ -201,7 +201,7 @@ export class RecordList extends LitElement {
         dialog?.show()
     }
 
-    public render() {
+    public override render() {
         const row = (record: RecordEntry, idx: number) => {
             const fileUrl = getRecordingFileUrl(record.title)
             const downloadUrl = `${fileUrl}?download=true`

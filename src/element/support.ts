@@ -19,7 +19,7 @@ const MAX_MESSAGE_LENGTH = 1000
 
 @customElement('extension-support')
 export class Support extends LitElement {
-    static readonly styles = css`
+    static override readonly styles = css`
         :host {
             display: block;
         }
@@ -101,12 +101,12 @@ export class Support extends LitElement {
         this.handleConfigChange = this.handleConfigChange.bind(this)
     }
 
-    connectedCallback() {
+    override connectedCallback() {
         super.connectedCallback()
         window.addEventListener(Settings.CONFIG_CHANGED_EVENT, this.handleConfigChange)
     }
 
-    disconnectedCallback() {
+    override disconnectedCallback() {
         super.disconnectedCallback()
         window.removeEventListener(Settings.CONFIG_CHANGED_EVENT, this.handleConfigChange)
     }
@@ -126,7 +126,7 @@ export class Support extends LitElement {
         return charLength > 0 && charLength <= MAX_MESSAGE_LENGTH
     }
 
-    public render() {
+    public override render() {
         const bugTrackingEnabled = this.config.enableBugTracking
         const messageCharLength = this.getMessageCharLength()
         const isOverLimit = messageCharLength > MAX_MESSAGE_LENGTH
