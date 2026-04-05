@@ -23,7 +23,10 @@
     "useDefineForClassFields": false,
     "strictNullChecks": true,
     "strictPropertyInitialization": true,
-    "noImplicitOverride": true
+    "noImplicitOverride": true,
+    "noUnusedLocals": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true
   },
   "ts-node": {
     "esm": true,
