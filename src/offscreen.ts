@@ -6,6 +6,8 @@ import type {
     PreviewFrameMessage,
     UnexpectedRecordingStateMessage,
     RecordingTickMessage,
+    TimerExpiredMessage,
+    TimerUpdatedMessage,
 } from './message'
 import { flush, sendEvent, sendException } from './sentry'
 import { Preview } from './preview'
@@ -21,6 +23,41 @@ const preview = new Preview(async ({ image, width, height }) => {
     await chrome.runtime.sendMessage(msg)
 })
 const crop = new Crop()
+
+// Recording timer state
+let timerTimeoutId: ReturnType<typeof setTimeout> | null = null
+let timerStopAtMs: number | null = null
+
+function setRecordingTimer(durationMinutes: number) {
+    clearRecordingTimer()
+    const durationMs = durationMinutes * 60 * 1000
+    timerStopAtMs = Date.now() + durationMs
+    timerTimeoutId = setTimeout(async () => {
+        timerTimeoutId = null
+        timerStopAtMs = null
+        try {
+            const msg: TimerExpiredMessage = { type: 'timer-expired' }
+            await chrome.runtime.sendMessage(msg)
+        } catch (e) {
+            console.error('Failed to send timer-expired message:', e)
+        }
+    }, durationMs)
+}
+
+function clearRecordingTimer() {
+    if (timerTimeoutId != null) {
+        clearTimeout(timerTimeoutId)
+        timerTimeoutId = null
+    }
+    timerStopAtMs = null
+}
+
+function sendTimerUpdated() {
+    const msg: TimerUpdatedMessage = { type: 'timer-updated', stopAtMs: timerStopAtMs }
+    chrome.runtime.sendMessage(msg).catch(e => {
+        console.error('Failed to send timer-updated message:', e)
+    })
+}
 
 const session: RecordingSession = createRecordingSession(preview, crop, {
     onTabTrackEnded: async () => {
@@ -48,7 +85,21 @@ const session: RecordingSession = createRecordingSession(preview, crop, {
     },
 })
 
+// Message types handled by the offscreen document
+const OFFSCREEN_MESSAGE_TYPES: ReadonlySet<Message['type']> = new Set([
+    'start-recording',
+    'stop-recording',
+    'cancel-recording',
+    'save-config-local',
+    'update-recording-timer',
+    'exception',
+    'preview-control',
+    'update-crop-region',
+])
+
 chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.MessageSender, sendResponse: (response?: StartRecordingResponse) => void) => {
+    if (!OFFSCREEN_MESSAGE_TYPES.has(message.type)) return
+
     (async () => {
         let response: StartRecordingResponse | undefined
         try {
@@ -79,6 +130,12 @@ chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.M
                         audioSeparation: config.audioSeparation,
                     })
 
+                    // Set recording timer if enabled
+                    if (config.recordingTimer.enabled && config.recordingTimer.durationMinutes > 0) {
+                        setRecordingTimer(config.recordingTimer.durationMinutes)
+                        response.stopAtMs = timerStopAtMs ?? undefined
+                    }
+
                     // ref. https://github.com/GoogleChrome/chrome-extensions-samples/blob/137cf71b9b4d631191cedbf96343d5b6a51c9a74/functional-samples/sample.tabcapture-recorder/offscreen.js#L71-L77
                     window.location.hash = 'recording'
                     return
@@ -102,6 +159,7 @@ chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.M
                         console.error(e)
                         sendException(e, { exceptionSource: 'offscreen.stopRecording' })
                     } finally {
+                        clearRecordingTimer()
                         window.location.hash = ''
                     }
                     await flush()
@@ -122,15 +180,27 @@ chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.M
                         console.error(e)
                         sendException(e, { exceptionSource: 'offscreen.cancelRecording' })
                     } finally {
+                        clearRecordingTimer()
                         window.location.hash = ''
                     }
                     await flush()
                     return
                 }
-                case 'save-config-local':
+                case 'save-config-local': {
                     Settings.mergeRemoteConfiguration(message.data)
                     await flush()
                     return
+                }
+                case 'update-recording-timer': {
+                    if (window.location.hash !== '#recording') return
+                    if (message.enabled && message.durationMinutes > 0) {
+                        setRecordingTimer(message.durationMinutes)
+                    } else {
+                        clearRecordingTimer()
+                    }
+                    sendTimerUpdated()
+                    return
+                }
                 case 'exception':
                     throw message.data
                 case 'preview-control':

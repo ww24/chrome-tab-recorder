@@ -1,12 +1,14 @@
 import type { RecordingState } from './handler'
 
 /**
- * Format elapsed milliseconds as hh:mm for tooltip display.
+ * Format milliseconds as hh:mm for tooltip display.
  * Clamps at 23:59 and appends '+' if exceeded.
+ * @param rounding - 'floor' for elapsed time, 'ceil' for remaining time
  */
-export function formatElapsedHHMM(elapsedMs: number): string {
+export function formatHHMM(ms: number, rounding: 'floor' | 'ceil' = 'floor'): string {
     const MAX_MINUTES = 24 * 60 - 1 // 23:59
-    const rawMinutes = Math.max(0, Math.floor(elapsedMs / 60000))
+    const round = rounding === 'ceil' ? Math.ceil : Math.floor
+    const rawMinutes = Math.max(0, round(ms / 60000))
     const totalMinutes = Math.min(rawMinutes, MAX_MINUTES)
     const hours = Math.floor(totalMinutes / 60)
     const minutes = totalMinutes % 60
@@ -19,14 +21,18 @@ export function formatElapsedHHMM(elapsedMs: number): string {
  * Uses a fixed timestamp so the caller controls the current time.
  */
 export function buildRecordingTitle(appName: string, state: RecordingState, now: number = Date.now()): string {
-    const elapsed = state.startAtMs != null ? formatElapsedHHMM(now - state.startAtMs) : '00:00'
+    const elapsed = state.startAtMs != null ? formatHHMM(now - state.startAtMs) : '00:00'
     const video = state.recordingMode !== 'audio-only' ? 'on' : 'off'
     const audio = state.recordingMode !== 'video-only' ? 'on' : 'off'
     const mic = state.micEnabled ? 'on' : 'off'
+    const timerLine = state.stopAtMs != null
+        ? `Timer: ${formatHHMM(state.stopAtMs - now, 'ceil')} remaining`
+        : null
     return [
         appName,
         `Recording (${elapsed})`,
         `video: ${video} / audio: ${audio} / mic: ${mic}`,
+        ...(timerLine ? [timerLine] : []),
         'Click to stop recording.',
     ].join('\n')
 }

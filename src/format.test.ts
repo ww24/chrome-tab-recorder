@@ -1,41 +1,53 @@
-import { formatElapsedHHMM, buildRecordingTitle, formatElapsedTime } from './format'
+import { formatHHMM, buildRecordingTitle, formatElapsedTime } from './format'
 import type { RecordingState } from './handler'
 
-describe('formatElapsedHHMM', () => {
+describe('formatHHMM', () => {
     it('returns 00:00 for 0 ms', () => {
-        expect(formatElapsedHHMM(0)).toBe('00:00')
+        expect(formatHHMM(0)).toBe('00:00')
     })
 
     it('returns 00:00 for negative values', () => {
-        expect(formatElapsedHHMM(-1000)).toBe('00:00')
+        expect(formatHHMM(-1000)).toBe('00:00')
     })
 
     it('returns 00:01 for 1 minute', () => {
-        expect(formatElapsedHHMM(60_000)).toBe('00:01')
+        expect(formatHHMM(60_000)).toBe('00:01')
     })
 
-    it('returns 00:00 for 59 seconds (rounds down)', () => {
-        expect(formatElapsedHHMM(59_999)).toBe('00:00')
+    it('returns 00:00 for 59 seconds (rounds down by default)', () => {
+        expect(formatHHMM(59_999)).toBe('00:00')
     })
 
     it('returns 01:00 for 1 hour', () => {
-        expect(formatElapsedHHMM(3_600_000)).toBe('01:00')
+        expect(formatHHMM(3_600_000)).toBe('01:00')
     })
 
     it('returns 01:30 for 1.5 hours', () => {
-        expect(formatElapsedHHMM(5_400_000)).toBe('01:30')
+        expect(formatHHMM(5_400_000)).toBe('01:30')
     })
 
     it('returns 23:59 for exactly 23:59', () => {
-        expect(formatElapsedHHMM(23 * 3_600_000 + 59 * 60_000)).toBe('23:59')
+        expect(formatHHMM(23 * 3_600_000 + 59 * 60_000)).toBe('23:59')
     })
 
     it('returns 23:59+ when exceeding 23:59', () => {
-        expect(formatElapsedHHMM(24 * 3_600_000)).toBe('23:59+')
+        expect(formatHHMM(24 * 3_600_000)).toBe('23:59+')
     })
 
     it('returns 23:59+ for very large values', () => {
-        expect(formatElapsedHHMM(100 * 3_600_000)).toBe('23:59+')
+        expect(formatHHMM(100 * 3_600_000)).toBe('23:59+')
+    })
+
+    it('rounds up with ceil rounding', () => {
+        expect(formatHHMM(59_999, 'ceil')).toBe('00:01')
+    })
+
+    it('returns 00:00 for 0 ms with ceil rounding', () => {
+        expect(formatHHMM(0, 'ceil')).toBe('00:00')
+    })
+
+    it('returns 00:00 for negative values with ceil rounding', () => {
+        expect(formatHHMM(-1000, 'ceil')).toBe('00:00')
     })
 })
 

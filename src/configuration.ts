@@ -189,6 +189,11 @@ export interface Microphone {
 export interface AudioSeparation {
     enabled: boolean
 }
+export interface RecordingTimer {
+    enabled: boolean
+    durationMinutes: number
+    skipStopConfirmation: boolean
+}
 export interface RecordingInfo {
     videoFormat: VideoFormat
     recordingSize: Resolution
@@ -238,11 +243,14 @@ export function audioSeparationContainer(audioCodec: AudioCodecType): ContainerF
     }
 }
 
+export type RecordingTimerReport = { enabled: boolean; durationMinutes?: number; skipStopConfirmation?: boolean }
+
 export type ConfigurationReport =
     Pick<Configuration, 'windowSize' | 'screenRecordingSize' | 'openOptionPage' | 'muteRecordingTab' | 'recordingSortOrder' | 'audioSeparation' | 'uiTheme'>
     & { videoFormat: VideoFormatReport }
     & { microphone: Omit<Microphone, 'deviceId'> }
     & { cropping: Pick<CroppingConfig, 'enabled'> & { region: Pick<CropRegion, 'width' | 'height'> } }
+    & { recordingTimer: RecordingTimerReport }
 
 export class Configuration {
     public static readonly key = 'settings'
@@ -258,6 +266,7 @@ export class Configuration {
     cropping: CroppingConfig
     recordingSortOrder: RecordingSortOrder
     audioSeparation: AudioSeparation
+    recordingTimer: RecordingTimer
     uiTheme: UITheme
     constructor() {
         this.windowSize = {
@@ -305,6 +314,11 @@ export class Configuration {
         this.audioSeparation = {
             enabled: false,
         }
+        this.recordingTimer = {
+            enabled: false,
+            durationMinutes: 30,
+            skipStopConfirmation: false,
+        }
         this.uiTheme = 'auto'
     }
     static restoreDefault({ userId }: Configuration): Configuration {
@@ -331,6 +345,11 @@ export class Configuration {
             const { gain: _, ...rest } = microphone
             microphone = { gain: 0, ...rest }
         }
+        const recordingTimer: RecordingTimerReport = { ...config.recordingTimer }
+        if (!config.recordingTimer.enabled) {
+            recordingTimer.durationMinutes = undefined
+            recordingTimer.skipStopConfirmation = undefined
+        }
         const { windowSize, screenRecordingSize, openOptionPage, muteRecordingTab, recordingSortOrder, audioSeparation, uiTheme } = config
         return {
             windowSize,
@@ -342,6 +361,7 @@ export class Configuration {
             cropping: { enabled: cropping.enabled, region: { width: cropping.region.width, height: cropping.region.height } },
             recordingSortOrder,
             audioSeparation,
+            recordingTimer,
             uiTheme,
         }
     }

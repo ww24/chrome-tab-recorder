@@ -12,7 +12,7 @@ import { MdFilledTextField } from '@material/web/textfield/filled-text-field'
 import { MdSwitch } from '@material/web/switch/switch'
 import { MdSlider } from '@material/web/slider/slider'
 import { MdDialog } from '@material/web/dialog/dialog'
-import type { ResizeWindowMessage, SaveConfigSyncMessage } from '../message'
+import type { ResizeWindowMessage, SaveConfigSyncMessage, UpdateRecordingTimerMessage } from '../message'
 import { Configuration, Resolution, RecordingInfo, isVideoRecordingMode, isContainerFormat, isVideoCodec, isAudioCodec, isBitratePreset, getContainerCodecs, resolveBitrate, hasVideo, hasAudio, isAudioOnly, ALL_VIDEO_CODECS, ALL_AUDIO_CODECS, AUDIO_ONLY_CONTAINERS, isUITheme } from '../configuration'
 import type { ContainerFormat, VideoCodecType, AudioCodecType } from '../configuration'
 import { canEncodeVideo, canEncodeAudio } from 'mediabunny'
@@ -93,6 +93,11 @@ export class Settings extends LitElement {
     .theme-select {
         width: 280px;
     }
+    .timer-estimate {
+        font-size: 1.1em;
+        color: var(--theme-text-secondary, #666);
+        margin-bottom: 1em;
+    }
     `
 
     @property({ noAccessor: true })
@@ -107,11 +112,17 @@ export class Settings extends LitElement {
     @property()
     private encodeErrors: string[] = []
 
+    @property()
+    private timerEstimateText: string = ''
+
+    private timerEstimateIntervalId: ReturnType<typeof setInterval> | null = null
+
     public constructor() {
         super()
         this.config = Settings.getConfiguration()
         applyTheme(this.config.uiTheme)
         this.updateMicPermission()
+        this.updateTimerEstimate()
     }
 
     async firstUpdated() {
@@ -263,6 +274,25 @@ export class Settings extends LitElement {
                 <md-switch ?selected=${live(this.config.audioSeparation.enabled ?? false)} @input=${this.updateProp('audioSeparation', 'enabled')}></md-switch>
             </label>
         </div>
+        <h2>Recording Timer</h2>
+        <div>
+            <label style="line-height: 32px; font-size: 1.5em" title="Automatically stop recording after the specified duration.">
+                Enable recording timer
+                <md-switch ?selected=${live(this.config.recordingTimer.enabled ?? false)} @input=${this.updateProp('recordingTimer', 'enabled')}></md-switch>
+            </label>
+        </div>
+        <md-filled-text-field label="duration" type="number" min="1" max="10080" step="1" suffix-text="min" ?disabled=${live(!this.config.recordingTimer.enabled)} .value=${live(String(this.config.recordingTimer.durationMinutes))} @change=${this.updateProp('recordingTimer', 'durationMinutes')}></md-filled-text-field>
+        ${this.config.recordingTimer.enabled && this.timerEstimateText ? html`
+        <div class="timer-estimate">
+            If started now, recording will stop at ≈ ${this.timerEstimateText}
+        </div>
+        ` : ''}
+        <div>
+            <label style="line-height: 32px; font-size: 1.5em" title="Show a confirmation dialog when manually stopping a recording with an active timer.">
+                Show timer stop confirmation
+                <md-switch ?disabled=${live(!this.config.recordingTimer.enabled)} ?selected=${live(!this.config.recordingTimer.skipStopConfirmation)} @input=${this.updateProp('recordingTimer', 'skipStopConfirmation')}></md-switch>
+            </label>
+        </div>
         <h2>Option</h2>
         <div>
             <label style="line-height: 32px; font-size: 1.5em">
@@ -396,6 +426,26 @@ export class Settings extends LitElement {
                             break
                     }
                     break
+                case 'recordingTimer':
+                    if (key2 == null) return
+                    switch (key2) {
+                        case 'enabled':
+                            if (!(e.target instanceof MdSwitch)) return
+                            this.config[key1][key2] = e.target.selected
+                            this.updateTimerEstimate()
+                            break
+                        case 'durationMinutes':
+                            if (!(e.target instanceof MdFilledTextField)) return
+                            this.config[key1][key2] = Math.min(10080, Math.max(1, Number.parseInt(e.target.value, 10) || 1))
+                            this.updateTimerEstimate()
+                            break
+                        case 'skipStopConfirmation':
+                            if (!(e.target instanceof MdSwitch)) return
+                            // UI shows "Show timer stop confirmation" (inverted)
+                            this.config[key1][key2] = !e.target.selected
+                            break
+                    }
+                    break
                 case 'enableBugTracking':
                 case 'openOptionPage':
                 case 'muteRecordingTab':
@@ -413,6 +463,15 @@ export class Settings extends LitElement {
             this.requestUpdate('config', oldVal)
             Settings.setConfiguration(this.config)
             await Settings.syncConfiguration(this.config)
+
+            if (key1 === 'recordingTimer' && (key2 === 'enabled' || key2 === 'durationMinutes')) {
+                const msg: UpdateRecordingTimerMessage = {
+                    type: 'update-recording-timer',
+                    enabled: this.config.recordingTimer.enabled,
+                    durationMinutes: this.config.recordingTimer.durationMinutes,
+                }
+                await chrome.runtime.sendMessage(msg)
+            }
 
             if (key1 === 'videoFormat' || (key1 === 'microphone' && key2 === 'enabled')) {
                 await this.validateEncoding()
@@ -598,6 +657,33 @@ export class Settings extends LitElement {
         if (dialogWrapper.shadowRoot == null) return
         const dialog = dialogWrapper.shadowRoot.children[0] as MdDialog
         dialog.show()
+    }
+
+    private updateTimerEstimate() {
+        if (this.timerEstimateIntervalId != null) {
+            clearInterval(this.timerEstimateIntervalId)
+            this.timerEstimateIntervalId = null
+        }
+
+        if (!this.config.recordingTimer.enabled || this.config.recordingTimer.durationMinutes <= 0) {
+            this.timerEstimateText = ''
+            return
+        }
+
+        const compute = () => {
+            const stopAt = new Date(Date.now() + this.config.recordingTimer.durationMinutes * 60 * 1000)
+            this.timerEstimateText = stopAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+        compute()
+        this.timerEstimateIntervalId = setInterval(compute, 60_000)
+    }
+
+    override disconnectedCallback() {
+        super.disconnectedCallback()
+        if (this.timerEstimateIntervalId != null) {
+            clearInterval(this.timerEstimateIntervalId)
+            this.timerEstimateIntervalId = null
+        }
     }
 };
 
