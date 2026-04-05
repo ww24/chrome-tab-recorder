@@ -85,7 +85,21 @@ const session: RecordingSession = createRecordingSession(preview, crop, {
     },
 })
 
+// Message types handled by the offscreen document
+const OFFSCREEN_MESSAGE_TYPES: ReadonlySet<Message['type']> = new Set([
+    'start-recording',
+    'stop-recording',
+    'cancel-recording',
+    'save-config-local',
+    'update-recording-timer',
+    'exception',
+    'preview-control',
+    'update-crop-region',
+])
+
 chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.MessageSender, sendResponse: (response?: StartRecordingResponse) => void) => {
+    if (!OFFSCREEN_MESSAGE_TYPES.has(message.type)) return
+
     (async () => {
         let response: StartRecordingResponse | undefined
         try {
