@@ -67,7 +67,7 @@ export class Settings extends LitElement {
         return { videoFormat, recordingSize }
     }
 
-    static readonly styles = css`
+    static override readonly styles = css`
     md-filled-tonal-button {
         height: 56px;
     }
@@ -125,11 +125,11 @@ export class Settings extends LitElement {
         this.updateTimerEstimate()
     }
 
-    async firstUpdated() {
+    protected override async firstUpdated() {
         await this.validateEncoding()
     }
 
-    public render() {
+    public override render() {
         return html`
         <h2>Appearance</h2>
         <md-filled-select class="theme-select" label="UI Theme" .value=${live(this.config.uiTheme)} @input=${this.updateProp('uiTheme')}>

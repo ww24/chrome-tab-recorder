@@ -10,7 +10,7 @@ export interface CropRegionChangeEvent {
 
 @customElement('cropping-preview')
 export class CroppingPreview extends LitElement {
-    static readonly styles = css`
+    static override readonly styles = css`
         :host {
             display: block;
         }
@@ -134,18 +134,18 @@ export class CroppingPreview extends LitElement {
     private dragStartY: number = 0
     private initialCropRegion: CropRegion = { x: 0, y: 0, width: 0, height: 0 }
 
-    connectedCallback() {
+    override connectedCallback() {
         super.connectedCallback()
         // Listen for preview frame messages
         chrome.runtime.onMessage.addListener(this.handleMessage)
     }
 
-    disconnectedCallback() {
+    override disconnectedCallback() {
         super.disconnectedCallback()
         chrome.runtime.onMessage.removeListener(this.handleMessage)
     }
 
-    protected firstUpdated(): void {
+    protected override firstUpdated(): void {
         // Cache canvas context after first render
         const ctx = this.canvas.getContext('bitmaprenderer')
         if (ctx) {
@@ -155,7 +155,7 @@ export class CroppingPreview extends LitElement {
         }
     }
 
-    protected willUpdate(changedProperties: PropertyValues<this>): void {
+    protected override willUpdate(changedProperties: PropertyValues<this>): void {
         // Clear preview when recording stops
         if (changedProperties.has('isRecording') && !this.isRecording) {
             this.hasPreview = false
@@ -363,7 +363,7 @@ export class CroppingPreview extends LitElement {
         `
     }
 
-    render() {
+    override render() {
         const showPreview = this.isRecording && this.hasPreview
 
         return html`

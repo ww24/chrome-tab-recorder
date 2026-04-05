@@ -19,7 +19,7 @@ import { roundToEven, clampCoordinate, clampDimension } from './util'
 
 @customElement('extension-cropping')
 export class Cropping extends LitElement {
-    static readonly styles = css`
+    static override readonly styles = css`
         :host {
             display: block;
         }
@@ -73,7 +73,7 @@ export class Cropping extends LitElement {
         this.config = Settings.getConfiguration()
     }
 
-    connectedCallback() {
+    override connectedCallback() {
         super.connectedCallback()
         // Listen for recording state changes
         chrome.runtime.onMessage.addListener(this.handleMessage)
@@ -83,7 +83,7 @@ export class Cropping extends LitElement {
         this.requestRecordingState()
     }
 
-    disconnectedCallback() {
+    override disconnectedCallback() {
         super.disconnectedCallback()
         chrome.runtime.onMessage.removeListener(this.handleMessage)
         window.removeEventListener(Settings.CONFIG_CHANGED_EVENT, this.handleConfigChange)
@@ -240,7 +240,7 @@ export class Cropping extends LitElement {
         return null
     }
 
-    render() {
+    override render() {
         const { enabled, region } = this.config.cropping
         const switchDisabled = !this.canChangeCroppingEnabled
         const inputsDisabled = !this.canChangeRegion

@@ -22,7 +22,8 @@
     "experimentalDecorators": true,
     "useDefineForClassFields": false,
     "strictNullChecks": true,
-    "strictPropertyInitialization": true
+    "strictPropertyInitialization": true,
+    "noImplicitOverride": true
   },
   "ts-node": {
     "esm": true,
