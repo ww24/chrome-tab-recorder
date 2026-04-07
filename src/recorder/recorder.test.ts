@@ -1,11 +1,13 @@
-jest.mock('mediabunny', () => ({
-    canEncodeAudio: jest.fn().mockResolvedValue(true),
+import type { Mock } from 'vitest'
+
+vi.mock('mediabunny', () => ({
+    canEncodeAudio: vi.fn().mockResolvedValue(true),
 }))
-jest.mock('@mediabunny/flac-encoder', () => ({
-    registerFlacEncoder: jest.fn(),
+vi.mock('@mediabunny/flac-encoder', () => ({
+    registerFlacEncoder: vi.fn(),
 }))
-jest.mock('../sentry', () => ({
-    sendException: jest.fn(),
+vi.mock('../sentry', () => ({
+    sendException: vi.fn(),
 }))
 
 import { RecordingSession } from './recorder'
@@ -26,13 +28,13 @@ function createMockTrack(kind: 'audio' | 'video', id = '1'): MediaStreamTrack {
     const listeners = new Map<string, EventListener[]>()
     return {
         kind, id,
-        stop: jest.fn(),
-        clone: jest.fn(() => createMockTrack(kind, `${id}-clone`)),
-        addEventListener: jest.fn((event: string, listener: EventListener) => {
+        stop: vi.fn(),
+        clone: vi.fn(() => createMockTrack(kind, `${id}-clone`)),
+        addEventListener: vi.fn((event: string, listener: EventListener) => {
             if (!listeners.has(event)) listeners.set(event, [])
             listeners.get(event)!.push(listener)
         }),
-        dispatchEvent: jest.fn((event: Event) => {
+        dispatchEvent: vi.fn((event: Event) => {
             listeners.get(event.type)?.forEach(l => l(event))
             return true
         }),
@@ -41,20 +43,20 @@ function createMockTrack(kind: 'audio' | 'video', id = '1'): MediaStreamTrack {
 
 function createMockStream(audioTracks: MediaStreamTrack[] = [], videoTracks: MediaStreamTrack[] = []): MediaStream {
     return {
-        getAudioTracks: jest.fn(() => audioTracks),
-        getVideoTracks: jest.fn(() => videoTracks),
-        getTracks: jest.fn(() => [...videoTracks, ...audioTracks]),
+        getAudioTracks: vi.fn(() => audioTracks),
+        getVideoTracks: vi.fn(() => videoTracks),
+        getTracks: vi.fn(() => [...videoTracks, ...audioTracks]),
     } as unknown as MediaStream
 }
 
 function createMockOutput(state: string = 'idle') {
     return {
         state,
-        start: jest.fn().mockResolvedValue(undefined),
-        finalize: jest.fn().mockResolvedValue(undefined),
-        cancel: jest.fn().mockResolvedValue(undefined),
-        addVideoTrack: jest.fn(),
-        addAudioTrack: jest.fn(),
+        start: vi.fn().mockResolvedValue(undefined),
+        finalize: vi.fn().mockResolvedValue(undefined),
+        cancel: vi.fn().mockResolvedValue(undefined),
+        addVideoTrack: vi.fn(),
+        addAudioTrack: vi.fn(),
     }
 }
 
@@ -65,24 +67,24 @@ function createMockMediaCapture(): MediaCapture {
     )
     const micStream = createMockStream([createMockTrack('audio', 'mic-audio')])
     return {
-        captureTab: jest.fn().mockResolvedValue(tabStream),
-        captureMicrophone: jest.fn().mockResolvedValue(micStream),
+        captureTab: vi.fn().mockResolvedValue(tabStream),
+        captureMicrophone: vi.fn().mockResolvedValue(micStream),
     } as unknown as MediaCapture
 }
 
 function createMockAudioMixer(): AudioMixer {
     return {
-        mix: jest.fn((tabStream: MediaStream) => tabStream),
-        setupPlayback: jest.fn(),
+        mix: vi.fn((tabStream: MediaStream) => tabStream),
+        setupPlayback: vi.fn(),
     } as unknown as AudioMixer
 }
 
 function createMockOutputManager(): OutputManager {
     const mockOutput = createMockOutput()
     return {
-        createOutput: jest.fn(() => mockOutput),
-        addTracks: jest.fn(() => []),
-        createAudioTrackOutput: jest.fn(() => ({
+        createOutput: vi.fn(() => mockOutput),
+        addTracks: vi.fn(() => []),
+        createAudioTrackOutput: vi.fn(() => ({
             output: createMockOutput(),
             errorPromises: [],
         })),
@@ -96,46 +98,46 @@ function createMockAudioSeparation(): AudioSeparationManager {
         errorPromises: [],
     }
     return {
-        createOutputs: jest.fn().mockResolvedValue(outputs),
-        finalizeAll: jest.fn().mockResolvedValue(undefined),
-        cancelAll: jest.fn().mockResolvedValue(undefined),
+        createOutputs: vi.fn().mockResolvedValue(outputs),
+        finalizeAll: vi.fn().mockResolvedValue(undefined),
+        cancelAll: vi.fn().mockResolvedValue(undefined),
     } as unknown as AudioSeparationManager
 }
 
 function createMockFileManager(): FileManager {
     const mockFileHandle = {
-        getFile: jest.fn().mockResolvedValue(new File(['data'], 'video-123.webm', { type: 'video/webm' })),
-        createWritable: jest.fn().mockResolvedValue({}),
+        getFile: vi.fn().mockResolvedValue(new File(['data'], 'video-123.webm', { type: 'video/webm' })),
+        createWritable: vi.fn().mockResolvedValue({}),
     }
     return {
-        createRecordingFile: jest.fn().mockResolvedValue(mockFileHandle),
-        createAudioFile: jest.fn().mockResolvedValue(mockFileHandle),
+        createRecordingFile: vi.fn().mockResolvedValue(mockFileHandle),
+        createAudioFile: vi.fn().mockResolvedValue(mockFileHandle),
     } as unknown as FileManager
 }
 
 function createMockPreview(): Preview {
     return {
-        start: jest.fn(),
-        stop: jest.fn(),
+        start: vi.fn(),
+        stop: vi.fn(),
     } as unknown as Preview
 }
 
 function createMockCrop(): Crop {
     return {
         region: { x: 0, y: 0, width: 1, height: 1 },
-        getCroppedStream: jest.fn((stream: MediaStream) => stream),
+        getCroppedStream: vi.fn((stream: MediaStream) => stream),
     } as unknown as Crop
 }
 
 function createMockCallbacks(): RecorderCallbacks & {
-    onTabTrackEnded: jest.Mock
-    onSourceError: jest.Mock
-    onTick: jest.Mock
+    onTabTrackEnded: Mock
+    onSourceError: Mock
+    onTick: Mock
 } {
     return {
-        onTabTrackEnded: jest.fn().mockResolvedValue(undefined),
-        onSourceError: jest.fn().mockResolvedValue(undefined),
-        onTick: jest.fn().mockResolvedValue(undefined),
+        onTabTrackEnded: vi.fn().mockResolvedValue(undefined),
+        onSourceError: vi.fn().mockResolvedValue(undefined),
+        onTick: vi.fn().mockResolvedValue(undefined),
     }
 }
 
@@ -173,7 +175,7 @@ describe('RecordingSession', () => {
     let session: RecordingSession
 
     beforeEach(() => {
-        jest.useFakeTimers()
+        vi.useFakeTimers()
         mediaCapture = createMockMediaCapture()
         audioMixer = createMockAudioMixer()
         outputManager = createMockOutputManager()
@@ -191,7 +193,7 @@ describe('RecordingSession', () => {
 
     afterEach(async () => {
         await session.cancel()
-        jest.useRealTimers()
+        vi.useRealTimers()
     })
 
     describe('start', () => {
@@ -291,7 +293,7 @@ describe('RecordingSession', () => {
             const config = createDefaultConfig()
             // Make captureTab hang so session stays in 'starting' state
             let resolveCapture!: (value: MediaStream) => void
-                ; (mediaCapture.captureTab as jest.Mock).mockReturnValue(new Promise<MediaStream>(resolve => {
+                ; (mediaCapture.captureTab as Mock).mockReturnValue(new Promise<MediaStream>(resolve => {
                     resolveCapture = resolve
                 }))
 
@@ -311,7 +313,7 @@ describe('RecordingSession', () => {
         })
 
         test('cleans up on error during start', async () => {
-            (mediaCapture.captureTab as jest.Mock).mockRejectedValue(new Error('capture failed'))
+            (mediaCapture.captureTab as Mock).mockRejectedValue(new Error('capture failed'))
             const config = createDefaultConfig()
 
             await expect(session.start(defaultRequest, config)).rejects.toThrow('capture failed')
@@ -319,7 +321,7 @@ describe('RecordingSession', () => {
         })
 
         test('micEnabled is false when mic capture returns null', async () => {
-            (mediaCapture.captureMicrophone as jest.Mock).mockResolvedValue(null)
+            (mediaCapture.captureMicrophone as Mock).mockResolvedValue(null)
             const config = createDefaultConfig()
             const response = await session.start(defaultRequest, config)
 
@@ -331,7 +333,7 @@ describe('RecordingSession', () => {
             await session.start(defaultRequest, config)
 
             // Advance timer to trigger tick
-            jest.advanceTimersByTime(60_000)
+            vi.advanceTimersByTime(60_000)
 
             // Wait for the async tick callback to resolve
             await Promise.resolve()
@@ -403,7 +405,7 @@ describe('RecordingSession', () => {
             await session.stop()
 
             // Media tracks should be stopped
-            const tabStream = await (mediaCapture.captureTab as jest.Mock).mock.results[0].value
+            const tabStream = await (mediaCapture.captureTab as Mock).mock.results[0].value
             tabStream.getTracks().forEach((track: MediaStreamTrack) => {
                 expect(track.stop).toHaveBeenCalled()
             })

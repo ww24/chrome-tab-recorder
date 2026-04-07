@@ -1,15 +1,15 @@
 import { parseApiPath, handleApiRequest } from './handler'
 import { RecordingState } from './handler'
-import type { RecordingStorage, RecordingMetadata, StorageEstimateInfo, ListRecordingsOptions } from './storage'
+import type { RecordingStorage, RecordingMetadata } from './storage'
 
 // ---------- helpers ----------
 
 function createMockStorage(overrides: Partial<RecordingStorage> = {}): RecordingStorage {
     return {
-        list: jest.fn<Promise<RecordingMetadata[]>, [ListRecordingsOptions?]>().mockResolvedValue([]),
-        getFile: jest.fn<Promise<File | null>, [string]>().mockResolvedValue(null),
-        delete: jest.fn<Promise<void>, [string]>().mockResolvedValue(undefined),
-        estimate: jest.fn<Promise<StorageEstimateInfo>, []>().mockResolvedValue({ usage: 0, quota: 0 }),
+        list: vi.fn().mockResolvedValue([]),
+        getFile: vi.fn().mockResolvedValue(null),
+        delete: vi.fn().mockResolvedValue(undefined),
+        estimate: vi.fn().mockResolvedValue({ usage: 0, quota: 0 }),
         ...overrides,
     }
 }
@@ -63,7 +63,7 @@ describe('parseApiPath', () => {
 describe('handleApiRequest – storage-estimate', () => {
     it('should return storage estimate on GET', async () => {
         const storage = createMockStorage({
-            estimate: jest.fn<Promise<StorageEstimateInfo>, []>().mockResolvedValue({ usage: 1024, quota: 1048576 }),
+            estimate: vi.fn().mockResolvedValue({ usage: 1024, quota: 1048576 }),
         })
         const req = new Request('https://ext.example/api/storage/estimate')
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
@@ -103,7 +103,7 @@ describe('handleApiRequest – recordings-list', () => {
 
     it('should list recordings on GET', async () => {
         const storage = createMockStorage({
-            list: jest.fn<Promise<RecordingMetadata[]>, [ListRecordingsOptions?]>().mockResolvedValue(recordings),
+            list: vi.fn().mockResolvedValue(recordings),
         })
         const req = new Request('https://ext.example/api/recordings')
         const res = await handleApiRequest(req, storage, recordingState)
@@ -115,7 +115,7 @@ describe('handleApiRequest – recordings-list', () => {
 
     it('should pass sort=desc parameter', async () => {
         const storage = createMockStorage({
-            list: jest.fn<Promise<RecordingMetadata[]>, [ListRecordingsOptions?]>().mockResolvedValue(recordings),
+            list: vi.fn().mockResolvedValue(recordings),
         })
         const req = new Request('https://ext.example/api/recordings?sort=desc')
         const res = await handleApiRequest(req, storage, recordingState)
@@ -139,7 +139,7 @@ describe('handleApiRequest – recording GET (full response)', () => {
     it('should return 200 with file contents', async () => {
         const file = createFile('hello world', 'test.webm', 'video/webm')
         const storage = createMockStorage({
-            getFile: jest.fn<Promise<File | null>, [string]>().mockResolvedValue(file),
+            getFile: vi.fn().mockResolvedValue(file),
         })
         const req = new Request('https://ext.example/api/recordings/test.webm')
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
@@ -155,7 +155,7 @@ describe('handleApiRequest – recording GET (full response)', () => {
     it('should add Content-Disposition when download=true', async () => {
         const file = createFile('data', 'my video.mp4', 'video/mp4')
         const storage = createMockStorage({
-            getFile: jest.fn<Promise<File | null>, [string]>().mockResolvedValue(file),
+            getFile: vi.fn().mockResolvedValue(file),
         })
         const req = new Request('https://ext.example/api/recordings/my%20video.mp4?download=true')
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
@@ -209,7 +209,7 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
     beforeEach(() => {
         file = createFile(content, 'test.webm', 'video/webm')
         storage = createMockStorage({
-            getFile: jest.fn<Promise<File | null>, [string]>().mockResolvedValue(file),
+            getFile: vi.fn().mockResolvedValue(file),
         })
     })
 
@@ -471,7 +471,7 @@ describe('handleApiRequest – not found', () => {
 describe('handleApiRequest – internal error', () => {
     it('should return 500 when storage throws', async () => {
         const storage = createMockStorage({
-            list: jest.fn<Promise<RecordingMetadata[]>, [ListRecordingsOptions?]>().mockRejectedValue(new Error('disk error')),
+            list: vi.fn().mockRejectedValue(new Error('disk error')),
         })
         const req = new Request('https://ext.example/api/recordings')
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }

@@ -26,17 +26,9 @@
     "noImplicitOverride": true,
     "noUnusedLocals": true,
     "noFallthroughCasesInSwitch": true,
-    "forceConsistentCasingInFileNames": true
-  },
-  "ts-node": {
-    "esm": true,
-    "compilerOptions": {
-      "module": "ESNext",
-      "target": "ESNext",
-      "esModuleInterop": true,
-      "moduleResolution": "node",
-      "verbatimModuleSyntax": false,
-      "resolveJsonModule": true
-    }
+    "forceConsistentCasingInFileNames": true,
+    "types": [
+      "vitest/globals"
+    ]
   }
 }

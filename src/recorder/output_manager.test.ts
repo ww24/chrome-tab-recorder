@@ -1,30 +1,30 @@
-jest.mock('mediabunny', () => {
+vi.mock('mediabunny', () => {
     const mockOutput = {
-        addVideoTrack: jest.fn(),
-        addAudioTrack: jest.fn(),
+        addVideoTrack: vi.fn(),
+        addAudioTrack: vi.fn(),
     }
     return {
-        Output: jest.fn(() => mockOutput),
-        StreamTarget: jest.fn(),
-        MediaStreamVideoTrackSource: jest.fn(() => ({
-            errorPromise: Promise.resolve(),
-        })),
-        MediaStreamAudioTrackSource: jest.fn(() => ({
-            errorPromise: Promise.resolve(),
-        })),
-        canEncodeAudio: jest.fn().mockResolvedValue(true),
-        WebMOutputFormat: jest.fn(),
-        Mp4OutputFormat: jest.fn(),
-        OggOutputFormat: jest.fn(),
-        AdtsOutputFormat: jest.fn(),
-        FlacOutputFormat: jest.fn(),
+        Output: vi.fn(function () { return mockOutput }),
+        StreamTarget: vi.fn(function () { }),
+        MediaStreamVideoTrackSource: vi.fn(function () {
+            return { errorPromise: Promise.resolve() }
+        }),
+        MediaStreamAudioTrackSource: vi.fn(function () {
+            return { errorPromise: Promise.resolve() }
+        }),
+        canEncodeAudio: vi.fn().mockResolvedValue(true),
+        WebMOutputFormat: vi.fn(function () { }),
+        Mp4OutputFormat: vi.fn(function () { }),
+        OggOutputFormat: vi.fn(function () { }),
+        AdtsOutputFormat: vi.fn(function () { }),
+        FlacOutputFormat: vi.fn(function () { }),
         QUALITY_HIGH: 'high',
         QUALITY_MEDIUM: 'medium',
         QUALITY_LOW: 'low',
     }
 })
-jest.mock('@mediabunny/flac-encoder', () => ({
-    registerFlacEncoder: jest.fn(),
+vi.mock('@mediabunny/flac-encoder', () => ({
+    registerFlacEncoder: vi.fn(),
 }))
 
 import { Output, MediaStreamVideoTrackSource, MediaStreamAudioTrackSource } from 'mediabunny'
@@ -34,14 +34,14 @@ import { VideoFormat } from '../configuration'
 // ---------- helpers ----------
 
 function createMockTrack(kind: 'audio' | 'video'): MediaStreamTrack {
-    return { kind, id: kind, stop: jest.fn() } as unknown as MediaStreamTrack
+    return { kind, id: kind, stop: vi.fn() } as unknown as MediaStreamTrack
 }
 
 function createMockStream(audioTracks: MediaStreamTrack[] = [], videoTracks: MediaStreamTrack[] = []): MediaStream {
     return {
-        getAudioTracks: jest.fn(() => audioTracks),
-        getVideoTracks: jest.fn(() => videoTracks),
-        getTracks: jest.fn(() => [...audioTracks, ...videoTracks]),
+        getAudioTracks: vi.fn(() => audioTracks),
+        getVideoTracks: vi.fn(() => videoTracks),
+        getTracks: vi.fn(() => [...audioTracks, ...videoTracks]),
     } as unknown as MediaStream
 }
 
@@ -64,7 +64,7 @@ function createVideoFormat(overrides: Partial<VideoFormat> = {}): VideoFormat {
 
 describe('OutputManager', () => {
     beforeEach(() => {
-        jest.clearAllMocks()
+        vi.clearAllMocks()
     })
 
     describe('createOutput', () => {

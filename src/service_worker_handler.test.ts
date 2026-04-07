@@ -1,12 +1,12 @@
-jest.mock('mediabunny', () => ({
-    canEncodeAudio: jest.fn().mockResolvedValue(true),
+vi.mock('mediabunny', () => ({
+    canEncodeAudio: vi.fn().mockResolvedValue(true),
 }))
-jest.mock('@mediabunny/flac-encoder', () => ({
-    registerFlacEncoder: jest.fn(),
+vi.mock('@mediabunny/flac-encoder', () => ({
+    registerFlacEncoder: vi.fn(),
 }))
 
 import { handleMessage, type ServiceWorkerDeps } from './service_worker_handler'
-import type { Message, Trigger } from './message'
+import type { Message } from './message'
 import type { RecordingState } from './handler'
 import type { Configuration } from './configuration'
 
@@ -14,16 +14,16 @@ import type { Configuration } from './configuration'
 
 function createMockDeps(overrides: Partial<ServiceWorkerDeps> = {}): ServiceWorkerDeps {
     return {
-        getRecordingState: jest.fn<Promise<RecordingState>, []>().mockResolvedValue({ isRecording: false }),
-        setRecordingState: jest.fn<Promise<void>, [RecordingState]>().mockResolvedValue(undefined),
-        getConfiguration: jest.fn<Promise<Configuration>, []>().mockResolvedValue({} as Configuration),
-        getRemoteConfiguration: jest.fn<Promise<Configuration | null>, []>().mockResolvedValue(null),
-        stopRecording: jest.fn<Promise<void>, [Trigger, boolean?]>().mockResolvedValue(undefined),
-        cancelRecording: jest.fn<Promise<void>, [string]>().mockResolvedValue(undefined),
-        broadcastRecordingState: jest.fn<Promise<void>, []>().mockResolvedValue(undefined),
-        updateActionTitle: jest.fn<Promise<void>, [RecordingState]>().mockResolvedValue(undefined),
-        resizeWindow: jest.fn<Promise<void>, [{ width: number; height: number }]>().mockResolvedValue(undefined),
-        storageSyncSet: jest.fn<Promise<void>, [string, unknown]>().mockResolvedValue(undefined),
+        getRecordingState: vi.fn().mockResolvedValue({ isRecording: false }),
+        setRecordingState: vi.fn().mockResolvedValue(undefined),
+        getConfiguration: vi.fn().mockResolvedValue({} as Configuration),
+        getRemoteConfiguration: vi.fn().mockResolvedValue(null),
+        stopRecording: vi.fn().mockResolvedValue(undefined),
+        cancelRecording: vi.fn().mockResolvedValue(undefined),
+        broadcastRecordingState: vi.fn().mockResolvedValue(undefined),
+        updateActionTitle: vi.fn().mockResolvedValue(undefined),
+        resizeWindow: vi.fn().mockResolvedValue(undefined),
+        storageSyncSet: vi.fn().mockResolvedValue(undefined),
         ...overrides,
     }
 }
@@ -72,7 +72,7 @@ describe('timer-updated', () => {
     it('updates recording state with stopAtMs when recording', async () => {
         const state: RecordingState = { isRecording: true, startAtMs: 1000 }
         const deps = createMockDeps({
-            getRecordingState: jest.fn<Promise<RecordingState>, []>().mockResolvedValue(state),
+            getRecordingState: vi.fn().mockResolvedValue(state),
         })
         await handleMessage({ type: 'timer-updated', stopAtMs: 61000 }, deps)
         expect(deps.setRecordingState).toHaveBeenCalledWith({ ...state, stopAtMs: 61000 })
@@ -83,7 +83,7 @@ describe('timer-updated', () => {
     it('clears stopAtMs when stopAtMs is null', async () => {
         const state: RecordingState = { isRecording: true, startAtMs: 1000, stopAtMs: 61000 }
         const deps = createMockDeps({
-            getRecordingState: jest.fn<Promise<RecordingState>, []>().mockResolvedValue(state),
+            getRecordingState: vi.fn().mockResolvedValue(state),
         })
         await handleMessage({ type: 'timer-updated', stopAtMs: null }, deps)
         expect(deps.setRecordingState).toHaveBeenCalledWith({ ...state, stopAtMs: undefined })
@@ -91,7 +91,7 @@ describe('timer-updated', () => {
 
     it('does nothing when not recording', async () => {
         const deps = createMockDeps({
-            getRecordingState: jest.fn<Promise<RecordingState>, []>().mockResolvedValue({ isRecording: false }),
+            getRecordingState: vi.fn().mockResolvedValue({ isRecording: false }),
         })
         await handleMessage({ type: 'timer-updated', stopAtMs: 61000 }, deps)
         expect(deps.setRecordingState).not.toHaveBeenCalled()
@@ -129,7 +129,7 @@ describe('recording-tick', () => {
     it('updates action title with current state', async () => {
         const state: RecordingState = { isRecording: true, startAtMs: 1000 }
         const deps = createMockDeps({
-            getRecordingState: jest.fn<Promise<RecordingState>, []>().mockResolvedValue(state),
+            getRecordingState: vi.fn().mockResolvedValue(state),
         })
         await handleMessage({ type: 'recording-tick' }, deps)
         expect(deps.updateActionTitle).toHaveBeenCalledWith(state)
@@ -169,7 +169,7 @@ describe('fetch-config', () => {
     it('returns merged config when remote exists', async () => {
         const remoteConfig = { userId: 'test-user' } as Configuration
         const deps = createMockDeps({
-            getRemoteConfiguration: jest.fn<Promise<Configuration | null>, []>().mockResolvedValue(remoteConfig),
+            getRemoteConfiguration: vi.fn().mockResolvedValue(remoteConfig),
         })
         const result = await handleMessage({ type: 'fetch-config' }, deps)
         expect(result.response).toBeDefined()
@@ -178,7 +178,7 @@ describe('fetch-config', () => {
 
     it('returns empty result when no remote config', async () => {
         const deps = createMockDeps({
-            getRemoteConfiguration: jest.fn<Promise<Configuration | null>, []>().mockResolvedValue(null),
+            getRemoteConfiguration: vi.fn().mockResolvedValue(null),
         })
         const result = await handleMessage({ type: 'fetch-config' }, deps)
         expect(result.response).toBeUndefined()
