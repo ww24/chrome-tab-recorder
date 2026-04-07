@@ -1,8 +1,8 @@
-jest.mock('mediabunny', () => ({
-    canEncodeAudio: jest.fn().mockResolvedValue(true),
+vi.mock('mediabunny', () => ({
+    canEncodeAudio: vi.fn().mockResolvedValue(true),
 }))
-jest.mock('@mediabunny/flac-encoder', () => ({
-    registerFlacEncoder: jest.fn(),
+vi.mock('@mediabunny/flac-encoder', () => ({
+    registerFlacEncoder: vi.fn(),
 }))
 
 import { FileManager } from './file_manager'
@@ -10,18 +10,18 @@ import { FileManager } from './file_manager'
 // ---------- OPFS mocks ----------
 
 const mockWritableStream = {
-    write: jest.fn(),
-    close: jest.fn(),
-    abort: jest.fn(),
+    write: vi.fn(),
+    close: vi.fn(),
+    abort: vi.fn(),
 } as unknown as FileSystemWritableFileStream
 
 const mockFileHandle = {
-    createWritable: jest.fn().mockResolvedValue(mockWritableStream),
-    getFile: jest.fn().mockResolvedValue(new File([], 'test.webm')),
+    createWritable: vi.fn().mockResolvedValue(mockWritableStream),
+    getFile: vi.fn().mockResolvedValue(new File([], 'test.webm')),
 } as unknown as FileSystemFileHandle
 
 const mockDirHandle = {
-    getFileHandle: jest.fn().mockResolvedValue(mockFileHandle),
+    getFileHandle: vi.fn().mockResolvedValue(mockFileHandle),
 } as unknown as FileSystemDirectoryHandle
 
 // Mock navigator.storage
@@ -31,8 +31,8 @@ beforeAll(() => {
         value: {
             ...origStorage,
             storage: {
-                getDirectory: jest.fn().mockResolvedValue(mockDirHandle),
-                persisted: jest.fn().mockResolvedValue(true),
+                getDirectory: vi.fn().mockResolvedValue(mockDirHandle),
+                persisted: vi.fn().mockResolvedValue(true),
             },
         },
         configurable: true,
@@ -40,7 +40,7 @@ beforeAll(() => {
 })
 
 beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
 })
 
 // ---------- FileManager ----------

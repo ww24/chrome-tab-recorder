@@ -1,34 +1,35 @@
-jest.mock('mediabunny', () => ({
-    canEncodeAudio: jest.fn().mockResolvedValue(true),
+import type { Mock } from 'vitest'
+
+vi.mock('mediabunny', () => ({
+    canEncodeAudio: vi.fn().mockResolvedValue(true),
 }))
-jest.mock('@mediabunny/flac-encoder', () => ({
-    registerFlacEncoder: jest.fn(),
+vi.mock('@mediabunny/flac-encoder', () => ({
+    registerFlacEncoder: vi.fn(),
 }))
 
 import { OffscreenHandler } from './offscreen_handler'
 import type { OffscreenDeps, OffscreenSession } from './offscreen_handler'
 import type { Message, StartRecordingResponse } from './message'
 import { Configuration, VideoFormat } from './configuration'
-import type { RecordingResult } from './recorder'
 
 // ---------- helpers ----------
 
 function createMockSession(overrides: Partial<OffscreenSession> = {}): OffscreenSession {
     return {
-        start: jest.fn<Promise<StartRecordingResponse>, [unknown, unknown]>().mockResolvedValue({
+        start: vi.fn().mockResolvedValue({
             startAtMs: 1000,
             recordingMode: 'video-and-audio',
             micEnabled: false,
         }),
-        stop: jest.fn<Promise<RecordingResult | null>, []>().mockResolvedValue({
+        stop: vi.fn().mockResolvedValue({
             startAtMs: 1000,
             durationMs: 5000,
             fileSize: 12345,
         }),
-        cancel: jest.fn<Promise<number>, []>().mockResolvedValue(3000),
-        startPreview: jest.fn(),
-        stopPreview: jest.fn(),
-        updateCropRegion: jest.fn(),
+        cancel: vi.fn().mockResolvedValue(3000),
+        startPreview: vi.fn(),
+        stopPreview: vi.fn(),
+        updateCropRegion: vi.fn(),
         ...overrides,
     }
 }
@@ -36,20 +37,20 @@ function createMockSession(overrides: Partial<OffscreenSession> = {}): Offscreen
 function createMockDeps(overrides: Partial<OffscreenDeps> = {}): OffscreenDeps {
     const defaultConfig = new Configuration()
     return {
-        getRecordingInfo: jest.fn().mockReturnValue({
+        getRecordingInfo: vi.fn().mockReturnValue({
             videoFormat: defaultConfig.videoFormat,
             recordingSize: { width: 1920, height: 1080 },
         }),
-        getConfiguration: jest.fn().mockReturnValue(defaultConfig),
-        mergeRemoteConfiguration: jest.fn(),
+        getConfiguration: vi.fn().mockReturnValue(defaultConfig),
+        mergeRemoteConfiguration: vi.fn(),
         session: createMockSession(),
-        checkStoragePersisted: jest.fn<Promise<boolean>, []>().mockResolvedValue(true),
-        sendEvent: jest.fn(),
-        sendException: jest.fn(),
-        flush: jest.fn<Promise<void>, []>().mockResolvedValue(undefined),
-        sendRuntimeMessage: jest.fn<Promise<void>, [unknown]>().mockResolvedValue(undefined),
-        getLocationHash: jest.fn().mockReturnValue(''),
-        setLocationHash: jest.fn(),
+        checkStoragePersisted: vi.fn().mockResolvedValue(true),
+        sendEvent: vi.fn(),
+        sendException: vi.fn(),
+        flush: vi.fn().mockResolvedValue(undefined),
+        sendRuntimeMessage: vi.fn().mockResolvedValue(undefined),
+        getLocationHash: vi.fn().mockReturnValue(''),
+        setLocationHash: vi.fn(),
         ...overrides,
     }
 }
@@ -92,7 +93,7 @@ describe('start-recording', () => {
 
     it('sends start_recording event with trigger and opfsPersisted tags', async () => {
         const deps = createMockDeps({
-            checkStoragePersisted: jest.fn<Promise<boolean>, []>().mockResolvedValue(false),
+            checkStoragePersisted: vi.fn().mockResolvedValue(false),
         })
         const handler = new OffscreenHandler(deps)
         await handler.handleMessage({
@@ -119,11 +120,11 @@ describe('start-recording', () => {
             'video-and-audio', 'webm', 'opus', 'high', 256000, 44100, 'vp9', 'high', 8000000, 30,
         )
         const deps = createMockDeps({
-            getRecordingInfo: jest.fn().mockReturnValue({
+            getRecordingInfo: vi.fn().mockReturnValue({
                 videoFormat,
                 recordingSize: { width: 1280, height: 720 },
             }),
-            getConfiguration: jest.fn().mockReturnValue(config),
+            getConfiguration: vi.fn().mockReturnValue(config),
         })
         const handler = new OffscreenHandler(deps)
         const data = { tabSize: { width: 1920, height: 1080 }, streamId: 'stream-1' }
@@ -161,7 +162,7 @@ describe('start-recording', () => {
         }
         const deps = createMockDeps({
             session: createMockSession({
-                start: jest.fn().mockResolvedValue(sessionResponse),
+                start: vi.fn().mockResolvedValue(sessionResponse),
             }),
         })
         const handler = new OffscreenHandler(deps)
@@ -174,12 +175,12 @@ describe('start-recording', () => {
     })
 
     it('sets timer and adds stopAtMs when timer enabled', async () => {
-        jest.useFakeTimers()
+        vi.useFakeTimers()
         try {
             const config = new Configuration()
             config.recordingTimer = { enabled: true, durationMinutes: 5, skipStopConfirmation: false }
             const deps = createMockDeps({
-                getConfiguration: jest.fn().mockReturnValue(config),
+                getConfiguration: vi.fn().mockReturnValue(config),
             })
             const handler = new OffscreenHandler(deps)
             const result = await handler.handleMessage({
@@ -190,7 +191,7 @@ describe('start-recording', () => {
             expect(result!.response?.stopAtMs).toBeDefined()
             expect(typeof result!.response?.stopAtMs).toBe('number')
         } finally {
-            jest.useRealTimers()
+            vi.useRealTimers()
         }
     })
 
@@ -198,7 +199,7 @@ describe('start-recording', () => {
         const config = new Configuration()
         config.recordingTimer = { enabled: false, durationMinutes: 5, skipStopConfirmation: false }
         const deps = createMockDeps({
-            getConfiguration: jest.fn().mockReturnValue(config),
+            getConfiguration: vi.fn().mockReturnValue(config),
         })
         const handler = new OffscreenHandler(deps)
         const result = await handler.handleMessage({
@@ -213,7 +214,7 @@ describe('start-recording', () => {
         const config = new Configuration()
         config.recordingTimer = { enabled: true, durationMinutes: 0, skipStopConfirmation: false }
         const deps = createMockDeps({
-            getConfiguration: jest.fn().mockReturnValue(config),
+            getConfiguration: vi.fn().mockReturnValue(config),
         })
         const handler = new OffscreenHandler(deps)
         const result = await handler.handleMessage({
@@ -278,7 +279,7 @@ describe('stop-recording', () => {
     it('does not send event when session.stop returns null', async () => {
         const deps = createMockDeps({
             session: createMockSession({
-                stop: jest.fn<Promise<RecordingResult | null>, []>().mockResolvedValue(null),
+                stop: vi.fn().mockResolvedValue(null),
             }),
         })
         const handler = new OffscreenHandler(deps)
@@ -292,7 +293,7 @@ describe('stop-recording', () => {
         const error = new Error('stop failed')
         const deps = createMockDeps({
             session: createMockSession({
-                stop: jest.fn().mockRejectedValue(error),
+                stop: vi.fn().mockRejectedValue(error),
             }),
         })
         const handler = new OffscreenHandler(deps)
@@ -314,12 +315,12 @@ describe('stop-recording', () => {
     })
 
     it('clears a previously set recording timer on stop', async () => {
-        jest.useFakeTimers()
+        vi.useFakeTimers()
         try {
             const config = new Configuration()
             config.recordingTimer = { enabled: true, durationMinutes: 10, skipStopConfirmation: false }
             const deps = createMockDeps({
-                getConfiguration: jest.fn().mockReturnValue(config),
+                getConfiguration: vi.fn().mockReturnValue(config),
             })
             const handler = new OffscreenHandler(deps)
 
@@ -334,10 +335,10 @@ describe('stop-recording', () => {
             await handler.handleMessage({ type: 'stop-recording', trigger: 'action-icon' })
 
             // Advance time past original timer duration — timer-expired should NOT be sent
-            jest.advanceTimersByTime(10 * 60 * 1000 + 1000)
+            vi.advanceTimersByTime(10 * 60 * 1000 + 1000)
             expect(deps.sendRuntimeMessage).not.toHaveBeenCalledWith({ type: 'timer-expired' })
         } finally {
-            jest.useRealTimers()
+            vi.useRealTimers()
         }
     })
 })
@@ -378,7 +379,7 @@ describe('cancel-recording', () => {
         const error = new Error('cancel failed')
         const deps = createMockDeps({
             session: createMockSession({
-                cancel: jest.fn().mockRejectedValue(error),
+                cancel: vi.fn().mockRejectedValue(error),
             }),
         })
         const handler = new OffscreenHandler(deps)
@@ -412,15 +413,15 @@ describe('save-config-local', () => {
 
 describe('update-recording-timer', () => {
     beforeEach(() => {
-        jest.useFakeTimers()
+        vi.useFakeTimers()
     })
     afterEach(() => {
-        jest.useRealTimers()
+        vi.useRealTimers()
     })
 
     it('sets timer and sends timer-updated when recording and enabled', async () => {
         const deps = createMockDeps({
-            getLocationHash: jest.fn().mockReturnValue('#recording'),
+            getLocationHash: vi.fn().mockReturnValue('#recording'),
         })
         const handler = new OffscreenHandler(deps)
         await handler.handleMessage({
@@ -435,7 +436,7 @@ describe('update-recording-timer', () => {
 
     it('clears timer and sends timer-updated when recording and disabled', async () => {
         const deps = createMockDeps({
-            getLocationHash: jest.fn().mockReturnValue('#recording'),
+            getLocationHash: vi.fn().mockReturnValue('#recording'),
         })
         const handler = new OffscreenHandler(deps)
         await handler.handleMessage({
@@ -450,7 +451,7 @@ describe('update-recording-timer', () => {
 
     it('does nothing when not recording', async () => {
         const deps = createMockDeps({
-            getLocationHash: jest.fn().mockReturnValue(''),
+            getLocationHash: vi.fn().mockReturnValue(''),
         })
         const handler = new OffscreenHandler(deps)
         await handler.handleMessage({
@@ -463,7 +464,7 @@ describe('update-recording-timer', () => {
 
     it('replaces existing timer when called again', async () => {
         const deps = createMockDeps({
-            getLocationHash: jest.fn().mockReturnValue('#recording'),
+            getLocationHash: vi.fn().mockReturnValue('#recording'),
         })
         const handler = new OffscreenHandler(deps)
 
@@ -473,7 +474,7 @@ describe('update-recording-timer', () => {
             enabled: true,
             durationMinutes: 5,
         })
-        const firstStopAtMs = (deps.sendRuntimeMessage as jest.Mock).mock.calls[0][0].stopAtMs
+        const firstStopAtMs = (deps.sendRuntimeMessage as Mock).mock.calls[0][0].stopAtMs
 
         // Set second timer (10 min)
         await handler.handleMessage({
@@ -481,12 +482,12 @@ describe('update-recording-timer', () => {
             enabled: true,
             durationMinutes: 10,
         })
-        const secondStopAtMs = (deps.sendRuntimeMessage as jest.Mock).mock.calls[1][0].stopAtMs
+        const secondStopAtMs = (deps.sendRuntimeMessage as Mock).mock.calls[1][0].stopAtMs
 
         expect(secondStopAtMs).toBeGreaterThan(firstStopAtMs)
 
         // Advancing past 5 min should NOT fire timer-expired (first timer replaced)
-        jest.advanceTimersByTime(5 * 60 * 1000 + 1000)
+        vi.advanceTimersByTime(5 * 60 * 1000 + 1000)
         expect(deps.sendRuntimeMessage).not.toHaveBeenCalledWith({ type: 'timer-expired' })
     })
 })
@@ -548,17 +549,17 @@ describe('update-crop-region', () => {
 
 describe('recording timer', () => {
     beforeEach(() => {
-        jest.useFakeTimers()
+        vi.useFakeTimers()
     })
     afterEach(() => {
-        jest.useRealTimers()
+        vi.useRealTimers()
     })
 
     it('sends timer-expired message when timer fires', async () => {
         const config = new Configuration()
         config.recordingTimer = { enabled: true, durationMinutes: 2, skipStopConfirmation: false }
         const deps = createMockDeps({
-            getConfiguration: jest.fn().mockReturnValue(config),
+            getConfiguration: vi.fn().mockReturnValue(config),
         })
         const handler = new OffscreenHandler(deps)
 
@@ -569,11 +570,11 @@ describe('recording timer', () => {
         })
 
         // Advance time to just before expiry — should not fire
-        jest.advanceTimersByTime(2 * 60 * 1000 - 1)
+        vi.advanceTimersByTime(2 * 60 * 1000 - 1)
         expect(deps.sendRuntimeMessage).not.toHaveBeenCalledWith({ type: 'timer-expired' })
 
         // Advance past expiry
-        jest.advanceTimersByTime(2)
+        vi.advanceTimersByTime(2)
         await Promise.resolve() // flush microtask
         expect(deps.sendRuntimeMessage).toHaveBeenCalledWith({ type: 'timer-expired' })
     })
@@ -582,7 +583,7 @@ describe('recording timer', () => {
         const config = new Configuration()
         config.recordingTimer = { enabled: true, durationMinutes: 5, skipStopConfirmation: false }
         const deps = createMockDeps({
-            getConfiguration: jest.fn().mockReturnValue(config),
+            getConfiguration: vi.fn().mockReturnValue(config),
         })
         const handler = new OffscreenHandler(deps)
 
@@ -597,13 +598,13 @@ describe('recording timer', () => {
         await handler.handleMessage({ type: 'cancel-recording' })
 
         // Advance past original timer
-        jest.advanceTimersByTime(5 * 60 * 1000 + 1000)
+        vi.advanceTimersByTime(5 * 60 * 1000 + 1000)
         expect(deps.sendRuntimeMessage).not.toHaveBeenCalledWith({ type: 'timer-expired' })
     })
 
     it('update-recording-timer can set a new timer that fires', async () => {
         const deps = createMockDeps({
-            getLocationHash: jest.fn().mockReturnValue('#recording'),
+            getLocationHash: vi.fn().mockReturnValue('#recording'),
         })
         const handler = new OffscreenHandler(deps)
 
@@ -613,7 +614,7 @@ describe('recording timer', () => {
             durationMinutes: 1,
         })
 
-        jest.advanceTimersByTime(1 * 60 * 1000 + 1)
+        vi.advanceTimersByTime(1 * 60 * 1000 + 1)
         await Promise.resolve()
         expect(deps.sendRuntimeMessage).toHaveBeenCalledWith({ type: 'timer-expired' })
     })

@@ -9,6 +9,10 @@ concurrency:
     group: ${{ github.workflow }}
     cancel-in-progress: false
 
+defaults:
+    run:
+        shell: bash
+
 jobs:
     release:
         runs-on: ubuntu-22.04

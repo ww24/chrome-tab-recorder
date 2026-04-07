@@ -1,3 +1,5 @@
+import type { Mock } from 'vitest'
+
 import { AudioMixer, SingletonAudioContextFactory } from './audio_mixer'
 import type { AudioContextFactory } from './audio_mixer'
 
@@ -19,13 +21,13 @@ function createMockTrack(kind: 'audio' | 'video', id = '1'): MediaStreamTrack {
     return {
         kind,
         id,
-        stop: jest.fn(),
-        addEventListener: jest.fn((event: string, listener: EventListener) => {
+        stop: vi.fn(),
+        addEventListener: vi.fn((event: string, listener: EventListener) => {
             if (!listeners.has(event)) listeners.set(event, [])
             listeners.get(event)!.push(listener)
         }),
         // helper to fire 'ended'
-        dispatchEvent: jest.fn((event: Event) => {
+        dispatchEvent: vi.fn((event: Event) => {
             listeners.get(event.type)?.forEach(l => l(event))
             return true
         }),
@@ -34,9 +36,9 @@ function createMockTrack(kind: 'audio' | 'video', id = '1'): MediaStreamTrack {
 
 function createMockStream(audioTracks: MediaStreamTrack[] = [], videoTracks: MediaStreamTrack[] = []): MediaStream {
     return {
-        getAudioTracks: jest.fn(() => audioTracks),
-        getVideoTracks: jest.fn(() => videoTracks),
-        getTracks: jest.fn(() => [...audioTracks, ...videoTracks]),
+        getAudioTracks: vi.fn(() => audioTracks),
+        getVideoTracks: vi.fn(() => videoTracks),
+        getTracks: vi.fn(() => [...audioTracks, ...videoTracks]),
     } as unknown as MediaStream
 }
 
@@ -46,41 +48,41 @@ interface MockMediaStreamDestination {
 
 function createMockAudioContext(): AudioContext & {
     _dest: MockMediaStreamDestination
-    _gains: Array<{ gain: { value: number }, connect: jest.Mock }>
-    _sources: Array<{ connect: jest.Mock }>
+    _gains: Array<{ gain: { value: number }, connect: Mock }>
+    _sources: Array<{ connect: Mock }>
 } {
     const destTracks = [createMockTrack('audio', 'dest-audio')]
     const destStream = createMockStream(destTracks)
     const dest: MockMediaStreamDestination = { stream: destStream }
 
-    const gains: Array<{ gain: { value: number }, connect: jest.Mock }> = []
-    const sources: Array<{ connect: jest.Mock }> = []
+    const gains: Array<{ gain: { value: number }, connect: Mock }> = []
+    const sources: Array<{ connect: Mock }> = []
 
     return {
         _dest: dest,
         _gains: gains,
         _sources: sources,
         destination: {} as AudioDestinationNode,
-        createMediaStreamDestination: jest.fn(() => dest),
-        createMediaStreamSource: jest.fn(() => {
-            const src = { connect: jest.fn() }
+        createMediaStreamDestination: vi.fn(() => dest),
+        createMediaStreamSource: vi.fn(() => {
+            const src = { connect: vi.fn() }
             sources.push(src)
             return src
         }),
-        createGain: jest.fn(() => {
-            const gain = { gain: { value: 1 }, connect: jest.fn() }
+        createGain: vi.fn(() => {
+            const gain = { gain: { value: 1 }, connect: vi.fn() }
             gains.push(gain)
             return gain
         }),
     } as unknown as AudioContext & {
         _dest: MockMediaStreamDestination
-        _gains: Array<{ gain: { value: number }, connect: jest.Mock }>
-        _sources: Array<{ connect: jest.Mock }>
+        _gains: Array<{ gain: { value: number }, connect: Mock }>
+        _sources: Array<{ connect: Mock }>
     }
 }
 
 function createMockFactory(mockCtx: AudioContext): AudioContextFactory {
-    return { create: jest.fn(() => mockCtx) }
+    return { create: vi.fn(() => mockCtx) }
 }
 
 // ---------- SingletonAudioContextFactory ----------

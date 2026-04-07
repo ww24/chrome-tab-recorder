@@ -1,8 +1,10 @@
-jest.mock('mediabunny', () => ({
-    canEncodeAudio: jest.fn().mockResolvedValue(true),
+import type { Mock } from 'vitest'
+
+vi.mock('mediabunny', () => ({
+    canEncodeAudio: vi.fn().mockResolvedValue(true),
 }))
-jest.mock('@mediabunny/flac-encoder', () => ({
-    registerFlacEncoder: jest.fn(),
+vi.mock('@mediabunny/flac-encoder', () => ({
+    registerFlacEncoder: vi.fn(),
 }))
 
 import { MediaCapture } from './media_capture'
@@ -10,9 +12,9 @@ import type { MediaDevicesProvider } from './media_capture'
 
 // ---------- mocks ----------
 
-function createMockDevices(): MediaDevicesProvider & { getUserMedia: jest.Mock } {
+function createMockDevices(): MediaDevicesProvider & { getUserMedia: Mock } {
     return {
-        getUserMedia: jest.fn().mockResolvedValue({
+        getUserMedia: vi.fn().mockResolvedValue({
             getTracks: () => [],
             getAudioTracks: () => [],
             getVideoTracks: () => [],
@@ -168,7 +170,7 @@ describe('MediaCapture', () => {
             devices.getUserMedia.mockRejectedValue(new Error('Permission denied'))
             const capture = new MediaCapture(devices)
 
-            const consoleSpy = jest.spyOn(console, 'warn').mockImplementation()
+            const consoleSpy = vi.spyOn(console, 'warn').mockImplementation()
             const result = await capture.captureMicrophone(
                 { enabled: true, gain: 1.0, deviceId: null },
                 44100,

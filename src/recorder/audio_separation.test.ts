@@ -1,8 +1,10 @@
-jest.mock('mediabunny', () => ({
-    canEncodeAudio: jest.fn().mockResolvedValue(true),
+import type { Mock } from 'vitest'
+
+vi.mock('mediabunny', () => ({
+    canEncodeAudio: vi.fn().mockResolvedValue(true),
 }))
-jest.mock('@mediabunny/flac-encoder', () => ({
-    registerFlacEncoder: jest.fn(),
+vi.mock('@mediabunny/flac-encoder', () => ({
+    registerFlacEncoder: vi.fn(),
 }))
 
 import { AudioSeparationManager } from './audio_separation'
@@ -15,37 +17,37 @@ import { VideoFormat } from '../configuration'
 
 function createMockFileManager(overrides: Partial<FileManager> = {}): FileManager {
     const mockFileHandle = {
-        createWritable: jest.fn().mockResolvedValue({}),
+        createWritable: vi.fn().mockResolvedValue({}),
     }
     return {
-        createRecordingFile: jest.fn().mockResolvedValue(mockFileHandle),
-        createAudioFile: jest.fn().mockResolvedValue(mockFileHandle),
+        createRecordingFile: vi.fn().mockResolvedValue(mockFileHandle),
+        createAudioFile: vi.fn().mockResolvedValue(mockFileHandle),
         ...overrides,
     } as unknown as FileManager
 }
 
-function createMockOutputManager(): OutputManager & { createAudioTrackOutput: jest.Mock } {
+function createMockOutputManager(): OutputManager & { createAudioTrackOutput: Mock } {
     return {
-        createOutput: jest.fn(),
-        addTracks: jest.fn().mockReturnValue([]),
-        createAudioTrackOutput: jest.fn((): OutputHandle => ({
+        createOutput: vi.fn(),
+        addTracks: vi.fn().mockReturnValue([]),
+        createAudioTrackOutput: vi.fn((): OutputHandle => ({
             output: {
-                start: jest.fn().mockResolvedValue(undefined),
-                finalize: jest.fn().mockResolvedValue(undefined),
-                cancel: jest.fn().mockResolvedValue(undefined),
-                addAudioTrack: jest.fn(),
+                start: vi.fn().mockResolvedValue(undefined),
+                finalize: vi.fn().mockResolvedValue(undefined),
+                cancel: vi.fn().mockResolvedValue(undefined),
+                addAudioTrack: vi.fn(),
                 state: 'idle',
             } as unknown as import('mediabunny').Output,
             errorPromises: [Promise.resolve()],
         })),
-    } as unknown as OutputManager & { createAudioTrackOutput: jest.Mock }
+    } as unknown as OutputManager & { createAudioTrackOutput: Mock }
 }
 
 function createMockTrack(kind: 'audio' | 'video', id = '1'): MediaStreamTrack {
     return {
         kind, id,
-        stop: jest.fn(),
-        clone: jest.fn(function (this: MediaStreamTrack) {
+        stop: vi.fn(),
+        clone: vi.fn(function (this: MediaStreamTrack) {
             return createMockTrack(kind, `${id}-clone`)
         }),
     } as unknown as MediaStreamTrack
@@ -53,9 +55,9 @@ function createMockTrack(kind: 'audio' | 'video', id = '1'): MediaStreamTrack {
 
 function createMockStream(audioTracks: MediaStreamTrack[] = [], videoTracks: MediaStreamTrack[] = []): MediaStream {
     return {
-        getAudioTracks: jest.fn(() => audioTracks),
-        getVideoTracks: jest.fn(() => videoTracks),
-        getTracks: jest.fn(() => [...audioTracks, ...videoTracks]),
+        getAudioTracks: vi.fn(() => audioTracks),
+        getVideoTracks: vi.fn(() => videoTracks),
+        getTracks: vi.fn(() => [...audioTracks, ...videoTracks]),
     } as unknown as MediaStream
 }
 
@@ -167,11 +169,11 @@ describe('AudioSeparationManager', () => {
             const outMgr = createMockOutputManager()
             const mgr = new AudioSeparationManager(fileMgr, outMgr)
 
-            const tabFinalize = jest.fn().mockResolvedValue(undefined)
-            const micFinalize = jest.fn().mockResolvedValue(undefined)
+            const tabFinalize = vi.fn().mockResolvedValue(undefined)
+            const micFinalize = vi.fn().mockResolvedValue(undefined)
             const outputs: AudioSeparationOutputs = {
-                tabOutput: { finalize: tabFinalize, cancel: jest.fn() } as unknown as import('mediabunny').Output,
-                micOutput: { finalize: micFinalize, cancel: jest.fn() } as unknown as import('mediabunny').Output,
+                tabOutput: { finalize: tabFinalize, cancel: vi.fn() } as unknown as import('mediabunny').Output,
+                micOutput: { finalize: micFinalize, cancel: vi.fn() } as unknown as import('mediabunny').Output,
                 clonedTracks: [],
                 errorPromises: [],
             }
@@ -187,11 +189,11 @@ describe('AudioSeparationManager', () => {
             const outMgr = createMockOutputManager()
             const mgr = new AudioSeparationManager(fileMgr, outMgr)
 
-            const tabFinalize = jest.fn().mockRejectedValue(new Error('tab finalize error'))
-            const micFinalize = jest.fn().mockResolvedValue(undefined)
+            const tabFinalize = vi.fn().mockRejectedValue(new Error('tab finalize error'))
+            const micFinalize = vi.fn().mockResolvedValue(undefined)
             const outputs: AudioSeparationOutputs = {
-                tabOutput: { finalize: tabFinalize, cancel: jest.fn() } as unknown as import('mediabunny').Output,
-                micOutput: { finalize: micFinalize, cancel: jest.fn() } as unknown as import('mediabunny').Output,
+                tabOutput: { finalize: tabFinalize, cancel: vi.fn() } as unknown as import('mediabunny').Output,
+                micOutput: { finalize: micFinalize, cancel: vi.fn() } as unknown as import('mediabunny').Output,
                 clonedTracks: [],
                 errorPromises: [],
             }
@@ -207,11 +209,11 @@ describe('AudioSeparationManager', () => {
             const outMgr = createMockOutputManager()
             const mgr = new AudioSeparationManager(fileMgr, outMgr)
 
-            const tabFinalize = jest.fn().mockResolvedValue(undefined)
-            const micFinalize = jest.fn().mockRejectedValue(new Error('mic finalize error'))
+            const tabFinalize = vi.fn().mockResolvedValue(undefined)
+            const micFinalize = vi.fn().mockRejectedValue(new Error('mic finalize error'))
             const outputs: AudioSeparationOutputs = {
-                tabOutput: { finalize: tabFinalize, cancel: jest.fn() } as unknown as import('mediabunny').Output,
-                micOutput: { finalize: micFinalize, cancel: jest.fn() } as unknown as import('mediabunny').Output,
+                tabOutput: { finalize: tabFinalize, cancel: vi.fn() } as unknown as import('mediabunny').Output,
+                micOutput: { finalize: micFinalize, cancel: vi.fn() } as unknown as import('mediabunny').Output,
                 clonedTracks: [],
                 errorPromises: [],
             }
@@ -229,11 +231,11 @@ describe('AudioSeparationManager', () => {
             const outMgr = createMockOutputManager()
             const mgr = new AudioSeparationManager(fileMgr, outMgr)
 
-            const tabCancel = jest.fn().mockResolvedValue(undefined)
-            const micCancel = jest.fn().mockResolvedValue(undefined)
+            const tabCancel = vi.fn().mockResolvedValue(undefined)
+            const micCancel = vi.fn().mockResolvedValue(undefined)
             const outputs: AudioSeparationOutputs = {
-                tabOutput: { finalize: jest.fn(), cancel: tabCancel } as unknown as import('mediabunny').Output,
-                micOutput: { finalize: jest.fn(), cancel: micCancel } as unknown as import('mediabunny').Output,
+                tabOutput: { finalize: vi.fn(), cancel: tabCancel } as unknown as import('mediabunny').Output,
+                micOutput: { finalize: vi.fn(), cancel: micCancel } as unknown as import('mediabunny').Output,
                 clonedTracks: [],
                 errorPromises: [],
             }
@@ -249,11 +251,11 @@ describe('AudioSeparationManager', () => {
             const outMgr = createMockOutputManager()
             const mgr = new AudioSeparationManager(fileMgr, outMgr)
 
-            const tabCancel = jest.fn().mockRejectedValue(new Error('tab cancel error'))
-            const micCancel = jest.fn().mockResolvedValue(undefined)
+            const tabCancel = vi.fn().mockRejectedValue(new Error('tab cancel error'))
+            const micCancel = vi.fn().mockResolvedValue(undefined)
             const outputs: AudioSeparationOutputs = {
-                tabOutput: { finalize: jest.fn(), cancel: tabCancel } as unknown as import('mediabunny').Output,
-                micOutput: { finalize: jest.fn(), cancel: micCancel } as unknown as import('mediabunny').Output,
+                tabOutput: { finalize: vi.fn(), cancel: tabCancel } as unknown as import('mediabunny').Output,
+                micOutput: { finalize: vi.fn(), cancel: micCancel } as unknown as import('mediabunny').Output,
                 clonedTracks: [],
                 errorPromises: [],
             }
@@ -269,11 +271,11 @@ describe('AudioSeparationManager', () => {
             const outMgr = createMockOutputManager()
             const mgr = new AudioSeparationManager(fileMgr, outMgr)
 
-            const tabCancel = jest.fn().mockResolvedValue(undefined)
-            const micCancel = jest.fn().mockRejectedValue(new Error('mic cancel error'))
+            const tabCancel = vi.fn().mockResolvedValue(undefined)
+            const micCancel = vi.fn().mockRejectedValue(new Error('mic cancel error'))
             const outputs: AudioSeparationOutputs = {
-                tabOutput: { finalize: jest.fn(), cancel: tabCancel } as unknown as import('mediabunny').Output,
-                micOutput: { finalize: jest.fn(), cancel: micCancel } as unknown as import('mediabunny').Output,
+                tabOutput: { finalize: vi.fn(), cancel: tabCancel } as unknown as import('mediabunny').Output,
+                micOutput: { finalize: vi.fn(), cancel: micCancel } as unknown as import('mediabunny').Output,
                 clonedTracks: [],
                 errorPromises: [],
             }

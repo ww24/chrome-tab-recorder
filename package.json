@@ -7,8 +7,8 @@
     "build": "SOURCEMAP=1 vite build",
     "build:prod": "rm -f extension.zip && ENV_NAME=production vite build && zip -r extension.zip extension",
     "watch": "vite build --watch --mode development",
-    "lint": "eslint {src,scripts,*.{mjs,ts}}",
-    "test": "jest",
+    "lint": "eslint src scripts *.mjs *.ts",
+    "test": "vitest run",
     "site": "vite dev --config docs/vite.config.ts",
     "site:build": "vite build --config docs/vite.config.ts"
   },
@@ -31,19 +31,16 @@
     "@googleapis/chromewebstore": "^2.0.2",
     "@types/chrome": "^0.1.38",
     "@types/dom-mediacapture-transform": "^0.1.11",
-    "@types/jest": "^30.0.0",
     "@types/node": "^25.5.0",
     "@typescript-eslint/eslint-plugin": "^8.57.2",
     "eslint": "^10.1.0",
     "globals": "^17.4.0",
     "google-auth-library": "^10.6.2",
-    "jest": "^30.3.0",
     "marked": "^17.0.5",
-    "ts-jest": "^29.4.6",
-    "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.57.2",
-    "vite": "^8.0.5"
+    "vite": "^8.0.5",
+    "vitest": "^4.0.0"
   },
   "private": true,
   "engines": {

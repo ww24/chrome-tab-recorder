@@ -1,8 +1,8 @@
-jest.mock('mediabunny', () => ({
-    canEncodeAudio: jest.fn().mockResolvedValue(true),
+vi.mock('mediabunny', () => ({
+    canEncodeAudio: vi.fn().mockResolvedValue(true),
 }))
-jest.mock('@mediabunny/flac-encoder', () => ({
-    registerFlacEncoder: jest.fn(),
+vi.mock('@mediabunny/flac-encoder', () => ({
+    registerFlacEncoder: vi.fn(),
 }))
 
 import { migrateFromMimeType, VideoFormat, Configuration, audioSeparationContainer, isUITheme, type RecordingTimerReport } from './configuration'
