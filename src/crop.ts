@@ -14,7 +14,7 @@ export class Crop {
         const transformer = new TransformStream<VideoFrame, VideoFrame>({
             transform: (frame, controller) => {
                 const croppedFrame = new VideoFrame(frame, {
-                    visibleRect: alignRegion(frame, this.region),
+                    visibleRect: Crop.alignRegion(frame, this.region),
                 })
                 frame.close()
                 controller.enqueue(croppedFrame)
@@ -38,14 +38,14 @@ export class Crop {
             ...originalStream.getAudioTracks()
         ])
     }
-}
 
-export function alignRegion(frame: VideoFrame, region: CropRegion): CropRegion {
-    const x = Math.max(0, Math.min(region.x, frame.codedWidth - 1))
-    const y = Math.max(0, Math.min(region.y, frame.codedHeight - 1))
-    return {
-        x, y,
-        width: Math.min(region.width, frame.codedWidth - x),
-        height: Math.min(region.height, frame.codedHeight - y),
+    static alignRegion(frame: VideoFrame, region: CropRegion): CropRegion {
+        const x = Math.max(0, Math.min(region.x, frame.codedWidth - 1))
+        const y = Math.max(0, Math.min(region.y, frame.codedHeight - 1))
+        return {
+            x, y,
+            width: Math.min(region.width, frame.codedWidth - x),
+            height: Math.min(region.height, frame.codedHeight - y),
+        }
     }
 }

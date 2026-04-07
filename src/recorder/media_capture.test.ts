@@ -170,7 +170,7 @@ describe('MediaCapture', () => {
             devices.getUserMedia.mockRejectedValue(new Error('Permission denied'))
             const capture = new MediaCapture(devices)
 
-            const consoleSpy = vi.spyOn(console, 'warn').mockImplementation()
+            const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => { })
             const result = await capture.captureMicrophone(
                 { enabled: true, gain: 1.0, deviceId: null },
                 44100,

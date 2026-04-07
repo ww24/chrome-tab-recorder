@@ -1,4 +1,50 @@
-import { deepMerge, roundToEven, clampCoordinate, clampDimension } from './util'
+import { formatNum, formatRate, deepMerge, roundToEven, clampCoordinate, clampDimension } from './util'
+
+describe('formatNum', () => {
+    test('formats integer with specified decimal places', () => {
+        expect(formatNum(1, 0)).toBe('1')
+        expect(formatNum(1, 2)).toBe('1.00')
+        expect(formatNum(0, 3)).toBe('0.000')
+    })
+
+    test('formats decimal with specified decimal places', () => {
+        expect(formatNum(1.5, 1)).toBe('1.5')
+        expect(formatNum(1.456, 2)).toBe('1.46')
+        expect(formatNum(1.999, 2)).toBe('2.00')
+    })
+
+    test('formats large numbers with commas', () => {
+        expect(formatNum(1000, 0)).toBe('1,000')
+        expect(formatNum(1234567.89, 2)).toBe('1,234,567.89')
+    })
+
+    test('formats negative numbers', () => {
+        expect(formatNum(-1, 2)).toBe('-1.00')
+        expect(formatNum(-1234.5, 1)).toBe('-1,234.5')
+    })
+})
+
+describe('formatRate', () => {
+    test('formats rate as percentage with specified decimal places', () => {
+        expect(formatRate(0, 0)).toBe('0%')
+        expect(formatRate(1, 0)).toBe('100%')
+        expect(formatRate(0.5, 0)).toBe('50%')
+    })
+
+    test('formats rate with decimal places', () => {
+        expect(formatRate(0.1234, 2)).toBe('12.34%')
+        expect(formatRate(0.1, 1)).toBe('10.0%')
+        expect(formatRate(1, 2)).toBe('100.00%')
+    })
+
+    test('formats rate greater than 1', () => {
+        expect(formatRate(1.5, 0)).toBe('150%')
+    })
+
+    test('formats negative rate', () => {
+        expect(formatRate(-0.1, 1)).toBe('-10.0%')
+    })
+})
 
 describe('deepMerge', () => {
     test('empty object & empty object', () => {
