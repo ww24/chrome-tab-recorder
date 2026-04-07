@@ -9,6 +9,7 @@
     "watch": "vite build --watch --mode development",
     "lint": "eslint src scripts *.mjs *.ts",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "site": "vite dev --config docs/vite.config.ts",
     "site:build": "vite build --config docs/vite.config.ts"
   },
@@ -33,6 +34,7 @@
     "@types/dom-mediacapture-transform": "^0.1.11",
     "@types/node": "^25.5.0",
     "@typescript-eslint/eslint-plugin": "^8.58.0",
+    "@vitest/coverage-v8": "^4.1.2",
     "eslint": "^10.1.0",
     "globals": "^17.4.0",
     "google-auth-library": "^10.6.2",

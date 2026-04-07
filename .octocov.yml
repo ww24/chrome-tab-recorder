@@ -1,0 +1,23 @@
+coverage:
+  paths:
+    - coverage/lcov.info
+codeToTestRatio:
+  code:
+    - "src/**/*.ts"
+    - "!src/**/*.test.ts"
+    - "!src/**/*.d.ts"
+  test:
+    - "src/**/*.test.ts"
+testExecutionTime:
+  if: true
+summary:
+  if: true
+comment:
+  if: is_pull_request
+report:
+  if: is_default_branch
+  datastores:
+    - artifact://${GITHUB_REPOSITORY}
+diff:
+  datastores:
+    - artifact://${GITHUB_REPOSITORY}
