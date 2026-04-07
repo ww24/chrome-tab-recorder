@@ -12,7 +12,8 @@
     "strict": true,
     "outDir": "./extension/dist",
     "rootDir": "./src",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
+    "rewriteRelativeImportExtensions": true,
     "lib": [
       "es2022",
       "DOM",
@@ -28,7 +29,9 @@
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true,
     "types": [
-      "vitest/globals"
+      "vitest/globals",
+      "chrome",
+      "node"
     ]
   }
 }

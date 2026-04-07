@@ -3,10 +3,6 @@ declare global {
         // Experimental. https://developer.mozilla.org/ja/docs/Web/API/Window/showDirectoryPicker
         showDirectoryPicker: (option: ShowDirectoryPickerOptions) => Promise<FileSystemDirectoryHandle>;
     }
-    interface FileSystemDirectoryHandle {
-        // https://developer.mozilla.org/ja/docs/Web/API/FileSystemDirectoryHandle/entries
-        entries: () => AsyncIterable<[string, FileSystemFileHandle]>;
-    }
     interface FileSystemHandle {
         // Experimental. https://developer.mozilla.org/ja/docs/Web/API/FileSystemHandle/queryPermission
         queryPermission: (opts: FileSystemHandlePermissionDescriptor) => Promise<PermissionState>;
