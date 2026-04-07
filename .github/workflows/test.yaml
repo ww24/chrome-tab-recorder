@@ -12,6 +12,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   lint:
     runs-on: ubuntu-22.04
@@ -41,7 +45,7 @@ jobs:
         run: npm list
       - name: install dependencies
         run: npm ci
-      - name: eslint
+      - name: lint
         run: npm run lint
 
   test:

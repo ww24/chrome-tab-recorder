@@ -7,6 +7,10 @@ concurrency:
     group: ${{ github.workflow }}
     cancel-in-progress: false
 
+defaults:
+    run:
+        shell: bash
+
 jobs:
     upload:
         # Only run on bump/v* branches
