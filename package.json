@@ -7,7 +7,7 @@
     "build": "SOURCEMAP=1 vite build",
     "build:prod": "rm -f extension.zip && ENV_NAME=production vite build && zip -r extension.zip extension",
     "watch": "vite build --watch --mode development",
-    "lint": "eslint {src,scripts,*.{mjs,ts}}",
+    "lint": "eslint src scripts *.mjs *.ts",
     "test": "vitest run",
     "site": "vite dev --config docs/vite.config.ts",
     "site:build": "vite build --config docs/vite.config.ts"
