@@ -35,7 +35,7 @@ export default defineConfig(({ mode }) => ({
                 chunkFileNames: '[name]-[hash].js',
             },
         },
-        sourcemap: true,
+        sourcemap: !!process.env.SOURCEMAP,
         minify: mode === 'production',
         target: 'chrome140',
     },
