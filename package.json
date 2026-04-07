@@ -4,7 +4,7 @@
   "type": "module",
   "description": "Google Chrome Extensions Screen Recorder",
   "scripts": {
-    "build": "vite build",
+    "build": "SOURCEMAP=1 vite build",
     "build:prod": "rm -f extension.zip && ENV_NAME=production vite build && zip -r extension.zip extension",
     "watch": "vite build --watch --mode development",
     "lint": "eslint {src,scripts,*.{mjs,ts}}",
