@@ -83,9 +83,10 @@ function createMockOutputManager(): OutputManager {
     const mockOutput = createMockOutput()
     return {
         createOutput: vi.fn(() => mockOutput),
-        addTracks: vi.fn(() => []),
+        addTracks: vi.fn(() => ({ sources: [], errorPromises: [] })),
         createAudioTrackOutput: vi.fn(() => ({
             output: createMockOutput(),
+            sources: [],
             errorPromises: [],
         })),
         _mockOutput: mockOutput,
@@ -94,6 +95,7 @@ function createMockOutputManager(): OutputManager {
 
 function createMockAudioSeparation(): AudioSeparationManager {
     const outputs: AudioSeparationOutputs = {
+        sources: [],
         clonedTracks: [],
         errorPromises: [],
     }
@@ -442,6 +444,154 @@ describe('RecordingSession', () => {
         test('returns 0 when called without starting', async () => {
             const durationMs = await session.cancel()
             expect(durationMs).toBe(0)
+        })
+    })
+
+    describe('pause and resume', () => {
+        test('pause transitions to paused state', async () => {
+            const config = createDefaultConfig()
+            await session.start(defaultRequest, config)
+            expect(session.state).toBe('recording')
+
+            session.pause()
+            expect(session.state).toBe('paused')
+            expect(session.isPaused).toBe(true)
+        })
+
+        test('resume transitions back to recording state', async () => {
+            const config = createDefaultConfig()
+            await session.start(defaultRequest, config)
+
+            session.pause()
+            session.resume()
+            expect(session.state).toBe('recording')
+            expect(session.isPaused).toBe(false)
+        })
+
+        test('pause throws if not recording', () => {
+            expect(() => session.pause()).toThrow('Cannot pause in state \'idle\'')
+        })
+
+        test('resume throws if not paused', async () => {
+            const config = createDefaultConfig()
+            await session.start(defaultRequest, config)
+
+            expect(() => session.resume()).toThrow('Cannot resume in state \'recording\'')
+        })
+
+        test('double pause throws', async () => {
+            const config = createDefaultConfig()
+            await session.start(defaultRequest, config)
+
+            session.pause()
+            expect(() => session.pause()).toThrow('Cannot pause in state \'paused\'')
+        })
+
+        test('pause calls pause on all sources', async () => {
+            const mockSource = { pause: vi.fn(), resume: vi.fn(), paused: false, errorPromise: Promise.resolve() }
+            const om = {
+                createOutput: vi.fn(() => createMockOutput()),
+                addTracks: vi.fn(() => ({ sources: [mockSource], errorPromises: [] })),
+                createAudioTrackOutput: vi.fn(() => ({ output: createMockOutput(), sources: [], errorPromises: [] })),
+                _mockOutput: createMockOutput(),
+            } as unknown as OutputManager & { _mockOutput: ReturnType<typeof createMockOutput> }
+
+            const s = new RecordingSession(
+                mediaCapture, audioMixer, om,
+                audioSeparation, fileManager, preview, crop, callbacks,
+            )
+            const config = createDefaultConfig()
+            await s.start(defaultRequest, config)
+
+            s.pause()
+            expect(mockSource.pause).toHaveBeenCalled()
+        })
+
+        test('resume calls resume on all sources', async () => {
+            const mockSource = { pause: vi.fn(), resume: vi.fn(), paused: false, errorPromise: Promise.resolve() }
+            const om = {
+                createOutput: vi.fn(() => createMockOutput()),
+                addTracks: vi.fn(() => ({ sources: [mockSource], errorPromises: [] })),
+                createAudioTrackOutput: vi.fn(() => ({ output: createMockOutput(), sources: [], errorPromises: [] })),
+                _mockOutput: createMockOutput(),
+            } as unknown as OutputManager & { _mockOutput: ReturnType<typeof createMockOutput> }
+
+            const s = new RecordingSession(
+                mediaCapture, audioMixer, om,
+                audioSeparation, fileManager, preview, crop, callbacks,
+            )
+            const config = createDefaultConfig()
+            await s.start(defaultRequest, config)
+
+            s.pause()
+            s.resume()
+            expect(mockSource.resume).toHaveBeenCalled()
+        })
+
+        test('stop from paused state resumes sources and finalizes', async () => {
+            const mockSource = { pause: vi.fn(), resume: vi.fn(), paused: false, errorPromise: Promise.resolve() }
+            const mockOutput = createMockOutput()
+            const om = {
+                createOutput: vi.fn(() => mockOutput),
+                addTracks: vi.fn(() => ({ sources: [mockSource], errorPromises: [] })),
+                createAudioTrackOutput: vi.fn(() => ({ output: createMockOutput(), sources: [], errorPromises: [] })),
+                _mockOutput: mockOutput,
+            } as unknown as OutputManager & { _mockOutput: ReturnType<typeof createMockOutput> }
+
+            const s = new RecordingSession(
+                mediaCapture, audioMixer, om,
+                audioSeparation, fileManager, preview, crop, callbacks,
+            )
+            const config = createDefaultConfig()
+            await s.start(defaultRequest, config)
+            mockOutput.state = 'started'
+
+            s.pause()
+            const result = await s.stop()
+            expect(mockSource.resume).toHaveBeenCalled()
+            expect(result).not.toBeNull()
+            expect(s.state).toBe('idle')
+        })
+
+        test('duration excludes paused time', async () => {
+            const config = createDefaultConfig()
+            await session.start(defaultRequest, config)
+
+            const mockOutput = (outputManager as unknown as { _mockOutput: ReturnType<typeof createMockOutput> })._mockOutput
+            mockOutput.state = 'started'
+
+            // Advance 10 seconds, pause, advance 5 seconds, resume, advance 10 seconds
+            vi.advanceTimersByTime(10_000)
+            session.pause()
+            vi.advanceTimersByTime(5_000)
+            session.resume()
+            vi.advanceTimersByTime(10_000)
+
+            const result = await session.stop()
+            expect(result).not.toBeNull()
+            // Total wall time: 25s, paused: 5s, so duration should be ~20s
+            expect(result!.durationMs).toBe(20_000)
+        })
+
+        test('elapsedPausedMs tracks total paused time', async () => {
+            const config = createDefaultConfig()
+            await session.start(defaultRequest, config)
+
+            expect(session.elapsedPausedMs).toBe(0)
+
+            vi.advanceTimersByTime(1_000)
+            session.pause()
+            vi.advanceTimersByTime(3_000)
+            session.resume()
+
+            expect(session.elapsedPausedMs).toBe(3_000)
+
+            vi.advanceTimersByTime(1_000)
+            session.pause()
+            vi.advanceTimersByTime(2_000)
+            session.resume()
+
+            expect(session.elapsedPausedMs).toBe(5_000)
         })
     })
 

@@ -27,6 +27,10 @@ function createMockSession(overrides: Partial<OffscreenSession> = {}): Offscreen
             fileSize: 12345,
         }),
         cancel: vi.fn().mockResolvedValue(3000),
+        pause: vi.fn(),
+        resume: vi.fn(),
+        isPaused: false,
+        elapsedPausedMs: 0,
         startPreview: vi.fn(),
         stopPreview: vi.fn(),
         updateCropRegion: vi.fn(),
@@ -628,5 +632,127 @@ describe('unknown message type', () => {
         const handler = new OffscreenHandler(deps)
         const result = handler.handleMessage({ type: 'fetch-config' } as unknown as Message)
         expect(result).toBeNull()
+    })
+})
+
+// ---------- pause-recording ----------
+
+describe('pause-recording', () => {
+    it('calls session.pause()', async () => {
+        const deps = createMockDeps()
+        const handler = new OffscreenHandler(deps)
+        await handler.handleMessage({ type: 'pause-recording', trigger: 'keyboard-shortcut' })
+        expect(deps.session.pause).toHaveBeenCalled()
+    })
+})
+
+// ---------- resume-recording ----------
+
+describe('resume-recording', () => {
+    it('calls session.resume()', async () => {
+        const deps = createMockDeps()
+        const handler = new OffscreenHandler(deps)
+        await handler.handleMessage({ type: 'resume-recording', trigger: 'keyboard-shortcut' })
+        expect(deps.session.resume).toHaveBeenCalled()
+    })
+})
+
+// ---------- pause/resume timer coordination ----------
+
+describe('pause/resume timer coordination', () => {
+    beforeEach(() => {
+        vi.useFakeTimers()
+    })
+
+    afterEach(() => {
+        vi.useRealTimers()
+    })
+
+    it('pausing recording pauses the timer', async () => {
+        const deps = createMockDeps({
+            getLocationHash: vi.fn().mockReturnValue('#recording'),
+        })
+        const handler = new OffscreenHandler(deps)
+
+        // Start with timer
+        await handler.handleMessage({
+            type: 'update-recording-timer',
+            enabled: true,
+            durationMinutes: 1,
+        })
+
+        // Advance 30 seconds
+        vi.advanceTimersByTime(30_000)
+
+        // Pause recording
+        await handler.handleMessage({ type: 'pause-recording', trigger: 'keyboard-shortcut' })
+
+        // Advance past original timer end
+        vi.advanceTimersByTime(60_000)
+        await Promise.resolve()
+
+        // Timer should NOT have expired
+        expect(deps.sendRuntimeMessage).not.toHaveBeenCalledWith({ type: 'timer-expired' })
+    })
+
+    it('pausing recording does not send timer-updated', async () => {
+        const deps = createMockDeps({
+            getLocationHash: vi.fn().mockReturnValue('#recording'),
+        })
+        const handler = new OffscreenHandler(deps)
+
+        await handler.handleMessage({
+            type: 'update-recording-timer',
+            enabled: true,
+            durationMinutes: 1,
+        })
+
+            // Clear the timer-updated from setRecordingTimer
+            ; (deps.sendRuntimeMessage as import('vitest').Mock).mockClear()
+
+        vi.advanceTimersByTime(30_000)
+        await handler.handleMessage({ type: 'pause-recording', trigger: 'keyboard-shortcut' })
+
+        // timer-updated should NOT have been sent on pause
+        expect(deps.sendRuntimeMessage).not.toHaveBeenCalledWith(
+            expect.objectContaining({ type: 'timer-updated' }),
+        )
+    })
+
+    it('resuming recording sends timer-updated with new stopAtMs', async () => {
+        const deps = createMockDeps({
+            getLocationHash: vi.fn().mockReturnValue('#recording'),
+        })
+        const handler = new OffscreenHandler(deps)
+
+        // Start with 1-minute timer
+        await handler.handleMessage({
+            type: 'update-recording-timer',
+            enabled: true,
+            durationMinutes: 1,
+        })
+
+        // Advance 30 seconds (30s remaining)
+        vi.advanceTimersByTime(30_000)
+
+        // Pause
+        await handler.handleMessage({ type: 'pause-recording', trigger: 'keyboard-shortcut' })
+
+        // Wait 10 seconds while paused
+        vi.advanceTimersByTime(10_000)
+
+        // Resume
+        await handler.handleMessage({ type: 'resume-recording', trigger: 'keyboard-shortcut' })
+
+        // timer-updated should have been sent with a new stopAtMs
+        expect(deps.sendRuntimeMessage).toHaveBeenCalledWith(
+            expect.objectContaining({ type: 'timer-updated', stopAtMs: expect.any(Number) }),
+        )
+
+        // Timer should fire after remaining ~30 seconds
+        vi.advanceTimersByTime(30_001)
+        await Promise.resolve()
+
+        expect(deps.sendRuntimeMessage).toHaveBeenCalledWith({ type: 'timer-expired' })
     })
 })

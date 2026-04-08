@@ -12,6 +12,8 @@ export interface ServiceWorkerDeps {
     getConfiguration: () => Promise<Configuration>
     getRemoteConfiguration: () => Promise<Configuration | null>
     stopRecording: (trigger: Trigger, skipConfirmation?: boolean) => Promise<void>
+    pauseRecording: (trigger: Trigger) => Promise<void>
+    resumeRecording: (trigger: Trigger) => Promise<void>
     cancelRecording: (error: string) => Promise<void>
     broadcastRecordingState: () => Promise<void>
     updateActionTitle: (state: RecordingState) => Promise<void>
@@ -41,6 +43,10 @@ export async function handleMessage(
             return { fireAndForget: deps.stopRecording('tab-track-ended', true) }
         case 'timer-expired':
             return { fireAndForget: deps.stopRecording('timer', true) }
+        case 'pause-recording':
+            return { fireAndForget: deps.pauseRecording(message.trigger) }
+        case 'resume-recording':
+            return { fireAndForget: deps.resumeRecording(message.trigger) }
         case 'timer-updated':
             const timerState = await deps.getRecordingState()
             if (timerState.isRecording) {

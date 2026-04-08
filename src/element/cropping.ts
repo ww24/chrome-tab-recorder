@@ -94,14 +94,15 @@ export class Cropping extends LitElement {
     private handleMessage = (message: RecordingStateMessage) => {
         if (message.type === 'recording-state') {
             const wasRecording = this.isRecording
-            this.isRecording = message.isRecording
-            this.screenSize = message.screenSize ?? null
+            const state = message.data
+            this.isRecording = state.isRecording
+            this.screenSize = state.screenSize ?? null
 
             // Update preview state based on recording state change
             if (this.isTabActive) {
-                if (message.isRecording && !wasRecording) {
+                if (state.isRecording && !wasRecording) {
                     this.startPreview()
-                } else if (!message.isRecording && wasRecording) {
+                } else if (!state.isRecording && wasRecording) {
                     this.stopPreview()
                 }
             }

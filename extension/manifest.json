@@ -40,6 +40,9 @@
         "toggle-recording": {
             "description": "Toggle start/stop recording"
         },
+        "toggle-pause-recording": {
+            "description": "Toggle pause/resume recording"
+        },
         "open-option-page": {
             "description": "Open options page"
         }

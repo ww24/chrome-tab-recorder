@@ -29,7 +29,7 @@ function createMockFileManager(overrides: Partial<FileManager> = {}): FileManage
 function createMockOutputManager(): OutputManager & { createAudioTrackOutput: Mock } {
     return {
         createOutput: vi.fn(),
-        addTracks: vi.fn().mockReturnValue([]),
+        addTracks: vi.fn().mockReturnValue({ sources: [], errorPromises: [] }),
         createAudioTrackOutput: vi.fn((): OutputHandle => ({
             output: {
                 start: vi.fn().mockResolvedValue(undefined),
@@ -38,6 +38,7 @@ function createMockOutputManager(): OutputManager & { createAudioTrackOutput: Mo
                 addAudioTrack: vi.fn(),
                 state: 'idle',
             } as unknown as import('mediabunny').Output,
+            sources: [],
             errorPromises: [Promise.resolve()],
         })),
     } as unknown as OutputManager & { createAudioTrackOutput: Mock }
@@ -174,6 +175,7 @@ describe('AudioSeparationManager', () => {
             const outputs: AudioSeparationOutputs = {
                 tabOutput: { finalize: tabFinalize, cancel: vi.fn() } as unknown as import('mediabunny').Output,
                 micOutput: { finalize: micFinalize, cancel: vi.fn() } as unknown as import('mediabunny').Output,
+                sources: [],
                 clonedTracks: [],
                 errorPromises: [],
             }
@@ -194,6 +196,7 @@ describe('AudioSeparationManager', () => {
             const outputs: AudioSeparationOutputs = {
                 tabOutput: { finalize: tabFinalize, cancel: vi.fn() } as unknown as import('mediabunny').Output,
                 micOutput: { finalize: micFinalize, cancel: vi.fn() } as unknown as import('mediabunny').Output,
+                sources: [],
                 clonedTracks: [],
                 errorPromises: [],
             }
@@ -214,6 +217,7 @@ describe('AudioSeparationManager', () => {
             const outputs: AudioSeparationOutputs = {
                 tabOutput: { finalize: tabFinalize, cancel: vi.fn() } as unknown as import('mediabunny').Output,
                 micOutput: { finalize: micFinalize, cancel: vi.fn() } as unknown as import('mediabunny').Output,
+                sources: [],
                 clonedTracks: [],
                 errorPromises: [],
             }
@@ -236,6 +240,7 @@ describe('AudioSeparationManager', () => {
             const outputs: AudioSeparationOutputs = {
                 tabOutput: { finalize: vi.fn(), cancel: tabCancel } as unknown as import('mediabunny').Output,
                 micOutput: { finalize: vi.fn(), cancel: micCancel } as unknown as import('mediabunny').Output,
+                sources: [],
                 clonedTracks: [],
                 errorPromises: [],
             }
@@ -256,6 +261,7 @@ describe('AudioSeparationManager', () => {
             const outputs: AudioSeparationOutputs = {
                 tabOutput: { finalize: vi.fn(), cancel: tabCancel } as unknown as import('mediabunny').Output,
                 micOutput: { finalize: vi.fn(), cancel: micCancel } as unknown as import('mediabunny').Output,
+                sources: [],
                 clonedTracks: [],
                 errorPromises: [],
             }
@@ -276,6 +282,7 @@ describe('AudioSeparationManager', () => {
             const outputs: AudioSeparationOutputs = {
                 tabOutput: { finalize: vi.fn(), cancel: tabCancel } as unknown as import('mediabunny').Output,
                 micOutput: { finalize: vi.fn(), cancel: micCancel } as unknown as import('mediabunny').Output,
+                sources: [],
                 clonedTracks: [],
                 errorPromises: [],
             }

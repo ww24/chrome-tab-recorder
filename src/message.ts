@@ -1,4 +1,5 @@
 import type { Resolution, Configuration, SyncConfiguration, CropRegion, VideoRecordingMode } from './configuration'
+import type { RecordingState } from './handler'
 
 export const TIMER_STOP_CONFIRM_PENDING_KEY = 'timerStopConfirmPending'
 export const TIMER_STOP_TRIGGER_KEY = 'timerStopTrigger'
@@ -8,6 +9,8 @@ export type Message =
     | StartRecordingMessage
     | TabTrackEndedMessage
     | StopRecordingMessage
+    | PauseRecordingMessage
+    | ResumeRecordingMessage
     | UnexpectedRecordingStateMessage
     | CancelRecordingMessage
     | ResizeWindowMessage
@@ -60,6 +63,16 @@ export interface StopRecordingMessage {
     trigger: Trigger;
 }
 
+export interface PauseRecordingMessage {
+    type: 'pause-recording';
+    trigger: Trigger;
+}
+
+export interface ResumeRecordingMessage {
+    type: 'resume-recording';
+    trigger: Trigger;
+}
+
 export interface UnexpectedRecordingStateMessage {
     type: 'unexpected-recording-state';
     error: string;
@@ -91,10 +104,7 @@ export interface SaveConfigSyncMessage {
 // Recording state notification (service_worker → option page)
 export interface RecordingStateMessage {
     type: 'recording-state';
-    isRecording: boolean;
-    screenSize?: Resolution;
-    startAtMs?: number;
-    stopAtMs?: number;
+    data: RecordingState;
 }
 
 // Request current recording state (option page → service_worker)
