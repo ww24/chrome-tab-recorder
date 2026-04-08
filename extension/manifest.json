@@ -2,7 +2,7 @@
     "manifest_version": 3,
     "name": "Instant Tab Recorder",
     "short_name": "Tab Recorder",
-    "description": "Blazing simple tab recorder.",
+    "description": "Blazingly simple tab recorder.",
     "version": "1.6.0",
     "minimum_chrome_version": "140",
     "icons": {
