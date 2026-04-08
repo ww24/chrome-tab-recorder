@@ -128,6 +128,8 @@ export class RecordList extends LitElement {
 
     private recordingStartAtMs: number | null = null
     private recordingStopAtMs: number | null = null
+    private recordingPaused: boolean = false
+    private recordingTotalPausedMs: number = 0
     private elapsedTimerId?: ReturnType<typeof setInterval>
 
     public constructor() {
@@ -160,10 +162,18 @@ export class RecordList extends LitElement {
     private handleMessage = async (message: Message) => {
         try {
             switch (message.type) {
-                case 'recording-state':
-                    if (message.isRecording && message.startAtMs != null) {
-                        this.startElapsedTimer(message.startAtMs)
-                        this.recordingStopAtMs = message.stopAtMs ?? null
+                case 'recording-state': {
+                    const state = message.data
+                    if (state.isRecording && state.startAtMs != null) {
+                        this.recordingTotalPausedMs = state.totalPausedMs ?? 0
+                        if (state.isPaused) {
+                            this.recordingPaused = true
+                            this.pauseElapsedTimer(state.startAtMs)
+                        } else {
+                            this.recordingPaused = false
+                            this.startElapsedTimer(state.startAtMs)
+                        }
+                        this.recordingStopAtMs = state.stopAtMs ?? null
                         this.updateTimerStopText()
                     } else {
                         this.stopElapsedTimer()
@@ -172,6 +182,7 @@ export class RecordList extends LitElement {
                     await this.updateEstimate()
                     await this.checkStoredRecordingError()
                     return
+                }
             }
         } catch (e) {
             console.error(e)
@@ -220,7 +231,7 @@ export class RecordList extends LitElement {
                     })}
                 <div class="meta" title="file size"><md-icon>storage</md-icon> ${formatNum((record.size + record.subFilesSize) / 1024 / 1024, 2)} MB ${record.subFilesSize > 0 ? html` <span title="separated audio file size">(${formatNum(record.subFilesSize / 1024 / 1024, 2)} MB separated)</span>` : ''}</div>
                 ${record.recordedAt != null ? html`<div class="meta" title="recorded at"><md-icon>schedule</md-icon> ${RecordList.dateTimeFormat.format(record.recordedAt)}</div>` : ''}
-                ${record.isRecording ? html`<div class="meta recording" title="recording"><md-icon>screen_record</md-icon> Recording ${this.elapsedTimeText}${this.timerStopText ? html` <span title="timer stop time">(⏱ stops at ${this.timerStopText})</span>` : ''}</div>` : ''}
+                ${record.isRecording ? html`<div class="meta recording" title="recording"><md-icon>screen_record</md-icon> ${this.recordingPaused ? 'Paused' : 'Recording'} ${this.elapsedTimeText}${this.timerStopText ? html` <span title="timer stop time">(⏱ ${this.recordingPaused ? 'timer paused' : `stops at ${this.timerStopText}`})</span>` : ''}</div>` : ''}
                 <md-filled-icon-button slot="end" ?disabled=${record.isRecording} @click=${this.playRecord(record)}>
                     <md-icon>play_arrow</md-icon>
                 </md-filled-icon-button>
@@ -311,10 +322,22 @@ export class RecordList extends LitElement {
 
     private startElapsedTimer(startAtMs: number) {
         if (this.recordingStartAtMs === startAtMs && this.elapsedTimerId != null) return
-        this.stopElapsedTimer()
+        if (this.elapsedTimerId != null) {
+            clearInterval(this.elapsedTimerId)
+            this.elapsedTimerId = undefined
+        }
         this.recordingStartAtMs = startAtMs
         this.updateElapsedTime()
         this.elapsedTimerId = setInterval(() => this.updateElapsedTime(), 1000)
+    }
+
+    private pauseElapsedTimer(startAtMs: number) {
+        if (this.elapsedTimerId != null) {
+            clearInterval(this.elapsedTimerId)
+            this.elapsedTimerId = undefined
+        }
+        this.recordingStartAtMs = startAtMs
+        this.updateElapsedTime()
     }
 
     private stopElapsedTimer() {
@@ -324,13 +347,15 @@ export class RecordList extends LitElement {
         }
         this.recordingStartAtMs = null
         this.recordingStopAtMs = null
+        this.recordingPaused = false
+        this.recordingTotalPausedMs = 0
         this.elapsedTimeText = ''
         this.timerStopText = ''
     }
 
     private updateElapsedTime() {
         if (this.recordingStartAtMs == null) return
-        const elapsed = Date.now() - this.recordingStartAtMs
+        const elapsed = Date.now() - this.recordingStartAtMs - this.recordingTotalPausedMs
         this.elapsedTimeText = formatElapsedTime(elapsed)
         this.updateTimerStopText()
     }

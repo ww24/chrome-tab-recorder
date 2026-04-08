@@ -54,6 +54,9 @@ export function parseApiPath(pathname: string): { route: string; name?: string }
 
 export interface RecordingState {
     isRecording: boolean;
+    isPaused?: boolean;
+    totalPausedMs?: number;
+    pausedAtMs?: number;
     startAtMs?: number;
     screenSize?: Resolution;
     recordingMode?: VideoRecordingMode;

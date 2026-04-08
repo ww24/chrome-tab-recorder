@@ -155,4 +155,47 @@ describe('buildRecordingTitle', () => {
         const title = buildRecordingTitle(appName, state, 0)
         expect(title).toContain('video: on / audio: on / mic: off')
     })
+
+    it('shows Paused instead of Recording when isPaused is true', () => {
+        const state: RecordingState = { ...baseState, isPaused: true }
+        const title = buildRecordingTitle(appName, state, 1000)
+        expect(title).toContain('Paused (00:00)')
+        expect(title).not.toContain('Recording')
+    })
+
+    it('subtracts totalPausedMs from elapsed time', () => {
+        const state: RecordingState = { ...baseState, startAtMs: 0, totalPausedMs: 30 * 60_000 }
+        const title = buildRecordingTitle(appName, state, 90 * 60_000)
+        // 90 min wall - 30 min paused = 60 min elapsed = 01:00
+        expect(title).toContain('Recording (01:00)')
+    })
+
+    it('shows Paused with correct elapsed time minus paused time', () => {
+        const state: RecordingState = { ...baseState, startAtMs: 0, isPaused: true, totalPausedMs: 10 * 60_000, pausedAtMs: 50 * 60_000 }
+        const title = buildRecordingTitle(appName, state, 60 * 60_000)
+        // 60 min wall - 10 min previous paused - 10 min current pause (60-50) = 40 min elapsed
+        expect(title).toContain('Paused (00:40)')
+    })
+
+    it('includes current pause duration from pausedAtMs', () => {
+        const state: RecordingState = { ...baseState, startAtMs: 0, isPaused: true, pausedAtMs: 20 * 60_000 }
+        const title = buildRecordingTitle(appName, state, 30 * 60_000)
+        // 30 min wall - 10 min current pause (30-20) = 20 min elapsed
+        expect(title).toContain('Paused (00:20)')
+    })
+
+    it('shows timer remaining when recording', () => {
+        const state: RecordingState = { ...baseState, stopAtMs: 60 * 60_000 }
+        const title = buildRecordingTitle(appName, state, 30 * 60_000)
+        expect(title).toContain('Timer: 00:30 remaining')
+        expect(title).not.toContain('paused')
+    })
+
+    it('shows timer paused with frozen remaining time when isPaused', () => {
+        // stopAtMs was set before pause, pausedAtMs is when pause started
+        const state: RecordingState = { ...baseState, isPaused: true, pausedAtMs: 30 * 60_000, stopAtMs: 60 * 60_000 }
+        const title = buildRecordingTitle(appName, state, 45 * 60_000)
+        // Remaining should be frozen at stopAtMs - pausedAtMs = 30 min, not stopAtMs - now = 15 min
+        expect(title).toContain('Timer: paused (00:30 remaining)')
+    })
 })

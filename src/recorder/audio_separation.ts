@@ -2,11 +2,13 @@ import type { Output } from 'mediabunny'
 import type { VideoFormat } from '../configuration'
 import { audioSeparationContainer, containerExtension, Configuration } from '../configuration'
 import type { FileManager } from './file_manager'
-import type { OutputManager } from './output_manager'
+import type { OutputManager, PausableSource } from './output_manager'
 
 export interface AudioSeparationOutputs {
     tabOutput?: Output
     micOutput?: Output
+    /** All pausable sources across separation outputs */
+    sources: PausableSource[]
     /** Cloned media tracks that must be stopped on cleanup */
     clonedTracks: MediaStreamTrack[]
     /** Error promises from audio track sources (for logging, non-fatal) */
@@ -30,6 +32,7 @@ export class AudioSeparationManager {
         videoFormat: VideoFormat,
     ): Promise<AudioSeparationOutputs> {
         const result: AudioSeparationOutputs = {
+            sources: [],
             clonedTracks: [],
             errorPromises: [],
         }
@@ -53,6 +56,7 @@ export class AudioSeparationManager {
                     videoFormat.audioBitrate,
                 )
                 result.tabOutput = handle.output
+                result.sources.push(...handle.sources)
                 result.clonedTracks.push(tabAudioTrack)
                 result.errorPromises.push(...handle.errorPromises)
             }
@@ -74,6 +78,7 @@ export class AudioSeparationManager {
                     videoFormat.audioBitrate,
                 )
                 result.micOutput = handle.output
+                result.sources.push(...handle.sources)
                 result.clonedTracks.push(micAudioTrack)
                 result.errorPromises.push(...handle.errorPromises)
             }

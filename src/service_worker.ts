@@ -8,6 +8,8 @@ import type {
     StartRecordingMessage,
     StartRecordingResponse,
     StopRecordingMessage,
+    PauseRecordingMessage,
+    ResumeRecordingMessage,
     SaveConfigLocalMessage,
     ExceptionMessage,
     RecordingStateMessage,
@@ -31,6 +33,7 @@ const storage = new ExtensionSyncStorage()
 const APP_NAME = process.env.APP_NAME ?? 'Instant Tab Recorder'
 const DEFAULT_TITLE = process.env.DEFAULT_TITLE ?? APP_NAME
 const CONTEXT_MENU_ID = 'start-recording'
+const CONTEXT_MENU_PAUSE_ID = 'pause-recording'
 
 chrome.runtime.onInstalled.addListener(async () => {
     await createOffscreenDocument()
@@ -62,6 +65,14 @@ chrome.runtime.onInstalled.addListener(async () => {
         id: CONTEXT_MENU_ID,
         title: 'Start Recording',
         contexts: ['page'],
+    })
+
+    // Create context menu for pause/resume (hidden by default)
+    chrome.contextMenus.create({
+        id: CONTEXT_MENU_PAUSE_ID,
+        title: 'Pause Recording',
+        contexts: ['page'],
+        visible: false,
     })
 })
 
@@ -123,9 +134,18 @@ chrome.action.onClicked.addListener(async (tab: chrome.tabs.Tab) => {
 
 // Context menu click handler
 chrome.contextMenus.onClicked.addListener(async (info: chrome.contextMenus.OnClickData, tab?: chrome.tabs.Tab) => {
-    if (info.menuItemId !== CONTEXT_MENU_ID || !tab) return
     const trigger = 'context-menu'
     try {
+        if (info.menuItemId === CONTEXT_MENU_PAUSE_ID) {
+            const state = await getRecordingState()
+            if (state.isRecording && state.isPaused) {
+                await resumeRecording(trigger)
+            } else if (state.isRecording) {
+                await pauseRecording(trigger)
+            }
+            return
+        }
+        if (info.menuItemId !== CONTEXT_MENU_ID || !tab) return
         if (await getIsRecording()) {
             await stopRecording(trigger)
             return
@@ -164,6 +184,16 @@ chrome.commands.onCommand.addListener(async (command: string, tab?: chrome.tabs.
                 }
                 if (!tab) return
                 await startRecording(tab, trigger)
+                break
+            }
+            case 'toggle-pause-recording': {
+                const state = await getRecordingState()
+                if (!state.isRecording) return
+                if (state.isPaused) {
+                    await resumeRecording(trigger)
+                } else {
+                    await pauseRecording(trigger)
+                }
                 break
             }
             case 'open-option-page': {
@@ -271,12 +301,35 @@ async function cancelRecording(error: string) {
     await chrome.runtime.openOptionsPage()
 }
 
+async function pauseRecording(trigger: Trigger) {
+    const msg: PauseRecordingMessage = { type: 'pause-recording', trigger }
+    await chrome.runtime.sendMessage(msg)
+
+    const state = await getRecordingState()
+    await setRecordingState({ ...state, isPaused: true, pausedAtMs: Date.now() })
+    await updateRecordingIndications()
+    await broadcastRecordingState()
+}
+
+async function resumeRecording(trigger: Trigger) {
+    const msg: ResumeRecordingMessage = { type: 'resume-recording', trigger }
+    await chrome.runtime.sendMessage(msg)
+
+    const state = await getRecordingState()
+    const pausedDuration = state.pausedAtMs != null ? Date.now() - state.pausedAtMs : 0
+    const totalPausedMs = (state.totalPausedMs ?? 0) + pausedDuration
+    await setRecordingState({ ...state, isPaused: false, pausedAtMs: undefined, totalPausedMs })
+    await updateRecordingIndications()
+    await broadcastRecordingState()
+}
+
 async function updateRecordingIndications() {
     try {
         const state = await getRecordingState()
         await updateActionIcon(state)
         await updateActionTitle(state)
         await updateContextMenuTitle(state)
+        await updateBadge(state)
     } catch (e) {
         console.error(e)
         const msg: ExceptionMessage = {
@@ -317,17 +370,32 @@ async function updateContextMenuTitle(state: RecordingState) {
     await chrome.contextMenus.update(CONTEXT_MENU_ID, {
         title: state.isRecording ? 'Stop Recording' : 'Start Recording',
     })
+    await chrome.contextMenus.update(CONTEXT_MENU_PAUSE_ID, {
+        title: state.isPaused ? 'Resume Recording' : 'Pause Recording',
+        visible: state.isRecording,
+    })
+}
+
+// Update badge to indicate paused state
+async function updateBadge(state: RecordingState) {
+    await chrome.action.setBadgeText({ text: state.isPaused ? '⏸' : '' })
 }
 
 // Broadcast recording state to all option pages
 async function broadcastRecordingState() {
-    const { isRecording, screenSize, startAtMs, stopAtMs } = await getRecordingState()
+    const { isRecording, isPaused, totalPausedMs, pausedAtMs, screenSize, startAtMs, stopAtMs } = await getRecordingState()
+    // When paused, include current pause duration in totalPausedMs
+    const effectivePausedMs = (totalPausedMs ?? 0) + (isPaused && pausedAtMs != null ? Date.now() - pausedAtMs : 0)
     const msg: RecordingStateMessage = {
         type: 'recording-state',
-        isRecording,
-        screenSize,
-        startAtMs,
-        stopAtMs,
+        data: {
+            isRecording,
+            isPaused,
+            totalPausedMs: effectivePausedMs,
+            screenSize,
+            startAtMs,
+            stopAtMs,
+        },
     }
     try {
         await chrome.runtime.sendMessage(msg)
@@ -342,6 +410,8 @@ const messageHandlerDeps: ServiceWorkerDeps = {
     getConfiguration,
     getRemoteConfiguration,
     stopRecording,
+    pauseRecording,
+    resumeRecording,
     cancelRecording,
     broadcastRecordingState,
     updateActionTitle,

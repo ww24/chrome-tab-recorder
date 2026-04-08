@@ -21,16 +21,21 @@ export function formatHHMM(ms: number, rounding: 'floor' | 'ceil' = 'floor'): st
  * Uses a fixed timestamp so the caller controls the current time.
  */
 export function buildRecordingTitle(appName: string, state: RecordingState, now: number = Date.now()): string {
-    const elapsed = state.startAtMs != null ? formatHHMM(now - state.startAtMs) : '00:00'
+    const currentPauseDuration = state.isPaused && state.pausedAtMs != null ? now - state.pausedAtMs : 0
+    const totalPausedMs = (state.totalPausedMs ?? 0) + currentPauseDuration
+    const elapsed = state.startAtMs != null ? formatHHMM(now - state.startAtMs - totalPausedMs) : '00:00'
+    const status = state.isPaused ? `Paused (${elapsed})` : `Recording (${elapsed})`
     const video = state.recordingMode !== 'audio-only' ? 'on' : 'off'
     const audio = state.recordingMode !== 'video-only' ? 'on' : 'off'
     const mic = state.micEnabled ? 'on' : 'off'
     const timerLine = state.stopAtMs != null
-        ? `Timer: ${formatHHMM(state.stopAtMs - now, 'ceil')} remaining`
+        ? (state.isPaused
+            ? `Timer: paused (${formatHHMM(state.stopAtMs - (state.pausedAtMs ?? now), 'ceil')} remaining)`
+            : `Timer: ${formatHHMM(state.stopAtMs - now, 'ceil')} remaining`)
         : null
     return [
         appName,
-        `Recording (${elapsed})`,
+        status,
         `video: ${video} / audio: ${audio} / mic: ${mic}`,
         ...(timerLine ? [timerLine] : []),
         'Click to stop recording.',

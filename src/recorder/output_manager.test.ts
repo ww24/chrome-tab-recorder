@@ -7,10 +7,10 @@ vi.mock('mediabunny', () => {
         Output: vi.fn(function () { return mockOutput }),
         StreamTarget: vi.fn(function () { }),
         MediaStreamVideoTrackSource: vi.fn(function () {
-            return { errorPromise: Promise.resolve() }
+            return { errorPromise: Promise.resolve(), pause: vi.fn(), resume: vi.fn() }
         }),
         MediaStreamAudioTrackSource: vi.fn(function () {
-            return { errorPromise: Promise.resolve() }
+            return { errorPromise: Promise.resolve(), pause: vi.fn(), resume: vi.fn() }
         }),
         canEncodeAudio: vi.fn().mockResolvedValue(true),
         WebMOutputFormat: vi.fn(function () { }),
@@ -95,7 +95,7 @@ describe('OutputManager', () => {
             const media = createMockStream([audioTrack], [videoTrack])
             const videoFormat = createVideoFormat({ recordingMode: 'video-and-audio' })
 
-            const errorPromises = manager.addTracks(output, media, videoFormat, true)
+            const { sources, errorPromises } = manager.addTracks(output, media, videoFormat, true)
 
             expect(MediaStreamVideoTrackSource).toHaveBeenCalledWith(videoTrack, expect.objectContaining({
                 codec: 'vp9',
@@ -106,6 +106,7 @@ describe('OutputManager', () => {
             }))
             expect(output.addVideoTrack).toHaveBeenCalled()
             expect(output.addAudioTrack).toHaveBeenCalled()
+            expect(sources).toHaveLength(2)
             expect(errorPromises).toHaveLength(2)
         })
 
@@ -116,11 +117,12 @@ describe('OutputManager', () => {
             const media = createMockStream([], [videoTrack])
             const videoFormat = createVideoFormat({ recordingMode: 'video-only' })
 
-            const errorPromises = manager.addTracks(output, media, videoFormat, false)
+            const { sources, errorPromises } = manager.addTracks(output, media, videoFormat, false)
 
             expect(MediaStreamVideoTrackSource).toHaveBeenCalledWith(videoTrack, expect.any(Object))
             expect(output.addVideoTrack).toHaveBeenCalled()
             expect(output.addAudioTrack).not.toHaveBeenCalled()
+            expect(sources).toHaveLength(1)
             expect(errorPromises).toHaveLength(1)
         })
 
@@ -131,12 +133,13 @@ describe('OutputManager', () => {
             const media = createMockStream([audioTrack])
             const videoFormat = createVideoFormat({ recordingMode: 'audio-only', container: 'ogg' })
 
-            const errorPromises = manager.addTracks(output, media, videoFormat, true)
+            const { sources, errorPromises } = manager.addTracks(output, media, videoFormat, true)
 
             expect(MediaStreamVideoTrackSource).not.toHaveBeenCalled()
             expect(output.addVideoTrack).not.toHaveBeenCalled()
             expect(MediaStreamAudioTrackSource).toHaveBeenCalledWith(audioTrack, expect.any(Object))
             expect(output.addAudioTrack).toHaveBeenCalled()
+            expect(sources).toHaveLength(1)
             expect(errorPromises).toHaveLength(1)
         })
 
@@ -148,10 +151,11 @@ describe('OutputManager', () => {
             const media = createMockStream([audioTrack], [videoTrack])
             const videoFormat = createVideoFormat({ recordingMode: 'video-only' })
 
-            const errorPromises = manager.addTracks(output, media, videoFormat, true)
+            const { sources, errorPromises } = manager.addTracks(output, media, videoFormat, true)
 
             expect(output.addVideoTrack).toHaveBeenCalled()
             expect(output.addAudioTrack).toHaveBeenCalled()
+            expect(sources).toHaveLength(2)
             expect(errorPromises).toHaveLength(2)
         })
 
@@ -161,10 +165,11 @@ describe('OutputManager', () => {
             const media = createMockStream() // no tracks
             const videoFormat = createVideoFormat({ recordingMode: 'video-and-audio' })
 
-            const errorPromises = manager.addTracks(output, media, videoFormat, true)
+            const { sources, errorPromises } = manager.addTracks(output, media, videoFormat, true)
 
             expect(output.addVideoTrack).not.toHaveBeenCalled()
             expect(output.addAudioTrack).not.toHaveBeenCalled()
+            expect(sources).toHaveLength(0)
             expect(errorPromises).toHaveLength(0)
         })
     })
@@ -180,6 +185,7 @@ describe('OutputManager', () => {
             )
 
             expect(handle.output).toBeDefined()
+            expect(handle.sources).toHaveLength(1)
             expect(handle.errorPromises).toHaveLength(1)
             expect(MediaStreamAudioTrackSource).toHaveBeenCalledWith(audioTrack, expect.objectContaining({
                 codec: 'opus',

@@ -17,6 +17,10 @@ export interface OffscreenSession {
     start(request: StartRecording, config: RecordingConfig): Promise<StartRecordingResponse>
     stop(): Promise<RecordingResult | null>
     cancel(): Promise<number>
+    pause(): void
+    resume(): void
+    readonly isPaused: boolean
+    readonly elapsedPausedMs: number
     startPreview(): void
     stopPreview(): void
     updateCropRegion(region: CropRegion): void
@@ -47,6 +51,7 @@ export interface HandleOffscreenMessageResult {
 export class OffscreenHandler {
     private timerTimeoutId: ReturnType<typeof setTimeout> | null = null
     private timerStopAtMs: number | null = null
+    private timerRemainingMs: number | null = null
 
     constructor(private readonly deps: OffscreenDeps) { }
 
@@ -56,6 +61,10 @@ export class OffscreenHandler {
                 return this.handleStartRecording(message.data, message.trigger)
             case 'stop-recording':
                 return this.handleStopRecording(message.trigger)
+            case 'pause-recording':
+                return this.handlePauseRecording()
+            case 'resume-recording':
+                return this.handleResumeRecording()
             case 'cancel-recording':
                 return this.handleCancelRecording()
             case 'save-config-local':
@@ -65,15 +74,9 @@ export class OffscreenHandler {
             case 'exception':
                 return Promise.reject(message.data)
             case 'preview-control':
-                if (message.action === 'start') {
-                    this.deps.session.startPreview()
-                } else {
-                    this.deps.session.stopPreview()
-                }
-                return Promise.resolve({})
+                return this.handlePreviewControl(message.action)
             case 'update-crop-region':
-                this.deps.session.updateCropRegion(message.region)
-                return Promise.resolve({})
+                return this.handleUpdateCropRegion(message.region)
         }
         return null
     }
@@ -163,6 +166,32 @@ export class OffscreenHandler {
         return {}
     }
 
+    private async handlePreviewControl(action: 'start' | 'stop'): Promise<HandleOffscreenMessageResult> {
+        if (action === 'start') {
+            this.deps.session.startPreview()
+        } else {
+            this.deps.session.stopPreview()
+        }
+        return {}
+    }
+
+    private async handleUpdateCropRegion(region: CropRegion): Promise<HandleOffscreenMessageResult> {
+        this.deps.session.updateCropRegion(region)
+        return {}
+    }
+
+    private async handlePauseRecording(): Promise<HandleOffscreenMessageResult> {
+        this.deps.session.pause()
+        this.pauseRecordingTimer()
+        return {}
+    }
+
+    private async handleResumeRecording(): Promise<HandleOffscreenMessageResult> {
+        this.deps.session.resume()
+        await this.resumeRecordingTimer()
+        return {}
+    }
+
     private async handleSaveConfigLocal(data: Configuration): Promise<HandleOffscreenMessageResult> {
         this.deps.mergeRemoteConfiguration(data)
         await this.deps.flush()
@@ -179,7 +208,7 @@ export class OffscreenHandler {
         } else {
             this.clearRecordingTimer()
         }
-        this.sendTimerUpdated()
+        await this.sendTimerUpdated()
         return {}
     }
 
@@ -207,12 +236,44 @@ export class OffscreenHandler {
             this.timerTimeoutId = null
         }
         this.timerStopAtMs = null
+        this.timerRemainingMs = null
     }
 
-    private sendTimerUpdated(): void {
+    private pauseRecordingTimer(): void {
+        if (this.timerTimeoutId == null || this.timerStopAtMs == null) return
+        this.timerRemainingMs = Math.max(0, this.timerStopAtMs - Date.now())
+        clearTimeout(this.timerTimeoutId)
+        this.timerTimeoutId = null
+        this.timerStopAtMs = null
+        // Don't send timer-updated here: the stale stopAtMs in the service worker state
+        // is used to display "timer paused" with remaining time while recording is paused.
+        // On resume, resumeRecordingTimer() sends the updated stopAtMs.
+    }
+
+    private async resumeRecordingTimer(): Promise<void> {
+        if (this.timerRemainingMs == null) return
+        const remainingMs = this.timerRemainingMs
+        this.timerRemainingMs = null
+        this.timerStopAtMs = Date.now() + remainingMs
+        this.timerTimeoutId = setTimeout(async () => {
+            this.timerTimeoutId = null
+            this.timerStopAtMs = null
+            try {
+                const msg: TimerExpiredMessage = { type: 'timer-expired' }
+                await this.deps.sendRuntimeMessage(msg)
+            } catch (e) {
+                console.error('Failed to send timer-expired message:', e)
+            }
+        }, remainingMs)
+        await this.sendTimerUpdated()
+    }
+
+    private async sendTimerUpdated(): Promise<void> {
         const msg: TimerUpdatedMessage = { type: 'timer-updated', stopAtMs: this.timerStopAtMs }
-        this.deps.sendRuntimeMessage(msg).catch(e => {
+        try {
+            await this.deps.sendRuntimeMessage(msg)
+        } catch (e) {
             console.error('Failed to send timer-updated message:', e)
-        })
+        }
     }
 }

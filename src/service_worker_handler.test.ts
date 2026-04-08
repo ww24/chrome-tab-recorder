@@ -19,6 +19,8 @@ function createMockDeps(overrides: Partial<ServiceWorkerDeps> = {}): ServiceWork
         getConfiguration: vi.fn().mockResolvedValue({} as Configuration),
         getRemoteConfiguration: vi.fn().mockResolvedValue(null),
         stopRecording: vi.fn().mockResolvedValue(undefined),
+        pauseRecording: vi.fn().mockResolvedValue(undefined),
+        resumeRecording: vi.fn().mockResolvedValue(undefined),
         cancelRecording: vi.fn().mockResolvedValue(undefined),
         broadcastRecordingState: vi.fn().mockResolvedValue(undefined),
         updateActionTitle: vi.fn().mockResolvedValue(undefined),
@@ -202,5 +204,43 @@ describe('unknown message type', () => {
         const deps = createMockDeps()
         const result = await handleMessage({ type: 'start-recording' } as unknown as Message, deps)
         expect(result).toEqual({})
+    })
+})
+
+// ---------- pause-recording ----------
+
+describe('pause-recording', () => {
+    it('calls pauseRecording via fireAndForget', async () => {
+        const deps = createMockDeps()
+        const result = await handleMessage({ type: 'pause-recording', trigger: 'keyboard-shortcut' }, deps)
+        expect(result.fireAndForget).toBeInstanceOf(Promise)
+        await result.fireAndForget
+        expect(deps.pauseRecording).toHaveBeenCalledWith('keyboard-shortcut')
+    })
+
+    it('preserves context-menu trigger', async () => {
+        const deps = createMockDeps()
+        const result = await handleMessage({ type: 'pause-recording', trigger: 'context-menu' }, deps)
+        await result.fireAndForget
+        expect(deps.pauseRecording).toHaveBeenCalledWith('context-menu')
+    })
+})
+
+// ---------- resume-recording ----------
+
+describe('resume-recording', () => {
+    it('calls resumeRecording via fireAndForget', async () => {
+        const deps = createMockDeps()
+        const result = await handleMessage({ type: 'resume-recording', trigger: 'keyboard-shortcut' }, deps)
+        expect(result.fireAndForget).toBeInstanceOf(Promise)
+        await result.fireAndForget
+        expect(deps.resumeRecording).toHaveBeenCalledWith('keyboard-shortcut')
+    })
+
+    it('preserves context-menu trigger', async () => {
+        const deps = createMockDeps()
+        const result = await handleMessage({ type: 'resume-recording', trigger: 'context-menu' }, deps)
+        await result.fireAndForget
+        expect(deps.resumeRecording).toHaveBeenCalledWith('context-menu')
     })
 })

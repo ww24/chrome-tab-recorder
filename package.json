@@ -8,8 +8,9 @@
     "build:prod": "rm -f extension.zip && ENV_NAME=production vite build && zip -r extension.zip extension",
     "watch": "vite build --watch --mode development",
     "lint": "eslint src scripts *.mjs *.ts",
+    "lint:fix": "npm run lint -- --fix",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage",
+    "test:coverage": "npm test -- --coverage",
     "site": "vite dev --config docs/vite.config.ts",
     "site:build": "vite build --config docs/vite.config.ts"
   },

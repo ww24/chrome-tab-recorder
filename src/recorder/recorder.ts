@@ -6,12 +6,13 @@ import type { Preview } from '../preview'
 import type { Crop } from '../crop'
 import type { AudioMixer } from './audio_mixer'
 import type { MediaCapture } from './media_capture'
-import type { OutputManager } from './output_manager'
+import type { OutputManager, PausableSource } from './output_manager'
 import type { AudioSeparationManager, AudioSeparationOutputs } from './audio_separation'
 import type { FileManager } from './file_manager'
 import { sendException } from '../sentry'
+import type { OffscreenSession } from '../offscreen_handler'
 
-export type RecorderState = 'idle' | 'starting' | 'recording'
+export type RecorderState = 'idle' | 'starting' | 'recording' | 'paused'
 
 export interface RecordingConfig {
     videoFormat: VideoFormat
@@ -34,12 +35,15 @@ export interface RecorderCallbacks {
     onTick: () => Promise<void>
 }
 
-export class RecordingSession {
+export class RecordingSession implements OffscreenSession {
     private _state: RecorderState = 'idle'
     private mainOutput: Output | undefined
     private separationOutputs: AudioSeparationOutputs | undefined
+    private allSources: PausableSource[] = []
     private mediaTracks: MediaStreamTrack[] = []
     private recordingStartTime = 0
+    private totalPausedMs = 0
+    private pausedAtMs = 0
     private recordingFileHandle: FileSystemFileHandle | undefined
     private tickTimerId: ReturnType<typeof setInterval> | undefined
     private currentVideoTrack: MediaStreamTrack | null = null
@@ -111,7 +115,8 @@ export class RecordingSession {
 
             // Add tracks to main output
             const hasAudioTrack = hasAudio(videoFormat.recordingMode) || (microphone.enabled && micStream != null)
-            const errorPromises = this.outputManager.addTracks(this.mainOutput, media, videoFormat, hasAudioTrack)
+            const { sources: mainSources, errorPromises } = this.outputManager.addTracks(this.mainOutput, media, videoFormat, hasAudioTrack)
+            this.allSources.push(...mainSources)
 
             // Collect all media tracks for cleanup
             this.mediaTracks = [
@@ -126,6 +131,7 @@ export class RecordingSession {
                         startAtMs, tabMedia, micStream, videoFormat,
                     )
                     this.mediaTracks.push(...this.separationOutputs.clonedTracks)
+                    this.allSources.push(...this.separationOutputs.sources)
                     // Report first separation error to Sentry (non-fatal)
                     Promise.all(this.separationOutputs.errorPromises).catch(e => {
                         console.error('Audio separation source error:', e)
@@ -196,6 +202,13 @@ export class RecordingSession {
         }
         if (this.mainOutput.state !== 'started') return null
 
+        // If paused, resume sources before finalizing so the encoder can flush
+        if (this._state === 'paused') {
+            this.totalPausedMs += Date.now() - this.pausedAtMs
+            this.pausedAtMs = 0
+            for (const source of this.allSources) source.resume()
+        }
+
         try {
             this.preview.stop()
 
@@ -209,8 +222,8 @@ export class RecordingSession {
             await this.mainOutput.finalize()
 
             const file = await this.recordingFileHandle?.getFile()
-            const duration = Date.now() - this.recordingStartTime
-            console.info(`stopped: duration=${duration / 1000}s`)
+            const duration = Date.now() - this.recordingStartTime - this.totalPausedMs
+            console.info(`stopped: duration=${duration / 1000}s (paused: ${this.totalPausedMs / 1000}s)`)
 
             return {
                 startAtMs: this.recordingStartTime,
@@ -242,6 +255,33 @@ export class RecordingSession {
         }
     }
 
+    pause(): void {
+        if (this._state !== 'recording') {
+            throw new Error(`Cannot pause in state '${this._state}'`)
+        }
+        this.pausedAtMs = Date.now()
+        for (const source of this.allSources) source.pause()
+        this._state = 'paused'
+    }
+
+    resume(): void {
+        if (this._state !== 'paused') {
+            throw new Error(`Cannot resume in state '${this._state}'`)
+        }
+        this.totalPausedMs += Date.now() - this.pausedAtMs
+        this.pausedAtMs = 0
+        for (const source of this.allSources) source.resume()
+        this._state = 'recording'
+    }
+
+    get isPaused(): boolean {
+        return this._state === 'paused'
+    }
+
+    get elapsedPausedMs(): number {
+        return this.totalPausedMs
+    }
+
     startPreview(): void {
         if (this.currentVideoTrack != null) {
             this.preview.start(this.currentVideoTrack)
@@ -263,7 +303,10 @@ export class RecordingSession {
         }
         this.mainOutput = undefined
         this.separationOutputs = undefined
+        this.allSources = []
         this.recordingStartTime = 0
+        this.totalPausedMs = 0
+        this.pausedAtMs = 0
         this.recordingFileHandle = undefined
         this.mediaTracks.forEach(t => t.stop())
         this.mediaTracks = []

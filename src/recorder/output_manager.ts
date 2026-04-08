@@ -7,8 +7,11 @@ import {
 import type { VideoFormat } from '../configuration'
 import { createOutputFormat, resolveBitrate, hasVideo } from '../configuration'
 
+export type PausableSource = MediaStreamVideoTrackSource | MediaStreamAudioTrackSource
+
 export interface OutputHandle {
     output: Output
+    sources: PausableSource[]
     errorPromises: Promise<void>[]
 }
 
@@ -25,14 +28,15 @@ export class OutputManager {
 
     /**
      * Add video and/or audio tracks to the output based on recording mode.
-     * Returns an array of error promises from the track sources.
+     * Returns an array of error promises and an array of pausable sources.
      */
     addTracks(
         output: Output,
         media: MediaStream,
         videoFormat: VideoFormat,
         hasAudioTrack: boolean,
-    ): Promise<void>[] {
+    ): { sources: PausableSource[]; errorPromises: Promise<void>[] } {
+        const sources: PausableSource[] = []
         const errorPromises: Promise<void>[] = []
 
         // Add video track
@@ -48,6 +52,7 @@ export class OutputManager {
                     },
                 )
                 output.addVideoTrack(videoSource)
+                sources.push(videoSource)
                 errorPromises.push(
                     videoSource.errorPromise.catch(e => {
                         console.error('Video source error:', e)
@@ -69,6 +74,7 @@ export class OutputManager {
                     },
                 )
                 output.addAudioTrack(audioSource)
+                sources.push(audioSource)
                 errorPromises.push(
                     audioSource.errorPromise.catch(e => {
                         console.error('Audio source error:', e)
@@ -78,7 +84,7 @@ export class OutputManager {
             }
         }
 
-        return errorPromises
+        return { sources, errorPromises }
     }
 
     /**
@@ -100,6 +106,7 @@ export class OutputManager {
         output.addAudioTrack(audioSource)
         return {
             output,
+            sources: [audioSource],
             errorPromises: [audioSource.errorPromise],
         }
     }
