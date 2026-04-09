@@ -28,8 +28,8 @@ vi.mock('@mediabunny/flac-encoder', () => ({
 }))
 
 import { Output, MediaStreamVideoTrackSource, MediaStreamAudioTrackSource } from 'mediabunny'
-import { OutputManager } from './output_manager'
-import { VideoFormat } from '../configuration'
+import { OutputManager } from '../../src/recorder/output_manager'
+import { VideoFormat } from '../../src/configuration'
 
 // ---------- helpers ----------
 

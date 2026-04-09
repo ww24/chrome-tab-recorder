@@ -5,7 +5,7 @@ vi.mock('@mediabunny/flac-encoder', () => ({
     registerFlacEncoder: vi.fn(),
 }))
 
-import { FileManager } from './file_manager'
+import { FileManager } from '../../src/recorder/file_manager'
 
 // ---------- OPFS mocks ----------
 

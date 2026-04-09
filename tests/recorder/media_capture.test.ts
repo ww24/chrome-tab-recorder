@@ -7,8 +7,8 @@ vi.mock('@mediabunny/flac-encoder', () => ({
     registerFlacEncoder: vi.fn(),
 }))
 
-import { MediaCapture } from './media_capture'
-import type { MediaDevicesProvider } from './media_capture'
+import { MediaCapture } from '../../src/recorder/media_capture'
+import type { MediaDevicesProvider } from '../../src/recorder/media_capture'
 
 // ---------- mocks ----------
 

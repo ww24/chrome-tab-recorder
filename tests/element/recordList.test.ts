@@ -3,10 +3,10 @@ import { html } from 'lit'
 import { describe, test, expect, vi } from 'vitest'
 import { shadowQuery, elementUpdated } from './test-helpers'
 import { getMessageListenersCount } from './test-setup'
-import './recordList'
+import '../../src/element/recordList'
 
 // Mock the api_client module used by RecordList
-vi.mock('../api_client', () => ({
+vi.mock('../../src/api_client', () => ({
     recordingApi: {
         listRecordings: vi.fn().mockResolvedValue([]),
         getRecordingFile: vi.fn().mockResolvedValue(null),
@@ -16,7 +16,7 @@ vi.mock('../api_client', () => ({
 }))
 
 // Mock sentry to avoid initialization errors
-vi.mock('../sentry', () => ({
+vi.mock('../../src/sentry', () => ({
     sendException: vi.fn(),
     sendFeedback: vi.fn(),
     sendEvent: vi.fn(),

@@ -7,11 +7,11 @@ vi.mock('@mediabunny/flac-encoder', () => ({
     registerFlacEncoder: vi.fn(),
 }))
 
-import { AudioSeparationManager } from './audio_separation'
-import type { AudioSeparationOutputs } from './audio_separation'
-import type { FileManager } from './file_manager'
-import type { OutputManager, OutputHandle } from './output_manager'
-import { VideoFormat } from '../configuration'
+import { AudioSeparationManager } from '../../src/recorder/audio_separation'
+import type { AudioSeparationOutputs } from '../../src/recorder/audio_separation'
+import type { FileManager } from '../../src/recorder/file_manager'
+import type { OutputManager, OutputHandle } from '../../src/recorder/output_manager'
+import { VideoFormat } from '../../src/configuration'
 
 // ---------- mocks ----------
 

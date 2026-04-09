@@ -7,10 +7,10 @@ vi.mock('@mediabunny/flac-encoder', () => ({
     registerFlacEncoder: vi.fn(),
 }))
 
-import { OffscreenHandler } from './offscreen_handler'
-import type { OffscreenDeps, OffscreenSession } from './offscreen_handler'
-import type { Message, StartRecordingResponse } from './message'
-import { Configuration, VideoFormat } from './configuration'
+import { OffscreenHandler } from '../src/offscreen_handler'
+import type { OffscreenDeps, OffscreenSession } from '../src/offscreen_handler'
+import type { Message, StartRecordingResponse } from '../src/message'
+import { Configuration, VideoFormat } from '../src/configuration'
 
 // ---------- helpers ----------
 

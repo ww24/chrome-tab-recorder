@@ -3,8 +3,8 @@ import { html } from 'lit'
 import { describe, test, expect, vi } from 'vitest'
 import { shadowQuery, shadowQueryAll, elementUpdated } from './test-helpers'
 import { getChromeMock, getMessageListenersCount } from './test-setup'
-import './cropping'
-import type { Cropping } from './cropping'
+import '../../src/element/cropping'
+import type { Cropping } from '../../src/element/cropping'
 
 describe('extension-cropping', () => {
     test('renders "Cropping" heading', async () => {

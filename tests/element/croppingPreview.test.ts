@@ -3,8 +3,8 @@ import { html } from 'lit'
 import { describe, test, expect } from 'vitest'
 import { shadowQuery, elementUpdated } from './test-helpers'
 import { getMessageListenersCount } from './test-setup'
-import './croppingPreview'
-import type { CroppingPreview } from './croppingPreview'
+import '../../src/element/croppingPreview'
+import type { CroppingPreview } from '../../src/element/croppingPreview'
 
 describe('cropping-preview', () => {
     test('renders preview container', async () => {

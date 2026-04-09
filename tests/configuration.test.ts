@@ -5,7 +5,7 @@ vi.mock('@mediabunny/flac-encoder', () => ({
     registerFlacEncoder: vi.fn(),
 }))
 
-import { migrateFromMimeType, VideoFormat, Configuration, audioSeparationContainer, isUITheme, type RecordingTimerReport } from './configuration'
+import { migrateFromMimeType, VideoFormat, Configuration, audioSeparationContainer, isUITheme, type RecordingTimerReport } from '../src/configuration'
 
 describe('migrateFromMimeType', () => {
     describe('WebM container', () => {

@@ -5,10 +5,10 @@ vi.mock('@mediabunny/flac-encoder', () => ({
     registerFlacEncoder: vi.fn(),
 }))
 
-import { handleMessage, type ServiceWorkerDeps } from './service_worker_handler'
-import type { Message } from './message'
-import type { RecordingState } from './handler'
-import type { Configuration } from './configuration'
+import { handleMessage, type ServiceWorkerDeps } from '../src/service_worker_handler'
+import type { Message } from '../src/message'
+import type { RecordingState } from '../src/handler'
+import type { Configuration } from '../src/configuration'
 
 // ---------- helpers ----------
 

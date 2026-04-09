@@ -2,9 +2,9 @@ import { render } from 'vitest-browser-lit'
 import { html } from 'lit'
 import { describe, test, expect } from 'vitest'
 import { shadowQuery, shadowQueryAll, elementUpdated } from './test-helpers'
-import './confirm'
-import type Confirm from './confirm'
-import type { RecordEntry } from './recordList'
+import '../../src/element/confirm'
+import type Confirm from '../../src/element/confirm'
+import type { RecordEntry } from '../../src/element/recordList'
 
 function makeRecord(overrides: Partial<RecordEntry> = {}): RecordEntry {
     return {

@@ -4,14 +4,14 @@ import { describe, test, expect, vi } from 'vitest'
 import { shadowQuery, shadowQueryAll, elementUpdated } from './test-helpers'
 
 // Mock sentry to avoid process.env references in browser
-vi.mock('../sentry', () => ({
+vi.mock('../../src/sentry', () => ({
     sendException: vi.fn(),
     sendFeedback: vi.fn(() => true),
     sendEvent: vi.fn(),
     FeedbackType: {},
 }))
 
-import './support'
+import '../../src/element/support'
 
 describe('extension-support', () => {
     test('renders review section with Chrome Web Store link', async () => {

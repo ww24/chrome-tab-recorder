@@ -13,16 +13,16 @@ export default defineConfig({
                 extends: true,
                 test: {
                     name: 'node',
-                    include: ['src/**/*.test.ts'],
-                    exclude: ['src/element/**/*.test.ts'],
+                    include: ['tests/**/*.test.ts'],
+                    exclude: ['tests/element/**/*.test.ts'],
                 },
             },
             {
                 extends: true,
                 test: {
                     name: 'browser',
-                    include: ['src/element/**/*.test.ts'],
-                    setupFiles: ['src/element/test-setup.ts'],
+                    include: ['tests/element/**/*.test.ts'],
+                    setupFiles: ['tests/element/test-setup.ts'],
                     browser: {
                         enabled: true,
                         provider: playwright(),

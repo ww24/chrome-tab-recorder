@@ -2,8 +2,8 @@ import { render } from 'vitest-browser-lit'
 import { html } from 'lit'
 import { describe, test, expect } from 'vitest'
 import { shadowQuery, shadowQueryAll, elementUpdated } from './test-helpers'
-import './tab'
-import type { OptionTab } from './tab'
+import '../../src/element/tab'
+import type { OptionTab } from '../../src/element/tab'
 
 function renderTab() {
     const screen = render(html`<option-tab></option-tab>`)

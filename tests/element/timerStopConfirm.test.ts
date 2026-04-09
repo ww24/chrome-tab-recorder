@@ -3,7 +3,7 @@ import { html } from 'lit'
 import { describe, test, expect } from 'vitest'
 import { shadowQuery, elementUpdated } from './test-helpers'
 import { getStorageListenersCount } from './test-setup'
-import './timerStopConfirm'
+import '../../src/element/timerStopConfirm'
 
 describe('extension-timer-stop-confirm', () => {
     test('renders md-dialog with "Stop recording?" headline', async () => {

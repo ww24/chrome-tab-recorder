@@ -1,7 +1,7 @@
 import type { Mock } from 'vitest'
 
-import { AudioMixer, SingletonAudioContextFactory } from './audio_mixer'
-import type { AudioContextFactory } from './audio_mixer'
+import { AudioMixer, SingletonAudioContextFactory } from '../../src/recorder/audio_mixer'
+import type { AudioContextFactory } from '../../src/recorder/audio_mixer'
 
 // MediaStream is not available in Node; provide a minimal polyfill for tests
 globalThis.MediaStream = class MockMediaStream {

@@ -2,8 +2,8 @@ import { render } from 'vitest-browser-lit'
 import { html } from 'lit'
 import { describe, test, expect } from 'vitest'
 import { shadowQuery, elementUpdated } from './test-helpers'
-import './alert'
-import type Alert from './alert'
+import '../../src/element/alert'
+import type Alert from '../../src/element/alert'
 
 describe('extension-alert', () => {
     test('renders md-dialog in shadow DOM', async () => {

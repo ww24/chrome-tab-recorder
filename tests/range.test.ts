@@ -1,5 +1,5 @@
-import { parseRangeHeader, resolveByteRange, generateBoundary, buildMultipartByteRangesBody } from './range'
-import type { ByteRangeSpec, ResolvedRange } from './range'
+import { parseRangeHeader, resolveByteRange, generateBoundary, buildMultipartByteRangesBody } from '../src/range'
+import type { ByteRangeSpec, ResolvedRange } from '../src/range'
 
 describe('parseRangeHeader', () => {
     describe('valid byte ranges', () => {

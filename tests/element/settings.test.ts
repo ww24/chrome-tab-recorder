@@ -3,9 +3,9 @@ import { html } from 'lit'
 import { describe, test, expect, vi } from 'vitest'
 import { shadowQuery, shadowQueryAll, elementUpdated } from './test-helpers'
 import './test-setup'
-import './settings'
-import { Settings } from './settings'
-import { Configuration } from '../configuration'
+import '../../src/element/settings'
+import { Settings } from '../../src/element/settings'
+import { Configuration } from '../../src/configuration'
 
 // Mock mediabunny to avoid actual codec detection
 vi.mock('mediabunny', () => {
@@ -49,7 +49,7 @@ vi.mock('@mediabunny/flac-encoder', () => ({
 }))
 
 // Mock theme to avoid DOM manipulation outside component
-vi.mock('../theme', () => ({
+vi.mock('../../src/theme', () => ({
     applyTheme: vi.fn(),
 }))
 

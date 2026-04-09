@@ -1,4 +1,4 @@
-import { formatNum, formatRate, deepMerge, roundToEven, clampCoordinate, clampDimension } from './util'
+import { formatNum, formatRate, deepMerge, roundToEven, clampCoordinate, clampDimension } from '../../src/element/util'
 
 describe('formatNum', () => {
     test('formats integer with specified decimal places', () => {
