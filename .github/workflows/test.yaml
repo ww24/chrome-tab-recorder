@@ -80,6 +80,8 @@ jobs:
         run: npm list
       - name: install dependencies
         run: npm install
+      - name: install Playwright Chromium
+        run: npx playwright install --with-deps chromium
       - name: build
         run: npm run build
       - name: test
@@ -118,6 +120,8 @@ jobs:
         run: npm list
       - name: install dependencies
         run: npm ci
+      - name: install Playwright Chromium
+        run: npx playwright install --with-deps chromium
       - name: build
         run: npm run build
       - name: test with coverage
