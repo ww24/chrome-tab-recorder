@@ -68,7 +68,8 @@ chrome.runtime.onMessage.addListener((message: Message, _sender: chrome.runtime.
     if (resultPromise == null) return
 
     resultPromise.then(result => {
-        sendResponse(result.response)
+        if (result != null) sendResponse(result)
+        else sendResponse()
     }).catch(e => {
         console.error(e)
         sendException(e, {

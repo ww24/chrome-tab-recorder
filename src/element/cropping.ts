@@ -91,20 +91,22 @@ export class Cropping extends LitElement {
         this.stopPreview()
     }
 
+    // NOTE: Must not return true or a truthy value (e.g. Promise from async function)
+    // to avoid interfering with sendMessage responses from other contexts.
     private handleMessage = (message: RecordingStateMessage) => {
-        if (message.type === 'recording-state') {
-            const wasRecording = this.isRecording
-            const state = message.data
-            this.isRecording = state.isRecording
-            this.screenSize = state.screenSize ?? null
+        if (message.type !== 'recording-state') return
 
-            // Update preview state based on recording state change
-            if (this.isTabActive) {
-                if (state.isRecording && !wasRecording) {
-                    this.startPreview()
-                } else if (!state.isRecording && wasRecording) {
-                    this.stopPreview()
-                }
+        const wasRecording = this.isRecording
+        const state = message.data
+        this.isRecording = state.isRecording
+        this.screenSize = state.screenSize ?? null
+
+        // Update preview state based on recording state change
+        if (this.isTabActive) {
+            if (state.isRecording && !wasRecording) {
+                this.startPreview()
+            } else if (!state.isRecording && wasRecording) {
+                this.stopPreview()
             }
         }
     }

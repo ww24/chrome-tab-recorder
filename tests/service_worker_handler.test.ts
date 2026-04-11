@@ -5,7 +5,7 @@ vi.mock('@mediabunny/flac-encoder', () => ({
     registerFlacEncoder: vi.fn(),
 }))
 
-import { handleMessage, type ServiceWorkerDeps } from '../src/service_worker_handler'
+import { handleMessage, createMessageListener, type ServiceWorkerDeps } from '../src/service_worker_handler'
 import type { Message } from '../src/message'
 import type { RecordingState } from '../src/handler'
 import type { Configuration } from '../src/configuration'
@@ -35,23 +35,23 @@ function createMockDeps(overrides: Partial<ServiceWorkerDeps> = {}): ServiceWork
 describe('confirm-timer-stop', () => {
     it('passes trigger to stopRecording with skipConfirmation=true', async () => {
         const deps = createMockDeps()
-        const result = await handleMessage({ type: 'confirm-timer-stop', trigger: 'keyboard-shortcut' }, deps)
-        expect(result.fireAndForget).toBeInstanceOf(Promise)
-        await result.fireAndForget
+        const result = handleMessage({ type: 'confirm-timer-stop', trigger: 'keyboard-shortcut' }, deps)
+        expect(result!.fireAndForget).toBe(true)
+        await result!.response
         expect(deps.stopRecording).toHaveBeenCalledWith('keyboard-shortcut', true)
     })
 
     it('preserves action-icon trigger', async () => {
         const deps = createMockDeps()
-        const result = await handleMessage({ type: 'confirm-timer-stop', trigger: 'action-icon' }, deps)
-        await result.fireAndForget
+        const result = handleMessage({ type: 'confirm-timer-stop', trigger: 'action-icon' }, deps)
+        await result!.response
         expect(deps.stopRecording).toHaveBeenCalledWith('action-icon', true)
     })
 
     it('preserves context-menu trigger', async () => {
         const deps = createMockDeps()
-        const result = await handleMessage({ type: 'confirm-timer-stop', trigger: 'context-menu' }, deps)
-        await result.fireAndForget
+        const result = handleMessage({ type: 'confirm-timer-stop', trigger: 'context-menu' }, deps)
+        await result!.response
         expect(deps.stopRecording).toHaveBeenCalledWith('context-menu', true)
     })
 })
@@ -61,9 +61,9 @@ describe('confirm-timer-stop', () => {
 describe('timer-expired', () => {
     it('calls stopRecording with timer trigger and skipConfirmation=true', async () => {
         const deps = createMockDeps()
-        const result = await handleMessage({ type: 'timer-expired' }, deps)
-        expect(result.fireAndForget).toBeInstanceOf(Promise)
-        await result.fireAndForget
+        const result = handleMessage({ type: 'timer-expired' }, deps)
+        expect(result!.fireAndForget).toBe(true)
+        await result!.response
         expect(deps.stopRecording).toHaveBeenCalledWith('timer', true)
     })
 })
@@ -76,7 +76,8 @@ describe('timer-updated', () => {
         const deps = createMockDeps({
             getRecordingState: vi.fn().mockResolvedValue(state),
         })
-        await handleMessage({ type: 'timer-updated', stopAtMs: 61000 }, deps)
+        const result = handleMessage({ type: 'timer-updated', stopAtMs: 61000 }, deps)
+        await result!.response
         expect(deps.setRecordingState).toHaveBeenCalledWith({ ...state, stopAtMs: 61000 })
         expect(deps.broadcastRecordingState).toHaveBeenCalled()
         expect(deps.updateActionTitle).toHaveBeenCalled()
@@ -87,7 +88,8 @@ describe('timer-updated', () => {
         const deps = createMockDeps({
             getRecordingState: vi.fn().mockResolvedValue(state),
         })
-        await handleMessage({ type: 'timer-updated', stopAtMs: null }, deps)
+        const result = handleMessage({ type: 'timer-updated', stopAtMs: null }, deps)
+        await result!.response
         expect(deps.setRecordingState).toHaveBeenCalledWith({ ...state, stopAtMs: undefined })
     })
 
@@ -95,7 +97,8 @@ describe('timer-updated', () => {
         const deps = createMockDeps({
             getRecordingState: vi.fn().mockResolvedValue({ isRecording: false }),
         })
-        await handleMessage({ type: 'timer-updated', stopAtMs: 61000 }, deps)
+        const result = handleMessage({ type: 'timer-updated', stopAtMs: 61000 }, deps)
+        await result!.response
         expect(deps.setRecordingState).not.toHaveBeenCalled()
         expect(deps.broadcastRecordingState).not.toHaveBeenCalled()
     })
@@ -106,9 +109,9 @@ describe('timer-updated', () => {
 describe('tab-track-ended', () => {
     it('calls stopRecording with tab-track-ended trigger and skipConfirmation=true (fire-and-forget)', async () => {
         const deps = createMockDeps()
-        const result = await handleMessage({ type: 'tab-track-ended' }, deps)
-        expect(result.fireAndForget).toBeInstanceOf(Promise)
-        await result.fireAndForget
+        const result = handleMessage({ type: 'tab-track-ended' }, deps)
+        expect(result!.fireAndForget).toBe(true)
+        await result!.response
         expect(deps.stopRecording).toHaveBeenCalledWith('tab-track-ended', true)
     })
 })
@@ -118,9 +121,9 @@ describe('tab-track-ended', () => {
 describe('unexpected-recording-state', () => {
     it('calls cancelRecording with error (fire-and-forget)', async () => {
         const deps = createMockDeps()
-        const result = await handleMessage({ type: 'unexpected-recording-state', error: 'test error' }, deps)
-        expect(result.fireAndForget).toBeInstanceOf(Promise)
-        await result.fireAndForget
+        const result = handleMessage({ type: 'unexpected-recording-state', error: 'test error' }, deps)
+        expect(result!.fireAndForget).toBe(true)
+        await result!.response
         expect(deps.cancelRecording).toHaveBeenCalledWith('test error')
     })
 })
@@ -133,7 +136,8 @@ describe('recording-tick', () => {
         const deps = createMockDeps({
             getRecordingState: vi.fn().mockResolvedValue(state),
         })
-        await handleMessage({ type: 'recording-tick' }, deps)
+        const result = handleMessage({ type: 'recording-tick' }, deps)
+        await result!.response
         expect(deps.updateActionTitle).toHaveBeenCalledWith(state)
     })
 })
@@ -143,13 +147,15 @@ describe('recording-tick', () => {
 describe('resize-window', () => {
     it('calls resizeWindow with data', async () => {
         const deps = createMockDeps()
-        await handleMessage({ type: 'resize-window', data: { width: 1280, height: 720 } }, deps)
+        const result = handleMessage({ type: 'resize-window', data: { width: 1280, height: 720 } }, deps)
+        await result!.response
         expect(deps.resizeWindow).toHaveBeenCalledWith({ width: 1280, height: 720 })
     })
 
     it('ignores invalid data (null)', async () => {
         const deps = createMockDeps()
-        await handleMessage({ type: 'resize-window', data: null as unknown as { width: number; height: number } }, deps)
+        const result = handleMessage({ type: 'resize-window', data: null as unknown as { width: number; height: number } }, deps)
+        await result!.response
         expect(deps.resizeWindow).not.toHaveBeenCalled()
     })
 })
@@ -160,7 +166,8 @@ describe('save-config-sync', () => {
     it('saves config to sync storage', async () => {
         const deps = createMockDeps()
         const syncData = { key: 'value' } as unknown as Configuration
-        await handleMessage({ type: 'save-config-sync', data: syncData } as Message, deps)
+        const result = handleMessage({ type: 'save-config-sync', data: syncData } as Message, deps)
+        await result!.response
         expect(deps.storageSyncSet).toHaveBeenCalledWith('settings', syncData)
     })
 })
@@ -173,17 +180,19 @@ describe('fetch-config', () => {
         const deps = createMockDeps({
             getRemoteConfiguration: vi.fn().mockResolvedValue(remoteConfig),
         })
-        const result = await handleMessage({ type: 'fetch-config' }, deps)
-        expect(result.response).toBeDefined()
-        expect(result.response?.userId).toBe('test-user')
+        const result = handleMessage({ type: 'fetch-config' }, deps)
+        const config = await result!.response
+        expect(config).toBeDefined()
+        expect(config?.userId).toBe('test-user')
     })
 
-    it('returns empty result when no remote config', async () => {
+    it('returns undefined when no remote config', async () => {
         const deps = createMockDeps({
             getRemoteConfiguration: vi.fn().mockResolvedValue(null),
         })
-        const result = await handleMessage({ type: 'fetch-config' }, deps)
-        expect(result.response).toBeUndefined()
+        const result = handleMessage({ type: 'fetch-config' }, deps)
+        const config = await result!.response
+        expect(config).toBeUndefined()
     })
 })
 
@@ -192,7 +201,8 @@ describe('fetch-config', () => {
 describe('request-recording-state', () => {
     it('broadcasts recording state', async () => {
         const deps = createMockDeps()
-        await handleMessage({ type: 'request-recording-state' }, deps)
+        const result = handleMessage({ type: 'request-recording-state' }, deps)
+        await result!.response
         expect(deps.broadcastRecordingState).toHaveBeenCalled()
     })
 })
@@ -200,47 +210,103 @@ describe('request-recording-state', () => {
 // ---------- unknown message types ----------
 
 describe('unknown message type', () => {
-    it('returns empty result for unhandled message types', async () => {
+    it('returns null for unhandled message types', () => {
         const deps = createMockDeps()
-        const result = await handleMessage({ type: 'start-recording' } as unknown as Message, deps)
-        expect(result).toEqual({})
+        const result = handleMessage({ type: 'start-recording' } as unknown as Message, deps)
+        expect(result).toBeNull()
     })
 })
 
-// ---------- pause-recording ----------
+// ---------- createMessageListener ----------
 
-describe('pause-recording', () => {
-    it('calls pauseRecording via fireAndForget', async () => {
+describe('createMessageListener', () => {
+    const dummySender = {} as chrome.runtime.MessageSender
+
+    it('returns undefined for unhandled messages (does not block sender)', () => {
         const deps = createMockDeps()
-        const result = await handleMessage({ type: 'pause-recording', trigger: 'keyboard-shortcut' }, deps)
-        expect(result.fireAndForget).toBeInstanceOf(Promise)
-        await result.fireAndForget
-        expect(deps.pauseRecording).toHaveBeenCalledWith('keyboard-shortcut')
+        const onError = vi.fn()
+        const listener = createMessageListener(deps, onError)
+
+        const sendResponse = vi.fn()
+        const ret = listener({ type: 'start-recording' } as unknown as Message, dummySender, sendResponse)
+
+        expect(ret).toBeUndefined()
+        expect(sendResponse).not.toHaveBeenCalled()
     })
 
-    it('preserves context-menu trigger', async () => {
+    it('returns undefined for fireAndForget messages (does not block sender)', () => {
         const deps = createMockDeps()
-        const result = await handleMessage({ type: 'pause-recording', trigger: 'context-menu' }, deps)
-        await result.fireAndForget
-        expect(deps.pauseRecording).toHaveBeenCalledWith('context-menu')
-    })
-})
+        const onError = vi.fn()
+        const listener = createMessageListener(deps, onError)
 
-// ---------- resume-recording ----------
+        const sendResponse = vi.fn()
+        const ret = listener({ type: 'recording-tick' } as Message, dummySender, sendResponse)
 
-describe('resume-recording', () => {
-    it('calls resumeRecording via fireAndForget', async () => {
-        const deps = createMockDeps()
-        const result = await handleMessage({ type: 'resume-recording', trigger: 'keyboard-shortcut' }, deps)
-        expect(result.fireAndForget).toBeInstanceOf(Promise)
-        await result.fireAndForget
-        expect(deps.resumeRecording).toHaveBeenCalledWith('keyboard-shortcut')
+        expect(ret).toBeUndefined()
+        expect(sendResponse).not.toHaveBeenCalled()
     })
 
-    it('preserves context-menu trigger', async () => {
+    it('returns true for response messages (keeps channel open)', () => {
         const deps = createMockDeps()
-        const result = await handleMessage({ type: 'resume-recording', trigger: 'context-menu' }, deps)
-        await result.fireAndForget
-        expect(deps.resumeRecording).toHaveBeenCalledWith('context-menu')
+        const onError = vi.fn()
+        const listener = createMessageListener(deps, onError)
+
+        const sendResponse = vi.fn()
+        const ret = listener({ type: 'fetch-config' } as Message, dummySender, sendResponse)
+
+        expect(ret).toBe(true)
+    })
+
+    it('calls sendResponse with config when response resolves', async () => {
+        const remoteConfig = { userId: 'test' } as Configuration
+        const deps = createMockDeps({
+            getRemoteConfiguration: vi.fn().mockResolvedValue(remoteConfig),
+        })
+        const onError = vi.fn()
+        const listener = createMessageListener(deps, onError)
+
+        const sendResponse = vi.fn()
+        listener({ type: 'fetch-config' } as Message, dummySender, sendResponse)
+
+        await vi.waitFor(() => {
+            expect(sendResponse).toHaveBeenCalledTimes(1)
+        })
+        expect(sendResponse).toHaveBeenCalledWith(expect.objectContaining({ userId: 'test' }))
+        expect(onError).not.toHaveBeenCalled()
+    })
+
+    it('calls sendResponse once and onError when response rejects', async () => {
+        const error = new Error('fetch failed')
+        const deps = createMockDeps({
+            getRemoteConfiguration: vi.fn().mockRejectedValue(error),
+        })
+        const onError = vi.fn()
+        const listener = createMessageListener(deps, onError)
+
+        const sendResponse = vi.fn()
+        listener({ type: 'fetch-config' } as Message, dummySender, sendResponse)
+
+        await vi.waitFor(() => {
+            expect(sendResponse).toHaveBeenCalledTimes(1)
+        })
+        expect(sendResponse).toHaveBeenCalledWith()
+        expect(onError).toHaveBeenCalledWith(error)
+    })
+
+    it('calls onError when fireAndForget rejects', async () => {
+        const error = new Error('tick failed')
+        const deps = createMockDeps({
+            getRecordingState: vi.fn().mockRejectedValue(error),
+        })
+        const onError = vi.fn()
+        const listener = createMessageListener(deps, onError)
+
+        const sendResponse = vi.fn()
+        listener({ type: 'recording-tick' } as Message, dummySender, sendResponse)
+
+        await vi.waitFor(() => {
+            expect(onError).toHaveBeenCalledWith(error)
+        })
+        expect(sendResponse).not.toHaveBeenCalled()
     })
 })

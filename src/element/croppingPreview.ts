@@ -162,8 +162,11 @@ export class CroppingPreview extends LitElement {
         }
     }
 
-    private handleMessage = async (message: PreviewFrameMessage) => {
-        if (message.type === 'preview-frame' && message.image) {
+    // NOTE: Must not return true or a truthy value (e.g. Promise from async function)
+    // to avoid interfering with sendMessage responses from other contexts.
+    private handleMessage = (message: PreviewFrameMessage) => {
+        if (message.type !== 'preview-frame' || !message.image) return;
+        (async () => {
             this.recordingWidth = message.recordingSize.width
             this.recordingHeight = message.recordingSize.height
 
@@ -188,7 +191,9 @@ export class CroppingPreview extends LitElement {
             if (!this.hasPreview) {
                 this.hasPreview = true
             }
-        }
+        })().catch((error: unknown) => {
+            console.error('Failed to process preview frame', error)
+        })
     }
 
     // Calculate scale factor for preview display

@@ -2,7 +2,6 @@ import { v7 as uuidv7 } from 'uuid'
 
 import type { getMediaStreamId } from './type'
 import type {
-    Message,
     Trigger,
     StartTrigger,
     StartRecordingMessage,
@@ -22,7 +21,7 @@ import { deepMerge } from './element/util'
 import { OPFSStorage } from './opfs_storage'
 import { handleApiRequest, RecordingState } from './handler'
 import { buildRecordingTitle } from './format'
-import { handleMessage, type ServiceWorkerDeps } from './service_worker_handler'
+import { createMessageListener, type ServiceWorkerDeps } from './service_worker_handler'
 
 const recordingIcon = '/icons/recording.png'
 const recordingVideoOnlyIcon = '/icons/recording-video-only.png'
@@ -419,44 +418,14 @@ const messageHandlerDeps: ServiceWorkerDeps = {
     storageSyncSet: (key, value) => storage.set(key, value),
 }
 
-chrome.runtime.onMessage.addListener((message: Message, sender: chrome.runtime.MessageSender, sendResponse: (response?: Configuration) => void) => {
-    (async () => {
-        const respond = (() => {
-            let responded = false
-            return (response?: Configuration) => {
-                if (responded) return
-                responded = true
-                sendResponse(response)
-            }
-        })()
-        try {
-            const result = await handleMessage(message, messageHandlerDeps)
-            if (result.response != null) {
-                respond(result.response)
-            }
-            if (result.fireAndForget != null) {
-                result.fireAndForget.catch(async e => {
-                    console.error(e)
-                    const msg: ExceptionMessage = {
-                        type: 'exception',
-                        data: e,
-                    }
-                    await chrome.runtime.sendMessage(msg)
-                })
-            }
-        } catch (e) {
-            console.error(e)
-            const msg: ExceptionMessage = {
-                type: 'exception',
-                data: e,
-            }
-            await chrome.runtime.sendMessage(msg)
-        } finally {
-            respond()
-        }
-    })()
-    return true // asynchronous flag
-})
+chrome.runtime.onMessage.addListener(createMessageListener(messageHandlerDeps, async (e) => {
+    console.error(e)
+    const msg: ExceptionMessage = {
+        type: 'exception',
+        data: e,
+    }
+    await chrome.runtime.sendMessage(msg)
+}))
 
 async function resizeWindow({ width, height }: Resolution) {
     const window = await chrome.windows.getCurrent()
