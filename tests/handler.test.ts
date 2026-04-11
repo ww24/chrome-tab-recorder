@@ -1,6 +1,6 @@
-import { parseApiPath, handleApiRequest } from './handler'
-import { RecordingState } from './handler'
-import type { RecordingStorage, RecordingMetadata } from './storage'
+import { parseApiPath, handleApiRequest } from '../src/handler'
+import { RecordingState } from '../src/handler'
+import type { RecordingStorage, RecordingMetadata } from '../src/storage'
 
 // ---------- helpers ----------
 

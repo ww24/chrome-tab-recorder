@@ -6,21 +6,21 @@ vi.mock('mediabunny', () => ({
 vi.mock('@mediabunny/flac-encoder', () => ({
     registerFlacEncoder: vi.fn(),
 }))
-vi.mock('../sentry', () => ({
+vi.mock('../../src/sentry', () => ({
     sendException: vi.fn(),
 }))
 
-import { RecordingSession } from './recorder'
-import type { RecordingConfig, RecorderCallbacks } from './recorder'
-import type { AudioMixer } from './audio_mixer'
-import type { MediaCapture } from './media_capture'
-import type { OutputManager } from './output_manager'
-import type { AudioSeparationManager, AudioSeparationOutputs } from './audio_separation'
-import type { FileManager } from './file_manager'
-import type { Preview } from '../preview'
-import type { Crop } from '../crop'
-import type { StartRecording } from '../message'
-import { VideoFormat } from '../configuration'
+import { RecordingSession } from '../../src/recorder/recorder'
+import type { RecordingConfig, RecorderCallbacks } from '../../src/recorder/recorder'
+import type { AudioMixer } from '../../src/recorder/audio_mixer'
+import type { MediaCapture } from '../../src/recorder/media_capture'
+import type { OutputManager } from '../../src/recorder/output_manager'
+import type { AudioSeparationManager, AudioSeparationOutputs } from '../../src/recorder/audio_separation'
+import type { FileManager } from '../../src/recorder/file_manager'
+import type { Preview } from '../../src/preview'
+import type { Crop } from '../../src/crop'
+import type { StartRecording } from '../../src/message'
+import { VideoFormat } from '../../src/configuration'
 
 // ---------- mock factories ----------
 

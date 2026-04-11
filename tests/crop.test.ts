@@ -1,5 +1,5 @@
 
-import { Crop } from './crop'
+import { Crop } from '../src/crop'
 
 const createMockFrame = (codedWidth: number, codedHeight: number): VideoFrame => ({
     codedWidth,

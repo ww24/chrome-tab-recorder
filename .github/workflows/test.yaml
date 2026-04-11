@@ -52,15 +52,12 @@ jobs:
     needs: [lint]
     runs-on: ubuntu-22.04
     timeout-minutes: 5
-    strategy:
-      matrix:
-        node-version: ["22.x", "24.x"] # Maintenance LTS, Active LTS
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Use Node.js ${{ matrix.node-version }}
+      - name: Use Node.js
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version-file: "package.json"
       - name: Cache node modules
         id: cache-npm
         uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
@@ -118,6 +115,8 @@ jobs:
         run: npm list
       - name: install dependencies
         run: npm ci
+      - name: install Playwright Chromium
+        run: npx playwright install --with-deps chromium
       - name: build
         run: npm run build
       - name: test with coverage

@@ -4,10 +4,9 @@ coverage:
 codeToTestRatio:
   code:
     - "src/**/*.ts"
-    - "!src/**/*.test.ts"
     - "!src/**/*.d.ts"
   test:
-    - "src/**/*.test.ts"
+    - "tests/**/*.test.ts"
 testExecutionTime:
   if: true
 summary:

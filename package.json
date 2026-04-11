@@ -7,10 +7,12 @@
     "build": "SOURCEMAP=1 vite build",
     "build:prod": "rm -f extension.zip && ENV_NAME=production vite build && zip -r extension.zip extension",
     "watch": "vite build --watch --mode development",
-    "lint": "eslint src scripts *.mjs *.ts",
+    "lint": "eslint src scripts tests *.mjs *.ts",
     "lint:fix": "npm run lint -- --fix",
-    "test": "vitest run",
-    "test:coverage": "npm test -- --coverage",
+    "test": "vitest run --project node",
+    "test:browser": "vitest run --project browser",
+    "test:all": "vitest run",
+    "test:coverage": "npm run test:all -- --coverage",
     "site": "vite dev --config docs/vite.config.ts",
     "site:build": "vite build --config docs/vite.config.ts"
   },
@@ -35,18 +37,21 @@
     "@types/dom-mediacapture-transform": "^0.1.11",
     "@types/node": "^25.5.2",
     "@typescript-eslint/eslint-plugin": "^8.58.0",
+    "@vitest/browser-playwright": "^4.1.2",
     "@vitest/coverage-v8": "^4.1.2",
     "eslint": "^10.1.0",
     "globals": "^17.4.0",
+    "playwright": "^1.59.1",
     "google-auth-library": "^10.6.2",
     "marked": "^17.0.5",
     "typescript": "^6.0.2",
     "typescript-eslint": "^8.58.0",
     "vite": "^8.0.5",
-    "vitest": "^4.0.0"
+    "vitest": "^4.0.0",
+    "vitest-browser-lit": "^1.0.1"
   },
   "private": true,
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=24.0.0"
   }
 }

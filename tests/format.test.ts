@@ -1,5 +1,5 @@
-import { formatHHMM, buildRecordingTitle, formatElapsedTime } from './format'
-import type { RecordingState } from './handler'
+import { formatHHMM, buildRecordingTitle, formatElapsedTime } from '../src/format'
+import type { RecordingState } from '../src/handler'
 
 describe('formatHHMM', () => {
     it('returns 00:00 for 0 ms', () => {
