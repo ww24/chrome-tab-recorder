@@ -40,12 +40,6 @@ export interface OffscreenDeps {
     setLocationHash(hash: string): void
 }
 
-// ---------- result type ----------
-
-export interface HandleOffscreenMessageResult {
-    response?: StartRecordingResponse
-}
-
 // ---------- handler ----------
 
 export class OffscreenHandler {
@@ -55,7 +49,7 @@ export class OffscreenHandler {
 
     constructor(private readonly deps: OffscreenDeps) { }
 
-    handleMessage(message: Message): Promise<HandleOffscreenMessageResult> | null {
+    handleMessage(message: Message): Promise<StartRecordingResponse | void> | null {
         switch (message.type) {
             case 'start-recording':
                 return this.handleStartRecording(message.data, message.trigger)
@@ -84,7 +78,7 @@ export class OffscreenHandler {
     private async handleStartRecording(
         data: StartRecording,
         trigger: StartTrigger,
-    ): Promise<HandleOffscreenMessageResult> {
+    ): Promise<StartRecordingResponse> {
         const { videoFormat, recordingSize } = this.deps.getRecordingInfo(data.tabSize)
         const config = this.deps.getConfiguration()
 
@@ -115,10 +109,10 @@ export class OffscreenHandler {
         }
 
         this.deps.setLocationHash('recording')
-        return { response }
+        return response
     }
 
-    private async handleStopRecording(trigger: Trigger): Promise<HandleOffscreenMessageResult> {
+    private async handleStopRecording(trigger: Trigger): Promise<void> {
         try {
             const result = await this.deps.session.stop()
             if (result) {
@@ -141,10 +135,9 @@ export class OffscreenHandler {
             this.deps.setLocationHash('')
         }
         await this.deps.flush()
-        return {}
     }
 
-    private async handleCancelRecording(): Promise<HandleOffscreenMessageResult> {
+    private async handleCancelRecording(): Promise<void> {
         try {
             const durationMs = await this.deps.session.cancel()
             this.deps.sendEvent({
@@ -163,53 +156,46 @@ export class OffscreenHandler {
             this.deps.setLocationHash('')
         }
         await this.deps.flush()
-        return {}
     }
 
-    private async handlePreviewControl(action: 'start' | 'stop'): Promise<HandleOffscreenMessageResult> {
+    private async handlePreviewControl(action: 'start' | 'stop'): Promise<void> {
         if (action === 'start') {
             this.deps.session.startPreview()
         } else {
             this.deps.session.stopPreview()
         }
-        return {}
     }
 
-    private async handleUpdateCropRegion(region: CropRegion): Promise<HandleOffscreenMessageResult> {
+    private async handleUpdateCropRegion(region: CropRegion): Promise<void> {
         this.deps.session.updateCropRegion(region)
-        return {}
     }
 
-    private async handlePauseRecording(): Promise<HandleOffscreenMessageResult> {
+    private async handlePauseRecording(): Promise<void> {
         this.deps.session.pause()
         this.pauseRecordingTimer()
-        return {}
     }
 
-    private async handleResumeRecording(): Promise<HandleOffscreenMessageResult> {
+    private async handleResumeRecording(): Promise<void> {
         this.deps.session.resume()
         await this.resumeRecordingTimer()
-        return {}
     }
 
-    private async handleSaveConfigLocal(data: Configuration): Promise<HandleOffscreenMessageResult> {
+    private async handleSaveConfigLocal(data: Configuration): Promise<void> {
         this.deps.mergeRemoteConfiguration(data)
         await this.deps.flush()
-        return {}
     }
 
     private async handleUpdateRecordingTimer(
         enabled: boolean,
         durationMinutes: number,
-    ): Promise<HandleOffscreenMessageResult> {
-        if (this.deps.getLocationHash() !== '#recording') return {}
+    ): Promise<void> {
+        if (this.deps.getLocationHash() !== '#recording') return
         if (enabled && durationMinutes > 0) {
             this.setRecordingTimer(durationMinutes)
         } else {
             this.clearRecordingTimer()
         }
         await this.sendTimerUpdated()
-        return {}
     }
 
     // ---------- timer helpers ----------

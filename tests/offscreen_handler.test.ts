@@ -175,7 +175,7 @@ describe('start-recording', () => {
             data: { tabSize: { width: 1920, height: 1080 }, streamId: 'stream-1' },
             trigger: 'context-menu',
         })
-        expect(result!.response).toEqual(sessionResponse)
+        expect(result).toEqual(sessionResponse)
     })
 
     it('sets timer and adds stopAtMs when timer enabled', async () => {
@@ -192,8 +192,8 @@ describe('start-recording', () => {
                 data: { tabSize: { width: 1920, height: 1080 }, streamId: 'stream-1' },
                 trigger: 'action-icon',
             })
-            expect(result!.response?.stopAtMs).toBeDefined()
-            expect(typeof result!.response?.stopAtMs).toBe('number')
+            expect(result?.stopAtMs).toBeDefined()
+            expect(typeof result?.stopAtMs).toBe('number')
         } finally {
             vi.useRealTimers()
         }
@@ -211,7 +211,7 @@ describe('start-recording', () => {
             data: { tabSize: { width: 1920, height: 1080 }, streamId: 'stream-1' },
             trigger: 'action-icon',
         })
-        expect(result!.response?.stopAtMs).toBeUndefined()
+        expect(result?.stopAtMs).toBeUndefined()
     })
 
     it('does not set stopAtMs when durationMinutes is 0', async () => {
@@ -226,7 +226,7 @@ describe('start-recording', () => {
             data: { tabSize: { width: 1920, height: 1080 }, streamId: 'stream-1' },
             trigger: 'action-icon',
         })
-        expect(result!.response?.stopAtMs).toBeUndefined()
+        expect(result?.stopAtMs).toBeUndefined()
     })
 
     it('preserves all three trigger types', async () => {

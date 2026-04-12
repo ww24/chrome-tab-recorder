@@ -159,35 +159,33 @@ export class RecordList extends LitElement {
         this.stopElapsedTimer()
     }
 
-    private handleMessage = async (message: Message) => {
-        try {
-            switch (message.type) {
-                case 'recording-state': {
-                    const state = message.data
-                    if (state.isRecording && state.startAtMs != null) {
-                        this.recordingTotalPausedMs = state.totalPausedMs ?? 0
-                        if (state.isPaused) {
-                            this.recordingPaused = true
-                            this.pauseElapsedTimer(state.startAtMs)
-                        } else {
-                            this.recordingPaused = false
-                            this.startElapsedTimer(state.startAtMs)
-                        }
-                        this.recordingStopAtMs = state.stopAtMs ?? null
-                        this.updateTimerStopText()
-                    } else {
-                        this.stopElapsedTimer()
-                    }
-                    await this.updateRecord()
-                    await this.updateEstimate()
-                    await this.checkStoredRecordingError()
-                    return
+    // NOTE: Must not return true or a truthy value (e.g. Promise from async function)
+    // to avoid interfering with sendMessage responses from other contexts.
+    private handleMessage = (message: Message) => {
+        if (message.type !== 'recording-state') return;
+        (async () => {
+            const state = message.data
+            if (state.isRecording && state.startAtMs != null) {
+                this.recordingTotalPausedMs = state.totalPausedMs ?? 0
+                if (state.isPaused) {
+                    this.recordingPaused = true
+                    this.pauseElapsedTimer(state.startAtMs)
+                } else {
+                    this.recordingPaused = false
+                    this.startElapsedTimer(state.startAtMs)
                 }
+                this.recordingStopAtMs = state.stopAtMs ?? null
+                this.updateTimerStopText()
+            } else {
+                this.stopElapsedTimer()
             }
-        } catch (e) {
+            await this.updateRecord()
+            await this.updateEstimate()
+            await this.checkStoredRecordingError()
+        })().catch(e => {
             console.error(e)
             sendException(e, { exceptionSource: 'option.recordList.onMessage' })
-        }
+        })
     }
 
     private async checkStoredRecordingError() {

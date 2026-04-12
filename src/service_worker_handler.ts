@@ -22,57 +22,111 @@ export interface ServiceWorkerDeps {
 }
 
 export type HandleMessageResult = {
-    response?: Configuration
-    fireAndForget?: Promise<void>
+    response: Promise<Configuration | void>
+    fireAndForget: boolean
 }
 
-export async function handleMessage(
+export function handleMessage(
     message: Message,
     deps: ServiceWorkerDeps,
-): Promise<HandleMessageResult> {
+): HandleMessageResult | null {
     switch (message.type) {
         case 'resize-window':
-            if (typeof message.data !== 'object' || message.data == null) return {}
-            await deps.resizeWindow(message.data)
-            return {}
+            return { response: handleResizeWindow(message, deps), fireAndForget: true }
         case 'recording-tick':
-            const state = await deps.getRecordingState()
-            await deps.updateActionTitle(state)
-            return {}
+            return { response: handleRecordingTick(deps), fireAndForget: true }
         case 'tab-track-ended':
-            return { fireAndForget: deps.stopRecording('tab-track-ended', true) }
+            return { response: deps.stopRecording('tab-track-ended', true), fireAndForget: true }
         case 'timer-expired':
-            return { fireAndForget: deps.stopRecording('timer', true) }
-        case 'pause-recording':
-            return { fireAndForget: deps.pauseRecording(message.trigger) }
-        case 'resume-recording':
-            return { fireAndForget: deps.resumeRecording(message.trigger) }
+            return { response: deps.stopRecording('timer', true), fireAndForget: true }
         case 'timer-updated':
-            const timerState = await deps.getRecordingState()
-            if (timerState.isRecording) {
-                const updatedTimerState = { ...timerState, stopAtMs: message.stopAtMs ?? undefined }
-                await deps.setRecordingState(updatedTimerState)
-                await deps.broadcastRecordingState()
-                await deps.updateActionTitle(updatedTimerState)
-            }
-            return {}
+            return { response: handleTimerUpdated(message, deps), fireAndForget: true }
         case 'confirm-timer-stop':
-            return { fireAndForget: deps.stopRecording(message.trigger, true) }
+            return { response: deps.stopRecording(message.trigger, true), fireAndForget: true }
         case 'unexpected-recording-state':
-            return { fireAndForget: deps.cancelRecording(message.error) }
+            return { response: deps.cancelRecording(message.error), fireAndForget: true }
         case 'save-config-sync':
-            await deps.storageSyncSet(Configuration.key, message.data)
-            return {}
+            return { response: handleSaveConfigSync(message, deps), fireAndForget: true }
         case 'fetch-config':
-            const defaultConfig = new Configuration()
-            const remoteConfig = await deps.getRemoteConfiguration()
-            if (remoteConfig == null) return {}
-            const config = deepMerge(defaultConfig, remoteConfig)
-            console.debug('fetch:', config)
-            return { response: config }
+            return { response: handleFetchConfig(deps), fireAndForget: false }
         case 'request-recording-state':
-            await deps.broadcastRecordingState()
-            return {}
+            return { response: handleRequestRecordingState(deps), fireAndForget: true }
     }
-    return {}
+    return null
+}
+
+async function handleResizeWindow(
+    message: Extract<Message, { type: 'resize-window' }>,
+    deps: ServiceWorkerDeps,
+): Promise<void> {
+    if (typeof message.data !== 'object' || message.data == null) return
+    await deps.resizeWindow(message.data)
+}
+
+async function handleRecordingTick(deps: ServiceWorkerDeps): Promise<void> {
+    const state = await deps.getRecordingState()
+    await deps.updateActionTitle(state)
+}
+
+async function handleTimerUpdated(
+    message: Extract<Message, { type: 'timer-updated' }>,
+    deps: ServiceWorkerDeps,
+): Promise<void> {
+    const timerState = await deps.getRecordingState()
+    if (timerState.isRecording) {
+        const updatedTimerState = { ...timerState, stopAtMs: message.stopAtMs ?? undefined }
+        await deps.setRecordingState(updatedTimerState)
+        await deps.broadcastRecordingState()
+        await deps.updateActionTitle(updatedTimerState)
+    }
+}
+
+async function handleSaveConfigSync(
+    message: Extract<Message, { type: 'save-config-sync' }>,
+    deps: ServiceWorkerDeps,
+): Promise<void> {
+    await deps.storageSyncSet(Configuration.key, message.data)
+}
+
+async function handleFetchConfig(deps: ServiceWorkerDeps): Promise<Configuration | void> {
+    const defaultConfig = new Configuration()
+    const remoteConfig = await deps.getRemoteConfiguration()
+    if (remoteConfig == null) return
+    const config = deepMerge(defaultConfig, remoteConfig)
+    console.debug('fetch:', config)
+    return config
+}
+
+async function handleRequestRecordingState(deps: ServiceWorkerDeps): Promise<void> {
+    await deps.broadcastRecordingState()
+}
+
+/**
+ * Creates the chrome.runtime.onMessage listener callback.
+ * Extracted for testability.
+ */
+export function createMessageListener(
+    deps: ServiceWorkerDeps,
+    onError: (e: unknown) => void,
+): (message: Message, sender: chrome.runtime.MessageSender, sendResponse: (response?: Configuration) => void) => boolean | undefined {
+    return (message, _sender, sendResponse) => {
+        const result = handleMessage(message, deps)
+        if (result == null) return
+
+        if (result.fireAndForget) {
+            result.response.catch(onError)
+            // NOTE: Must not return true or a truthy value to avoid blocking
+            // sendMessage callers waiting for responses from other contexts.
+            return
+        }
+
+        result.response.then(result => {
+            if (result != null) sendResponse(result)
+            else sendResponse()
+        }).catch(e => {
+            onError(e)
+            sendResponse()
+        })
+        return true // asynchronous flag
+    }
 }
