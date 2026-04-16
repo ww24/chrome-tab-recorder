@@ -17,7 +17,7 @@ import { MdFilterChip } from '@material/web/chips/filter-chip'
 import Confirm from './confirm'
 import Alert from './alert'
 import type { ShowDirectoryPickerOptions } from '../type'
-import { Message, SaveConfigSyncMessage } from '../message'
+import { Message, SaveConfigSyncMessage, RequestRecordingStateMessage } from '../message'
 import { sendException } from '../sentry'
 import { recordingApi } from '../api_client'
 import type { StorageEstimateInfo } from '../storage'
@@ -92,6 +92,20 @@ export class RecordList extends LitElement {
         .recording {
             color: var(--theme-recording, #d93025);
         }
+        .elapsed-time {
+            margin-left: 0.25em;
+        }
+        .elapsed-blink {
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink {
+            50% { visibility: hidden; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .elapsed-blink {
+                animation: none;
+            }
+        }
         .sub-file-icon {
             color: var(--theme-text-secondary, #3f4948);
             margin-left: 4px;
@@ -140,17 +154,20 @@ export class RecordList extends LitElement {
     }
 
     override connectedCallback() {
-        super.connectedCallback();
+        super.connectedCallback()
+        chrome.runtime.onMessage.addListener(this.handleMessage);
         (async () => {
             await this.updateRecord()
             this.syncElapsedTimer()
             await this.updateEstimate()
             await this.checkStoredRecordingError()
+            // Request current recording state to get accurate pause info
+            const msg: RequestRecordingStateMessage = { type: 'request-recording-state' }
+            await chrome.runtime.sendMessage(msg)
         })().catch(e => {
             console.error(e)
             sendException(e, { exceptionSource: 'option.recordList.connectedCallback' })
         })
-        chrome.runtime.onMessage.addListener(this.handleMessage)
     }
 
     override disconnectedCallback() {
@@ -229,7 +246,7 @@ export class RecordList extends LitElement {
                     })}
                 <div class="meta" title="file size"><md-icon>storage</md-icon> ${formatNum((record.size + record.subFilesSize) / 1024 / 1024, 2)} MB ${record.subFilesSize > 0 ? html` <span title="separated audio file size">(${formatNum(record.subFilesSize / 1024 / 1024, 2)} MB separated)</span>` : ''}</div>
                 ${record.recordedAt != null ? html`<div class="meta" title="recorded at"><md-icon>schedule</md-icon> ${RecordList.dateTimeFormat.format(record.recordedAt)}</div>` : ''}
-                ${record.isRecording ? html`<div class="meta recording" title="recording"><md-icon>screen_record</md-icon> ${this.recordingPaused ? 'Paused' : 'Recording'} ${this.elapsedTimeText}${this.timerStopText ? html` <span title="timer stop time">(⏱ ${this.recordingPaused ? 'timer paused' : `stops at ${this.timerStopText}`})</span>` : ''}</div>` : ''}
+                ${record.isRecording ? html`<div class="meta recording" title="recording"><md-icon>screen_record</md-icon> ${this.recordingPaused ? 'Paused' : 'Recording'} <span class="elapsed-time${this.recordingPaused ? ' elapsed-blink' : ''}">${this.elapsedTimeText}</span>${this.timerStopText ? html` <span title="timer stop time">(⏱ ${this.recordingPaused ? 'timer paused' : `stops at ${this.timerStopText}`})</span>` : ''}</div>` : ''}
                 <md-filled-icon-button slot="end" ?disabled=${record.isRecording} @click=${this.playRecord(record)}>
                     <md-icon>play_arrow</md-icon>
                 </md-filled-icon-button>
