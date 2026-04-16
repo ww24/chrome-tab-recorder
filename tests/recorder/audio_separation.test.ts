@@ -118,6 +118,41 @@ describe('AudioSeparationManager', () => {
             expect(fileMgr.createAudioFile).toHaveBeenCalledWith('video-2000-tab.aac')
         })
 
+        test('creates tab + mic outputs when audio-only mode with mic', async () => {
+            const fileMgr = createMockFileManager()
+            const outMgr = createMockOutputManager()
+            const mgr = new AudioSeparationManager(fileMgr, outMgr)
+
+            const tabMedia = createMockStream([createMockTrack('audio', 'tab')])
+            const micStream = createMockStream([createMockTrack('audio', 'mic')])
+            const vf = createVideoFormat({ recordingMode: 'audio-only', audioCodec: 'opus' })
+
+            const result = await mgr.createOutputs(1500, tabMedia, micStream, vf)
+
+            expect(result.tabOutput).toBeDefined()
+            expect(result.micOutput).toBeDefined()
+            expect(result.clonedTracks).toHaveLength(2)
+            expect(fileMgr.createAudioFile).toHaveBeenCalledTimes(2)
+            expect(fileMgr.createAudioFile).toHaveBeenCalledWith('video-1500-tab.ogg')
+            expect(fileMgr.createAudioFile).toHaveBeenCalledWith('video-1500-mic.ogg')
+        })
+
+        test('creates no outputs when audio-only mode without mic', async () => {
+            const fileMgr = createMockFileManager()
+            const outMgr = createMockOutputManager()
+            const mgr = new AudioSeparationManager(fileMgr, outMgr)
+
+            const tabMedia = createMockStream([createMockTrack('audio', 'tab')])
+            const vf = createVideoFormat({ recordingMode: 'audio-only', audioCodec: 'opus' })
+
+            const result = await mgr.createOutputs(1600, tabMedia, null, vf)
+
+            expect(result.tabOutput).toBeUndefined()
+            expect(result.micOutput).toBeUndefined()
+            expect(result.clonedTracks).toHaveLength(0)
+            expect(fileMgr.createAudioFile).not.toHaveBeenCalled()
+        })
+
         test('creates only mic output when video-only mode with mic', async () => {
             const fileMgr = createMockFileManager()
             const outMgr = createMockOutputManager()

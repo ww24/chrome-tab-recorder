@@ -29,7 +29,7 @@ export class AudioSeparationManager {
         startAtMs: number,
         tabMedia: MediaStream,
         micStream: MediaStream | null,
-        videoFormat: VideoFormat,
+        { recordingMode, audioCodec, audioBitratePreset, audioBitrate }: VideoFormat,
     ): Promise<AudioSeparationOutputs> {
         const result: AudioSeparationOutputs = {
             sources: [],
@@ -37,11 +37,11 @@ export class AudioSeparationManager {
             errorPromises: [],
         }
 
-        const sepContainer = audioSeparationContainer(videoFormat.audioCodec)
+        const sepContainer = audioSeparationContainer(audioCodec)
         const sepExt = containerExtension(sepContainer)
 
-        // Tab audio separation: only when recordingMode is video-and-audio
-        if (videoFormat.recordingMode === 'video-and-audio') {
+        // Tab audio separation: when recordingMode is video-and-audio or audio-only with mic
+        if (recordingMode === 'video-and-audio' || (recordingMode === 'audio-only' && micStream)) {
             const tabAudioTrack = tabMedia.getAudioTracks()[0]?.clone() as MediaStreamAudioTrack | undefined
             if (tabAudioTrack) {
                 const tabFileName = Configuration.audioFilename(startAtMs, 'tab', sepExt)
@@ -51,9 +51,9 @@ export class AudioSeparationManager {
                     writableStream,
                     tabAudioTrack,
                     sepContainer,
-                    videoFormat.audioCodec,
-                    videoFormat.audioBitratePreset,
-                    videoFormat.audioBitrate,
+                    audioCodec,
+                    audioBitratePreset,
+                    audioBitrate,
                 )
                 result.tabOutput = handle.output
                 result.sources.push(...handle.sources)
@@ -73,9 +73,9 @@ export class AudioSeparationManager {
                     writableStream,
                     micAudioTrack,
                     sepContainer,
-                    videoFormat.audioCodec,
-                    videoFormat.audioBitratePreset,
-                    videoFormat.audioBitrate,
+                    audioCodec,
+                    audioBitratePreset,
+                    audioBitrate,
                 )
                 result.micOutput = handle.output
                 result.sources.push(...handle.sources)
