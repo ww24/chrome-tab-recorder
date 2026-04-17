@@ -21,6 +21,7 @@ import type { FetchConfigMessage } from '../message'
 import { deepMerge, formatNum } from './util'
 import Alert from './alert'
 import { applyTheme } from '../theme'
+import { t } from '../i18n'
 
 @customElement('extension-settings')
 export class Settings extends LitElement {
@@ -131,51 +132,51 @@ export class Settings extends LitElement {
 
     public override render() {
         return html`
-        <h2>Appearance</h2>
-        <md-filled-select class="theme-select" label="UI Theme" .value=${live(this.config.uiTheme)} @input=${this.updateProp('uiTheme')}>
+        <h2>${t('settingsAppearance')}</h2>
+        <md-filled-select class="theme-select" label=${t('settingsUITheme')} .value=${live(this.config.uiTheme)} @input=${this.updateProp('uiTheme')}>
             <md-select-option value="classic">
-                <div slot="headline">Classic</div>
+                <div slot="headline">${t('settingsThemeClassic')}</div>
             </md-select-option>
             <md-select-option value="light">
-                <div slot="headline">Light</div>
+                <div slot="headline">${t('settingsThemeLight')}</div>
             </md-select-option>
             <md-select-option value="dark">
-                <div slot="headline">Dark</div>
+                <div slot="headline">${t('settingsThemeDark')}</div>
             </md-select-option>
             <md-select-option value="auto">
-                <div slot="headline">Auto (System)</div>
+                <div slot="headline">${t('settingsThemeAuto')}</div>
             </md-select-option>
         </md-filled-select>
-        <h2>Window Size</h2>
-        <md-filled-text-field label="width" type="number" suffix-text="px" .value=${live(this.config.windowSize.width)} @change=${this.updateProp('windowSize', 'width')}></md-filled-text-field>
-        <md-filled-text-field label="height" type="number" suffix-text="px" .value=${live(this.config.windowSize.height)} @change=${this.updateProp('windowSize', 'height')}></md-filled-text-field>
+        <h2>${t('settingsWindowSize')}</h2>
+        <md-filled-text-field label=${t('settingsWidth')} type="number" suffix-text="px" .value=${live(this.config.windowSize.width)} @change=${this.updateProp('windowSize', 'width')}></md-filled-text-field>
+        <md-filled-text-field label=${t('settingsHeight')} type="number" suffix-text="px" .value=${live(this.config.windowSize.height)} @change=${this.updateProp('windowSize', 'height')}></md-filled-text-field>
         <md-filled-tonal-button @click=${this.resizeWindow}>
-            Resize
+            ${t('settingsResize')}
             <md-icon slot="icon">resize</md-icon>
         </md-filled-tonal-button>
-        <h2>Screen Recording Size</h2>
+        <h2>${t('settingsScreenRecordingSize')}</h2>
         <div>
             <label style="line-height: 32px; font-size: 1.5em">
-                Auto (Use tab size if available)
+                ${t('settingsAutoUseTabSize')}
                 <md-switch ?disabled=${live(isAudioOnly(this.config.videoFormat.recordingMode))} ?selected=${live(this.config.screenRecordingSize.auto)} @input=${this.updateProp('screenRecordingSize', 'auto')}></md-switch>
             </label>
         </div>
-        <md-filled-text-field label="width" type="number" suffix-text="px" ?disabled=${live(this.config.screenRecordingSize.auto || isAudioOnly(this.config.videoFormat.recordingMode))} .value=${live(this.config.screenRecordingSize.width)} @change=${this.updateProp('screenRecordingSize', 'width')}></md-filled-text-field>
-        <md-filled-text-field label="height" type="number" suffix-text="px" ?disabled=${live(this.config.screenRecordingSize.auto || isAudioOnly(this.config.videoFormat.recordingMode))} .value=${live(this.config.screenRecordingSize.height)} @change=${this.updateProp('screenRecordingSize', 'height')}></md-filled-text-field>
-        <md-filled-text-field label="recording scale" type="number" min="1" suffix-text="x" ?disabled=${live(!this.config.screenRecordingSize.auto || isAudioOnly(this.config.videoFormat.recordingMode))} .value=${live(this.config.screenRecordingSize.scale)} @change=${this.updateProp('screenRecordingSize', 'scale')}></md-filled-text-field>
-        <h2>Video Format</h2>
-        <md-filled-select label="recording mode" .value=${live(this.config.videoFormat.recordingMode)} @input=${this.updateProp('videoFormat', 'recordingMode')}>
+        <md-filled-text-field label=${t('settingsWidth')} type="number" suffix-text="px" ?disabled=${live(this.config.screenRecordingSize.auto || isAudioOnly(this.config.videoFormat.recordingMode))} .value=${live(this.config.screenRecordingSize.width)} @change=${this.updateProp('screenRecordingSize', 'width')}></md-filled-text-field>
+        <md-filled-text-field label=${t('settingsHeight')} type="number" suffix-text="px" ?disabled=${live(this.config.screenRecordingSize.auto || isAudioOnly(this.config.videoFormat.recordingMode))} .value=${live(this.config.screenRecordingSize.height)} @change=${this.updateProp('screenRecordingSize', 'height')}></md-filled-text-field>
+        <md-filled-text-field label=${t('settingsRecordingScale')} type="number" min="1" suffix-text="x" ?disabled=${live(!this.config.screenRecordingSize.auto || isAudioOnly(this.config.videoFormat.recordingMode))} .value=${live(this.config.screenRecordingSize.scale)} @change=${this.updateProp('screenRecordingSize', 'scale')}></md-filled-text-field>
+        <h2>${t('settingsVideoFormat')}</h2>
+        <md-filled-select label=${t('settingsRecordingMode')} .value=${live(this.config.videoFormat.recordingMode)} @input=${this.updateProp('videoFormat', 'recordingMode')}>
             <md-select-option value="video-and-audio">
-                <div slot="headline">Video and Audio</div>
+                <div slot="headline">${t('settingsVideoAndAudio')}</div>
             </md-select-option>
             <md-select-option value="video-only">
-                <div slot="headline">Video only</div>
+                <div slot="headline">${t('settingsVideoOnly')}</div>
             </md-select-option>
             <md-select-option value="audio-only">
-                <div slot="headline">Audio only</div>
+                <div slot="headline">${t('settingsAudioOnly')}</div>
             </md-select-option>
         </md-filled-select>
-        <md-filled-select class="container-select" label="container" .value=${live(this.config.videoFormat.container)} @input=${this.updateProp('videoFormat', 'container')}>
+        <md-filled-select class="container-select" label=${t('settingsContainer')} .value=${live(this.config.videoFormat.container)} @input=${this.updateProp('videoFormat', 'container')}>
             <md-select-option value="webm">
                 <div slot="headline">WebM</div>
             </md-select-option>
@@ -192,65 +193,65 @@ export class Settings extends LitElement {
                 <div slot="headline">FLAC</div>
             </md-select-option>
         </md-filled-select>
-        <md-filled-select class="codec-select audio-codec-settings" label="audio codec" .value=${live(this.config.videoFormat.audioCodec)} ?disabled=${live(!this.audioSettingsEnabled)} @input=${this.updateProp('videoFormat', 'audioCodec')}>
+        <md-filled-select class="codec-select audio-codec-settings" label=${t('settingsAudioCodec')} .value=${live(this.config.videoFormat.audioCodec)} ?disabled=${live(!this.audioSettingsEnabled)} @input=${this.updateProp('videoFormat', 'audioCodec')}>
             ${ALL_AUDIO_CODECS.map(c => html`
                 <md-select-option value=${c} ?disabled=${!this.availableAudioCodecs.includes(c)}>
                     <div slot="headline">${this.codecDisplayName(c)}</div>
                 </md-select-option>
             `)}
         </md-filled-select>
-        <md-filled-text-field class="video-format-input audio-codec-settings" label="audio sampling rate" type="number" min="8" step="0.01" suffix-text="kHz" ?disabled=${live(!this.audioSettingsEnabled)} .value=${live((this.config.videoFormat.audioSampleRate / 1000).toFixed(2))} @change=${this.updateProp('videoFormat', 'audioSampleRate')}></md-filled-text-field>
+        <md-filled-text-field class="video-format-input audio-codec-settings" label=${t('settingsAudioSamplingRate')} type="number" min="8" step="0.01" suffix-text="kHz" ?disabled=${live(!this.audioSettingsEnabled)} .value=${live((this.config.videoFormat.audioSampleRate / 1000).toFixed(2))} @change=${this.updateProp('videoFormat', 'audioSampleRate')}></md-filled-text-field>
         <div>
-            <md-filled-select class="codec-select audio-codec-settings" label="audio bitrate" .value=${live(this.config.videoFormat.audioBitratePreset)} ?disabled=${live(!this.audioSettingsEnabled)} @input=${this.updateProp('videoFormat', 'audioBitratePreset')}>
-                <md-select-option value="high"><div slot="headline">High</div></md-select-option>
-                <md-select-option value="medium"><div slot="headline">Medium</div></md-select-option>
-                <md-select-option value="low"><div slot="headline">Low</div></md-select-option>
-                <md-select-option value="custom"><div slot="headline">Custom</div></md-select-option>
+            <md-filled-select class="codec-select audio-codec-settings" label=${t('settingsAudioBitrate')} .value=${live(this.config.videoFormat.audioBitratePreset)} ?disabled=${live(!this.audioSettingsEnabled)} @input=${this.updateProp('videoFormat', 'audioBitratePreset')}>
+                <md-select-option value="high"><div slot="headline">${t('settingsBitrateHigh')}</div></md-select-option>
+                <md-select-option value="medium"><div slot="headline">${t('settingsBitrateMedium')}</div></md-select-option>
+                <md-select-option value="low"><div slot="headline">${t('settingsBitrateLow')}</div></md-select-option>
+                <md-select-option value="custom"><div slot="headline">${t('settingsBitrateCustom')}</div></md-select-option>
             </md-filled-select>
-            <md-filled-text-field class="video-format-input audio-codec-settings" style="visibility: ${this.config.videoFormat.audioBitratePreset === 'custom' ? 'visible' : 'hidden'}" label="custom audio bitrate" type="number" min="1" step="0.01" suffix-text="kbps" ?disabled=${live(!this.audioSettingsEnabled)} .value=${live((this.config.videoFormat.audioBitrate / 1000).toFixed(2))} @change=${this.updateProp('videoFormat', 'audioBitrate')}></md-filled-text-field>
+            <md-filled-text-field class="video-format-input audio-codec-settings" style="visibility: ${this.config.videoFormat.audioBitratePreset === 'custom' ? 'visible' : 'hidden'}" label=${t('settingsCustomAudioBitrate')} type="number" min="1" step="0.01" suffix-text="kbps" ?disabled=${live(!this.audioSettingsEnabled)} .value=${live((this.config.videoFormat.audioBitrate / 1000).toFixed(2))} @change=${this.updateProp('videoFormat', 'audioBitrate')}></md-filled-text-field>
         </div>
-        <md-filled-select class="codec-select video-codec-settings" label="video codec" .value=${live(this.config.videoFormat.videoCodec)} ?disabled=${live(!hasVideo(this.config.videoFormat.recordingMode))} @input=${this.updateProp('videoFormat', 'videoCodec')}>
+        <md-filled-select class="codec-select video-codec-settings" label=${t('settingsVideoCodec')} .value=${live(this.config.videoFormat.videoCodec)} ?disabled=${live(!hasVideo(this.config.videoFormat.recordingMode))} @input=${this.updateProp('videoFormat', 'videoCodec')}>
             ${ALL_VIDEO_CODECS.map(c => html`
                 <md-select-option value=${c} ?disabled=${!this.availableVideoCodecs.includes(c)}>
                     <div slot="headline">${this.codecDisplayName(c)}</div>
                 </md-select-option>
             `)}
         </md-filled-select>
-        <md-filled-text-field class="video-format-input video-codec-settings" label="frame rate" type="number" min="1" step="0.01" suffix-text="fps" ?disabled=${live(!hasVideo(this.config.videoFormat.recordingMode))} .value=${live(this.config.videoFormat.frameRate.toFixed(2))} @change=${this.updateProp('videoFormat', 'frameRate')}></md-filled-text-field>
+        <md-filled-text-field class="video-format-input video-codec-settings" label=${t('settingsFrameRate')} type="number" min="1" step="0.01" suffix-text="fps" ?disabled=${live(!hasVideo(this.config.videoFormat.recordingMode))} .value=${live(this.config.videoFormat.frameRate.toFixed(2))} @change=${this.updateProp('videoFormat', 'frameRate')}></md-filled-text-field>
         <div>
-            <md-filled-select class="codec-select video-codec-settings" label="video bitrate" .value=${live(this.config.videoFormat.videoBitratePreset)} ?disabled=${live(!hasVideo(this.config.videoFormat.recordingMode))} @input=${this.updateProp('videoFormat', 'videoBitratePreset')}>
-                <md-select-option value="high"><div slot="headline">High</div></md-select-option>
-                <md-select-option value="medium"><div slot="headline">Medium</div></md-select-option>
-                <md-select-option value="low"><div slot="headline">Low</div></md-select-option>
-                <md-select-option value="custom"><div slot="headline">Custom</div></md-select-option>
+            <md-filled-select class="codec-select video-codec-settings" label=${t('settingsVideoBitrate')} .value=${live(this.config.videoFormat.videoBitratePreset)} ?disabled=${live(!hasVideo(this.config.videoFormat.recordingMode))} @input=${this.updateProp('videoFormat', 'videoBitratePreset')}>
+                <md-select-option value="high"><div slot="headline">${t('settingsBitrateHigh')}</div></md-select-option>
+                <md-select-option value="medium"><div slot="headline">${t('settingsBitrateMedium')}</div></md-select-option>
+                <md-select-option value="low"><div slot="headline">${t('settingsBitrateLow')}</div></md-select-option>
+                <md-select-option value="custom"><div slot="headline">${t('settingsBitrateCustom')}</div></md-select-option>
             </md-filled-select>
-            <md-filled-text-field class="video-format-input video-codec-settings" style="visibility: ${this.config.videoFormat.videoBitratePreset === 'custom' ? 'visible' : 'hidden'}" label="custom video bitrate" type="number" min="1" step="0.01" suffix-text="mbps" ?disabled=${live(!hasVideo(this.config.videoFormat.recordingMode))} .value=${live((this.config.videoFormat.videoBitrate / 1000 / 1000).toFixed(2))} @change=${this.updateProp('videoFormat', 'videoBitrate')}></md-filled-text-field>
+            <md-filled-text-field class="video-format-input video-codec-settings" style="visibility: ${this.config.videoFormat.videoBitratePreset === 'custom' ? 'visible' : 'hidden'}" label=${t('settingsCustomVideoBitrate')} type="number" min="1" step="0.01" suffix-text="mbps" ?disabled=${live(!hasVideo(this.config.videoFormat.recordingMode))} .value=${live((this.config.videoFormat.videoBitrate / 1000 / 1000).toFixed(2))} @change=${this.updateProp('videoFormat', 'videoBitrate')}></md-filled-text-field>
         </div>
         ${this.encodeErrors.length > 0 ? html`
         <div class="encode-error">${this.encodeErrors.join('\n')}</div>
         ` : ''}
-        <h2>Microphone</h2>
+        <h2>${t('settingsMicrophone')}</h2>
         <div>
             <label style="line-height: 32px; font-size: 1.5em">
-                Enable microphone recording
+                ${t('settingsEnableMicrophone')}
                 <md-switch ?selected=${live(this.config.microphone.enabled ?? false)} @input=${this.updateProp('microphone', 'enabled')}></md-switch>
             </label>
         </div>
         ${this.config.microphone.enabled ? html`
         <div style="margin-bottom: 8px; font-size: 1.2em; color: ${this.microphonePermissionGranted ? 'var(--theme-success, #4caf50)' : 'var(--theme-error, #f44336)'};">
-            Status: ${this.microphonePermissionGranted ? 'Permission granted' : 'Permission required'}
+            ${t('settingsMicStatus', this.microphonePermissionGranted ? t('settingsPermissionGranted') : t('settingsPermissionRequired'))}
         </div>
         ${this.availableMicrophones.length > 0 ? html`
         <div>
             <label for="mic-device" style="font-size: 1.2em; display: block; margin-bottom: 8px;">
-                Microphone device:
+                ${t('settingsMicDevice')}
             </label>
             <md-filled-select 
                 id="mic-device"
                 .value=${this.config.microphone.deviceId ?? 'default'}
                 @input=${this.updateProp('microphone', 'deviceId')}>
                 <md-select-option value="default">
-                    <div slot="headline">Default device</div>
+                    <div slot="headline">${t('settingsDefaultDevice')}</div>
                 </md-select-option>
                 ${this.availableMicrophones.map(device => html`
                     <md-select-option value=${device.deviceId}>
@@ -262,57 +263,57 @@ export class Settings extends LitElement {
         ` : ''}
         <div>
             <label for="mic-gain" style="font-size: 1.2em; display: block; margin-bottom: 8px;">
-                Microphone volume: x${formatNum(this.config.microphone.gain, 1)}
+                ${t('settingsMicVolume', formatNum(this.config.microphone.gain, 1))}
             </label>
             <md-slider id="mic-gain" min="0" max="10" step="0.1" .value=${live(this.config.microphone.gain)} @input=${this.updateProp('microphone', 'gain')}></md-slider>
         </div>
         ` : ''}
-        <h2>Audio Separation</h2>
+        <h2>${t('settingsAudioSeparation')}</h2>
         <div>
-            <label style="line-height: 32px; font-size: 1.5em" title="Save separated tab audio and microphone audio files alongside the main recording.">
-                Save separated audio files (tab / mic)
+            <label style="line-height: 32px; font-size: 1.5em" title="${t('settingsSaveAudioSeparationTitle')}">
+                ${t('settingsSaveAudioSeparation')}
                 <md-switch ?selected=${live(this.config.audioSeparation.enabled ?? false)} @input=${this.updateProp('audioSeparation', 'enabled')}></md-switch>
             </label>
         </div>
-        <h2>Recording Timer</h2>
+        <h2>${t('settingsRecordingTimer')}</h2>
         <div>
-            <label style="line-height: 32px; font-size: 1.5em" title="Automatically stop recording after the specified duration.">
-                Enable recording timer
+            <label style="line-height: 32px; font-size: 1.5em" title="${t('settingsEnableRecordingTimerTitle')}">
+                ${t('settingsEnableRecordingTimer')}
                 <md-switch ?selected=${live(this.config.recordingTimer.enabled ?? false)} @input=${this.updateProp('recordingTimer', 'enabled')}></md-switch>
             </label>
         </div>
-        <md-filled-text-field label="duration" type="number" min="1" max="10080" step="1" suffix-text="min" ?disabled=${live(!this.config.recordingTimer.enabled)} .value=${live(String(this.config.recordingTimer.durationMinutes))} @change=${this.updateProp('recordingTimer', 'durationMinutes')}></md-filled-text-field>
+        <md-filled-text-field label=${t('settingsDuration')} type="number" min="1" max="10080" step="1" suffix-text=${t('settingsSuffixMin')} ?disabled=${live(!this.config.recordingTimer.enabled)} .value=${live(String(this.config.recordingTimer.durationMinutes))} @change=${this.updateProp('recordingTimer', 'durationMinutes')}></md-filled-text-field>
         ${this.config.recordingTimer.enabled && this.timerEstimateText ? html`
         <div class="timer-estimate">
-            If started now, recording will stop at ≈ ${this.timerEstimateText}
+            ${t('settingsTimerEstimate', this.timerEstimateText)}
         </div>
         ` : ''}
         <div>
-            <label style="line-height: 32px; font-size: 1.5em" title="Show a confirmation dialog when manually stopping a recording with an active timer.">
-                Show timer stop confirmation
+            <label style="line-height: 32px; font-size: 1.5em" title="${t('settingsShowTimerStopConfirmationTitle')}">
+                ${t('settingsShowTimerStopConfirmation')}
                 <md-switch ?disabled=${live(!this.config.recordingTimer.enabled)} ?selected=${live(!this.config.recordingTimer.skipStopConfirmation)} @input=${this.updateProp('recordingTimer', 'skipStopConfirmation')}></md-switch>
             </label>
         </div>
-        <h2>Option</h2>
+        <h2>${t('settingsOption')}</h2>
         <div>
             <label style="line-height: 32px; font-size: 1.5em">
-                Open the option page after recording
+                ${t('settingsOpenOptionPage')}
                 <md-switch ?selected=${live(this.config.openOptionPage)} @input=${this.updateProp('openOptionPage')}></md-switch>
             </label>
         </div>
         <div>
-            <label style="line-height: 32px; font-size: 1.5em" title="If you want to focus on another task while recording.">
-                Mute recording Tab
+            <label style="line-height: 32px; font-size: 1.5em" title="${t('settingsMuteRecordingTabTitle')}">
+                ${t('settingsMuteRecordingTab')}
                 <md-switch ?selected=${live(this.config.muteRecordingTab)} @input=${this.updateProp('muteRecordingTab')}></md-switch>
             </label>
         </div>
-        <h2>Sync</h2>
+        <h2>${t('settingsSync')}</h2>
         <md-filled-tonal-button @click=${this.sync}>
-            Fetch Synced Settings
+            ${t('settingsFetchSyncedSettings')}
             <md-icon slot="icon">sync</md-icon>
         </md-filled-tonal-button>
         <md-filled-tonal-button @click=${this.restore}>
-            Restore Default Settings
+            ${t('settingsRestoreDefaults')}
             <md-icon slot="icon">restore</md-icon>
         </md-filled-tonal-button>
         `
@@ -513,11 +514,11 @@ export class Settings extends LitElement {
                     bitrate: resolveBitrate(vf.videoBitratePreset, vf.videoBitrate),
                 })
                 if (!ok) {
-                    errors.push(`Video codec "${this.codecDisplayName(vf.videoCodec)}" is not available in this browser with the current settings.`)
+                    errors.push(t('settingsCodecNotAvailable', [t('settingsCodecTypeVideo'), this.codecDisplayName(vf.videoCodec)]))
                     this.setFieldErrors('video-codec-settings')
                 }
             } catch (e) {
-                errors.push(`Video codec check failed: ${e instanceof Error ? e.message : String(e)}`)
+                errors.push(t('settingsCodecCheckFailed', [t('settingsCodecTypeVideo'), e instanceof Error ? e.message : String(e)]))
                 this.setFieldErrors('video-codec-settings')
             }
         }
@@ -529,11 +530,11 @@ export class Settings extends LitElement {
                     bitrate: resolveBitrate(vf.audioBitratePreset, vf.audioBitrate),
                 })
                 if (!ok) {
-                    errors.push(`Audio codec "${this.codecDisplayName(vf.audioCodec)}" is not available in this browser with the current settings.`)
+                    errors.push(t('settingsCodecNotAvailable', [t('settingsCodecTypeAudio'), this.codecDisplayName(vf.audioCodec)]))
                     this.setFieldErrors('audio-codec-settings')
                 }
             } catch (e) {
-                errors.push(`Audio codec check failed: ${e instanceof Error ? e.message : String(e)}`)
+                errors.push(t('settingsCodecCheckFailed', [t('settingsCodecTypeAudio'), e instanceof Error ? e.message : String(e)]))
                 this.setFieldErrors('audio-codec-settings')
             }
         }
@@ -606,7 +607,7 @@ export class Settings extends LitElement {
         } catch (e) {
             console.warn('Microphone permission denied:', e)
             this.microphonePermissionGranted = false
-            this.alert('Microphone permission is required for recording.\nPlease allow access when prompted.')
+            this.alert(t('settingsMicPermissionRequired'))
         }
     }
 
@@ -652,7 +653,7 @@ export class Settings extends LitElement {
 
     private alert(content: string) {
         const dialogWrapper = document.getElementById('alert-dialog') as Alert
-        dialogWrapper.setContent('Alert', content)
+        dialogWrapper.setContent(t('alertDefaultHeadline'), content)
 
         if (dialogWrapper.shadowRoot == null) return
         const dialog = dialogWrapper.shadowRoot.children[0] as MdDialog

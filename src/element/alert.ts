@@ -2,6 +2,7 @@ import { LitElement, css, html } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 import '@material/web/dialog/dialog'
 import '@material/web/button/text-button'
+import { t } from '../i18n'
 
 @customElement('extension-alert')
 export default class Alert extends LitElement {
@@ -13,7 +14,7 @@ export default class Alert extends LitElement {
   `
 
   @property({ noAccessor: true })
-  private headline: string = 'Alert'
+  private headline: string = t('alertDefaultHeadline')
 
   @property({ noAccessor: true })
   private content: string = ''
@@ -30,7 +31,7 @@ export default class Alert extends LitElement {
             ${this.content.split('\n').map(p => html`<p>${p}</p>`)}
           </form>
           <div slot="actions">
-            <md-text-button form="form" value="ok" autofocus>OK</md-text-button>
+            <md-text-button form="form" value="ok" autofocus>${t('alertOk')}</md-text-button>
           </div>
         </md-dialog>
       `

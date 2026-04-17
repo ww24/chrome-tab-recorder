@@ -14,6 +14,7 @@ import { Settings } from './settings'
 import { Configuration } from '../configuration'
 import { sendFeedback, FeedbackType, sendException, sendEvent } from '../sentry'
 import Alert from './alert'
+import { t } from '../i18n'
 
 const MAX_MESSAGE_LENGTH = 1000
 
@@ -132,30 +133,30 @@ export class Support extends LitElement {
         const isOverLimit = messageCharLength > MAX_MESSAGE_LENGTH
 
         return html`
-            <h2>Review</h2>
+            <h2>${t('supportReview')}</h2>
             <div class="review-section">
-                <p>If you find this extension useful, please leave a review!</p>
+                <p>${t('supportReviewDescription')}</p>
                 <md-filled-tonal-button href="https://chromewebstore.google.com/detail/instant-tab-recorder/giebbnikpnedbdojlghnnegpfbgdecmi/reviews" target="_blank" rel="noopener" @click=${this.handleReviewLink}>
-                    Write a Review
+                    ${t('supportWriteReview')}
                     <md-icon slot="icon">rate_review</md-icon>
                 </md-filled-tonal-button>
             </div>
 
-            <h2>Support Development</h2>
+            <h2>${t('supportDevelopment')}</h2>
             <div class="support-section">
-                <p>Your support helps keep this extension maintained and improved. Every contribution motivates continued development!</p>
+                <p>${t('supportDevelopmentDescription')}</p>
                 <a class="buymeacoffee-link" href="https://www.buymeacoffee.com/ww24" target="_blank" rel="noopener" @click=${this.handleSupportLink}>
                     <img src="icons/buymeacoffee.png" alt="Buy Me a Coffee">
                 </a>
             </div>
 
-            <h2>Feedback</h2>
+            <h2>${t('supportFeedback')}</h2>
             <p class="section-description">
-                Send feedback directly to the developer. Enabling Bug Tracking does not share any personal information.
+                ${t('supportFeedbackDescription')}
             </p>
             <div>
                 <label style="line-height: 32px; font-size: 1.5em">
-                    Bug Tracking
+                    ${t('supportBugTracking')}
                     <md-switch 
                         ?selected=${live(this.config.enableBugTracking)} 
                         @input=${this.updateBugTracking}
@@ -165,27 +166,27 @@ export class Support extends LitElement {
             
             ${!bugTrackingEnabled ? html`
                 <p class="warning-message">
-                    To send feedback, please enable Bug Tracking above.
+                    ${t('supportBugTrackingRequired')}
                 </p>
             ` : ''}
             
             <div class="feedback-form">
                 <md-filled-select 
-                    label="Feedback Type"
+                    label=${t('supportFeedbackType')}
                     ?disabled=${!bugTrackingEnabled || this.isSending}
                     .value=${live(this.feedbackType)}
                     @input=${this.updateFeedbackType}
                 >
                     <md-select-option value="bug-report">
-                        <div slot="headline">Bug Report</div>
+                        <div slot="headline">${t('supportBugReport')}</div>
                     </md-select-option>
                     <md-select-option value="feature-request">
-                        <div slot="headline">Feature Request / Other</div>
+                        <div slot="headline">${t('supportFeatureRequest')}</div>
                     </md-select-option>
                 </md-filled-select>
                 
                 <md-filled-text-field 
-                    label="Message" 
+                    label=${t('supportMessage')}
                     type="textarea"
                     rows="4"
                     ?disabled=${!bugTrackingEnabled || this.isSending}
@@ -194,19 +195,18 @@ export class Support extends LitElement {
                     required
                 ></md-filled-text-field>
                 <div class="char-count ${isOverLimit ? 'over-limit' : ''}">
-                    ${messageCharLength} / ${MAX_MESSAGE_LENGTH} characters
+                    ${t('supportCharCount', [String(messageCharLength), String(MAX_MESSAGE_LENGTH)])}
                 </div>
                 
                 <div class="notice">
-                    <strong>Important:</strong> Do not include any personal information in your message. 
-                    We will not reply to feedback. All feedback is addressed on a best-effort basis.
+                    <strong>${t('supportImportantLabel')}</strong> ${t('supportImportantNotice')}
                 </div>
 
                 <md-filled-tonal-button 
                     ?disabled=${!bugTrackingEnabled || this.isSending || !this.isMessageValid()}
                     @click=${this.handleSendFeedback}
                 >
-                    ${this.isSending ? 'Sending...' : 'Send Feedback'}
+                    ${this.isSending ? t('supportSending') : t('supportSendFeedback')}
                     <md-icon slot="icon">send</md-icon>
                 </md-filled-tonal-button>
             </div>
@@ -247,16 +247,16 @@ export class Support extends LitElement {
                     this.feedbackMessage = ''
 
                     // Show success message
-                    alertDialog.setContent('Information', 'Thank you for your feedback!')
+                    alertDialog.setContent(t('supportInformation'), t('supportThankYou'))
                 } else {
-                    alertDialog.setContent('Alert', 'Failed to send feedback. Please make sure Bug Tracking is enabled.')
+                    alertDialog.setContent(t('alertDefaultHeadline'), t('supportSendFailed'))
                 }
                 alertDialog.shadowRoot?.querySelector('md-dialog')?.show()
             }
         } catch (e) {
             const alertDialog = document.getElementById('alert-dialog') as Alert | null
             if (alertDialog) {
-                alertDialog.setContent('Alert', 'Failed to send feedback. Please retry.')
+                alertDialog.setContent(t('alertDefaultHeadline'), t('supportSendError'))
                 alertDialog.shadowRoot?.querySelector('md-dialog')?.show()
             }
             sendException(e, { exceptionSource: 'option.support.feedback' })

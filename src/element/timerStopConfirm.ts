@@ -11,6 +11,7 @@ import { TIMER_STOP_CONFIRM_PENDING_KEY as PENDING_KEY, TIMER_STOP_TRIGGER_KEY a
 import type { ConfirmTimerStopMessage, SaveConfigSyncMessage, Trigger } from '../message'
 import { Settings } from './settings'
 import { Configuration } from '../configuration'
+import { t } from '../i18n'
 
 @customElement('extension-timer-stop-confirm')
 export default class TimerStopConfirm extends LitElement {
@@ -67,18 +68,18 @@ export default class TimerStopConfirm extends LitElement {
     public override render() {
         return html`
         <md-dialog>
-            <div slot="headline">Stop recording?</div>
+            <div slot="headline">${t('timerStopHeadline')}</div>
             <md-icon slot="icon">timer</md-icon>
             <form id="form" slot="content" method="dialog">
-                <p>A recording timer is active. Are you sure you want to stop the recording now?</p>
+                <p>${t('timerStopDescription')}</p>
                 <div class="checkbox-row">
                     <md-checkbox id="dont-show" @change=${this.onCheckboxChange}></md-checkbox>
-                    <label for="dont-show">Don't show this again</label>
+                    <label for="dont-show">${t('timerStopDontShowAgain')}</label>
                 </div>
             </form>
             <div slot="actions">
-                <md-text-button form="form" value="stop" @click=${this.onStop}>Stop Recording</md-text-button>
-                <md-filled-tonal-button form="form" value="continue" autofocus @click=${this.onContinue}>Continue Recording</md-filled-tonal-button>
+                <md-text-button form="form" value="stop" @click=${this.onStop}>${t('timerStopStopButton')}</md-text-button>
+                <md-filled-tonal-button form="form" value="continue" autofocus @click=${this.onContinue}>${t('timerStopContinueButton')}</md-filled-tonal-button>
             </div>
         </md-dialog>
         `

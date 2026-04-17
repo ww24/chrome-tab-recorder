@@ -22,6 +22,7 @@ import { OPFSStorage } from './opfs_storage'
 import { handleApiRequest, RecordingState } from './handler'
 import { buildRecordingTitle } from './format'
 import { createMessageListener, type ServiceWorkerDeps } from './service_worker_handler'
+import { t } from './i18n'
 
 const recordingIcon = '/icons/recording.png'
 const recordingVideoOnlyIcon = '/icons/recording-video-only.png'
@@ -29,8 +30,8 @@ const recordingAudioOnlyIcon = '/icons/recording-audio-only.png'
 const notRecordingIcon = '/icons/not-recording.png'
 const storage = new ExtensionSyncStorage()
 
-const APP_NAME = process.env.APP_NAME ?? 'Instant Tab Recorder'
-const DEFAULT_TITLE = process.env.DEFAULT_TITLE ?? APP_NAME
+const APP_NAME = t('appName')
+const DEFAULT_TITLE = t('actionDefaultTitle')
 const CONTEXT_MENU_ID = 'start-recording'
 const CONTEXT_MENU_PAUSE_ID = 'pause-recording'
 
@@ -62,14 +63,14 @@ chrome.runtime.onInstalled.addListener(async () => {
     // Create context menu for starting recording
     chrome.contextMenus.create({
         id: CONTEXT_MENU_ID,
-        title: 'Start Recording',
+        title: t('contextMenuStartRecording'),
         contexts: ['page'],
     })
 
     // Create context menu for pause/resume (hidden by default)
     chrome.contextMenus.create({
         id: CONTEXT_MENU_PAUSE_ID,
-        title: 'Pause Recording',
+        title: t('contextMenuPauseRecording'),
         contexts: ['page'],
         visible: false,
     })
@@ -367,10 +368,10 @@ async function updateActionTitle(state: RecordingState) {
 // Update context menu title based on recording state
 async function updateContextMenuTitle(state: RecordingState) {
     await chrome.contextMenus.update(CONTEXT_MENU_ID, {
-        title: state.isRecording ? 'Stop Recording' : 'Start Recording',
+        title: state.isRecording ? t('contextMenuStopRecording') : t('contextMenuStartRecording'),
     })
     await chrome.contextMenus.update(CONTEXT_MENU_PAUSE_ID, {
-        title: state.isPaused ? 'Resume Recording' : 'Pause Recording',
+        title: state.isPaused ? t('contextMenuResumeRecording') : t('contextMenuPauseRecording'),
         visible: state.isRecording,
     })
 }

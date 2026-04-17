@@ -9,6 +9,7 @@ import '@material/web/list/list-item'
 import '@material/web/divider/divider'
 import { formatNum } from './util'
 import { RecordEntry } from './recordList'
+import { t } from '../i18n'
 
 @customElement('extension-confirm')
 export default class Confirm extends LitElement {
@@ -34,21 +35,21 @@ export default class Confirm extends LitElement {
   public override render() {
     return html`
         <md-dialog>
-          <div slot="headline">Permanently delete?</div>
+          <div slot="headline">${t('confirmDeleteHeadline')}</div>
           <md-icon slot="icon">delete_outline</md-icon>
           <form id="form" slot="content" method="dialog">
-            Deleting the selected record will remove permanently.<br>
-            record(s):
+            ${t('confirmDeleteDescription')}<br>
+            ${t('confirmDeleteRecords')}
             <md-list>
               ${this.records.map((record, i) => html`
                   ${i > 0 ? html`<md-divider></md-divider>` : html``}
-                  <md-list-item>${record.title} <div slot="end">(size: ${formatNum((record.size + record.subFilesSize) / 1024 / 1024, 2)} MB)</div></md-list-item>
+                  <md-list-item>${record.title} <div slot="end">(${t('confirmSizeLabel', formatNum((record.size + record.subFilesSize) / 1024 / 1024, 2))})</div></md-list-item>
               `)}
             </md-list>
           </form>
           <div slot="actions">
-            <md-text-button form="form" value="delete">Delete</md-text-button>
-            <md-filled-tonal-button form="form" value="cancel" autofocus>Cancel</md-filled-tonal-button>
+            <md-text-button form="form" value="delete">${t('confirmDeleteButton')}</md-text-button>
+            <md-filled-tonal-button form="form" value="cancel" autofocus>${t('confirmCancelButton')}</md-filled-tonal-button>
           </div>
         </md-dialog>
       `
