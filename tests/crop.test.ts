@@ -25,7 +25,6 @@ describe('getCroppedStream', () => {
 
         vi.stubGlobal('MediaStreamTrackProcessor', class {
             readable = mockReadable
-            constructor() { }
         })
         vi.stubGlobal('MediaStreamTrackGenerator', class {
             kind: string

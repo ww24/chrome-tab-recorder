@@ -1,0 +1,18 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "jsdoc"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "rules": {
+    "unicorn/no-useless-spread": "off",
+    "typescript/no-extraneous-class": "off"
+  },
+  "ignorePatterns": ["dist/", "coverage/", "node_modules/"],
+  "env": {
+    "builtin": true,
+    "browser": true,
+    "node": true
+  }
+}

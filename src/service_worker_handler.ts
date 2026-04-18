@@ -120,8 +120,8 @@ export function createMessageListener(
             return
         }
 
-        result.response.then(result => {
-            if (result != null) sendResponse(result)
+        result.response.then(config => {
+            if (config != null) sendResponse(config)
             else sendResponse()
         }).catch(e => {
             onError(e)
