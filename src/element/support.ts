@@ -27,7 +27,10 @@ export class Support extends LitElement {
         md-filled-tonal-button {
             height: 56px;
         }
-        md-filled-tonal-button, md-filled-text-field, md-filled-select, md-switch {
+        md-filled-tonal-button,
+        md-filled-text-field,
+        md-filled-select,
+        md-switch {
             margin-bottom: 1em;
         }
         .feedback-form {
@@ -136,7 +139,11 @@ export class Support extends LitElement {
             <h2>${t('supportReview')}</h2>
             <div class="review-section">
                 <p>${t('supportReviewDescription')}</p>
-                <md-filled-tonal-button href="https://chromewebstore.google.com/detail/instant-tab-recorder/giebbnikpnedbdojlghnnegpfbgdecmi/reviews" target="_blank" rel="noopener" @click=${this.handleReviewLink}>
+                <md-filled-tonal-button
+                    href="https://chromewebstore.google.com/detail/instant-tab-recorder/giebbnikpnedbdojlghnnegpfbgdecmi/reviews"
+                    target="_blank"
+                    rel="noopener"
+                    @click=${this.handleReviewLink}>
                     ${t('supportWriteReview')}
                     <md-icon slot="icon">rate_review</md-icon>
                 </md-filled-tonal-button>
@@ -145,38 +152,35 @@ export class Support extends LitElement {
             <h2>${t('supportDevelopment')}</h2>
             <div class="support-section">
                 <p>${t('supportDevelopmentDescription')}</p>
-                <a class="buymeacoffee-link" href="https://www.buymeacoffee.com/ww24" target="_blank" rel="noopener" @click=${this.handleSupportLink}>
-                    <img src="icons/buymeacoffee.png" alt="Buy Me a Coffee">
+                <a
+                    class="buymeacoffee-link"
+                    href="https://www.buymeacoffee.com/ww24"
+                    target="_blank"
+                    rel="noopener"
+                    @click=${this.handleSupportLink}>
+                    <img src="icons/buymeacoffee.png" alt="Buy Me a Coffee" />
                 </a>
             </div>
 
             <h2>${t('supportFeedback')}</h2>
-            <p class="section-description">
-                ${t('supportFeedbackDescription')}
-            </p>
+            <p class="section-description">${t('supportFeedbackDescription')}</p>
             <div>
                 <label style="line-height: 32px; font-size: 1.5em">
                     ${t('supportBugTracking')}
-                    <md-switch 
-                        ?selected=${live(this.config.enableBugTracking)} 
-                        @input=${this.updateBugTracking}
-                    ></md-switch>
+                    <md-switch
+                        ?selected=${live(this.config.enableBugTracking)}
+                        @input=${this.updateBugTracking}></md-switch>
                 </label>
             </div>
-            
-            ${!bugTrackingEnabled ? html`
-                <p class="warning-message">
-                    ${t('supportBugTrackingRequired')}
-                </p>
-            ` : ''}
-            
+
+            ${!bugTrackingEnabled ? html` <p class="warning-message">${t('supportBugTrackingRequired')}</p> ` : ''}
+
             <div class="feedback-form">
-                <md-filled-select 
+                <md-filled-select
                     label=${t('supportFeedbackType')}
                     ?disabled=${!bugTrackingEnabled || this.isSending}
                     .value=${live(this.feedbackType)}
-                    @input=${this.updateFeedbackType}
-                >
+                    @input=${this.updateFeedbackType}>
                     <md-select-option value="bug-report">
                         <div slot="headline">${t('supportBugReport')}</div>
                     </md-select-option>
@@ -184,28 +188,24 @@ export class Support extends LitElement {
                         <div slot="headline">${t('supportFeatureRequest')}</div>
                     </md-select-option>
                 </md-filled-select>
-                
-                <md-filled-text-field 
+
+                <md-filled-text-field
                     label=${t('supportMessage')}
                     type="textarea"
                     rows="4"
                     ?disabled=${!bugTrackingEnabled || this.isSending}
                     .value=${live(this.feedbackMessage)}
                     @input=${this.updateFeedbackMessage}
-                    required
-                ></md-filled-text-field>
+                    required></md-filled-text-field>
                 <div class="char-count ${isOverLimit ? 'over-limit' : ''}">
                     ${t('supportCharCount', [String(messageCharLength), String(MAX_MESSAGE_LENGTH)])}
                 </div>
-                
-                <div class="notice">
-                    <strong>${t('supportImportantLabel')}</strong> ${t('supportImportantNotice')}
-                </div>
 
-                <md-filled-tonal-button 
+                <div class="notice"><strong>${t('supportImportantLabel')}</strong> ${t('supportImportantNotice')}</div>
+
+                <md-filled-tonal-button
                     ?disabled=${!bugTrackingEnabled || this.isSending || !this.isMessageValid()}
-                    @click=${this.handleSendFeedback}
-                >
+                    @click=${this.handleSendFeedback}>
                     ${this.isSending ? t('supportSending') : t('supportSendFeedback')}
                     <md-icon slot="icon">send</md-icon>
                 </md-filled-tonal-button>

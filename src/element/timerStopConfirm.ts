@@ -16,16 +16,16 @@ import { t } from '../i18n'
 @customElement('extension-timer-stop-confirm')
 export default class TimerStopConfirm extends LitElement {
     static override readonly styles = css`
-    md-dialog {
-        width: 520px;
-        --md-dialog-container-color: var(--theme-dialog-bg, var(--md-sys-color-surface-container-high));
-    }
-    .checkbox-row {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin-top: 12px;
-    }
+        md-dialog {
+            width: 520px;
+            --md-dialog-container-color: var(--theme-dialog-bg, var(--md-sys-color-surface-container-high));
+        }
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 12px;
+        }
     `
 
     @property({ noAccessor: true })
@@ -33,7 +33,9 @@ export default class TimerStopConfirm extends LitElement {
 
     private trigger: Trigger = 'action-icon'
 
-    private storageListener: ((changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => Promise<void>) | null = null
+    private storageListener:
+        | ((changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => Promise<void>)
+        | null = null
 
     override connectedCallback() {
         super.connectedCallback()
@@ -67,21 +69,25 @@ export default class TimerStopConfirm extends LitElement {
 
     public override render() {
         return html`
-        <md-dialog>
-            <div slot="headline">${t('timerStopHeadline')}</div>
-            <md-icon slot="icon">timer</md-icon>
-            <form id="form" slot="content" method="dialog">
-                <p>${t('timerStopDescription')}</p>
-                <div class="checkbox-row">
-                    <md-checkbox id="dont-show" @change=${this.onCheckboxChange}></md-checkbox>
-                    <label for="dont-show">${t('timerStopDontShowAgain')}</label>
+            <md-dialog>
+                <div slot="headline">${t('timerStopHeadline')}</div>
+                <md-icon slot="icon">timer</md-icon>
+                <form id="form" slot="content" method="dialog">
+                    <p>${t('timerStopDescription')}</p>
+                    <div class="checkbox-row">
+                        <md-checkbox id="dont-show" @change=${this.onCheckboxChange}></md-checkbox>
+                        <label for="dont-show">${t('timerStopDontShowAgain')}</label>
+                    </div>
+                </form>
+                <div slot="actions">
+                    <md-text-button form="form" value="stop" @click=${this.onStop}
+                        >${t('timerStopStopButton')}</md-text-button
+                    >
+                    <md-filled-tonal-button form="form" value="continue" autofocus @click=${this.onContinue}
+                        >${t('timerStopContinueButton')}</md-filled-tonal-button
+                    >
                 </div>
-            </form>
-            <div slot="actions">
-                <md-text-button form="form" value="stop" @click=${this.onStop}>${t('timerStopStopButton')}</md-text-button>
-                <md-filled-tonal-button form="form" value="continue" autofocus @click=${this.onContinue}>${t('timerStopContinueButton')}</md-filled-tonal-button>
-            </div>
-        </md-dialog>
+            </md-dialog>
         `
     }
 
@@ -132,10 +138,10 @@ export default class TimerStopConfirm extends LitElement {
     private async onContinue() {
         // Dialog dismissed, no action needed
     }
-};
+}
 
 declare global {
     interface HTMLElementTagNameMap {
-        'extension-timer-stop-confirm': TimerStopConfirm;
+        'extension-timer-stop-confirm': TimerStopConfirm
     }
 }

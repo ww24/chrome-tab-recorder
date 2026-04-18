@@ -1,10 +1,10 @@
-
 import { Crop } from '../src/crop'
 
-const createMockFrame = (codedWidth: number, codedHeight: number): VideoFrame => ({
-    codedWidth,
-    codedHeight,
-}) as unknown as VideoFrame
+const createMockFrame = (codedWidth: number, codedHeight: number): VideoFrame =>
+    ({
+        codedWidth,
+        codedHeight,
+    }) as unknown as VideoFrame
 
 describe('getCroppedStream', () => {
     let pipePromiseReject: (e: unknown) => void
@@ -19,31 +19,45 @@ describe('getCroppedStream', () => {
     beforeEach(() => {
         transformFn = undefined
         mockReadable.pipeThrough.mockReturnValue({ pipeTo: mockPipeTo })
-        mockPipeTo.mockReturnValue(new Promise<void>((resolve, reject) => {
-            pipePromiseReject = reject
-        }))
+        mockPipeTo.mockReturnValue(
+            new Promise<void>((resolve, reject) => {
+                pipePromiseReject = reject
+            }),
+        )
 
-        vi.stubGlobal('MediaStreamTrackProcessor', class {
-            readable = mockReadable
-        })
-        vi.stubGlobal('MediaStreamTrackGenerator', class {
-            kind: string
-            writable = mockWritable
-            constructor({ kind }: { kind: string }) {
-                this.kind = kind
-            }
-        })
-        vi.stubGlobal('TransformStream', class {
-            constructor(transformer: { transform: typeof transformFn }) {
-                transformFn = transformer.transform
-            }
-        })
-        vi.stubGlobal('MediaStream', class {
-            tracks: unknown[]
-            constructor(tracks: unknown[]) {
-                this.tracks = tracks
-            }
-        })
+        vi.stubGlobal(
+            'MediaStreamTrackProcessor',
+            class {
+                readable = mockReadable
+            },
+        )
+        vi.stubGlobal(
+            'MediaStreamTrackGenerator',
+            class {
+                kind: string
+                writable = mockWritable
+                constructor({ kind }: { kind: string }) {
+                    this.kind = kind
+                }
+            },
+        )
+        vi.stubGlobal(
+            'TransformStream',
+            class {
+                constructor(transformer: { transform: typeof transformFn }) {
+                    transformFn = transformer.transform
+                }
+            },
+        )
+        vi.stubGlobal(
+            'MediaStream',
+            class {
+                tracks: unknown[]
+                constructor(tracks: unknown[]) {
+                    this.tracks = tracks
+                }
+            },
+        )
     })
 
     afterEach(() => {
@@ -126,11 +140,14 @@ describe('getCroppedStream', () => {
         const closeFn = vi.fn()
         const mockFrame = { codedWidth: 1920, codedHeight: 1080, close: closeFn } as unknown as VideoFrame
         const mockCroppedFrame = { isCropped: true }
-        vi.stubGlobal('VideoFrame', class {
-            constructor() {
-                return mockCroppedFrame
-            }
-        })
+        vi.stubGlobal(
+            'VideoFrame',
+            class {
+                constructor() {
+                    return mockCroppedFrame
+                }
+            },
+        )
 
         const enqueueFn = vi.fn()
         const controller = { enqueue: enqueueFn } as unknown as TransformStreamDefaultController<VideoFrame>
@@ -151,7 +168,7 @@ describe('getCroppedStream', () => {
             getAudioTracks: () => [],
         } as unknown as MediaStream
         const crop = new Crop()
-        const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
+        const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
         crop.getCroppedStream(originalStream, { x: 0, y: 0, width: 100, height: 100 })
         pipePromiseReject(new TypeError('The stream was aborted'))
@@ -169,7 +186,7 @@ describe('getCroppedStream', () => {
             getAudioTracks: () => [],
         } as unknown as MediaStream
         const crop = new Crop()
-        const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
+        const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
         const error = new Error('unexpected error')
 
         crop.getCroppedStream(originalStream, { x: 0, y: 0, width: 100, height: 100 })

@@ -1,9 +1,4 @@
-import {
-    Output,
-    StreamTarget,
-    MediaStreamVideoTrackSource,
-    MediaStreamAudioTrackSource,
-} from 'mediabunny'
+import { Output, StreamTarget, MediaStreamVideoTrackSource, MediaStreamAudioTrackSource } from 'mediabunny'
 import type { VideoFormat } from '../configuration'
 import { createOutputFormat, resolveBitrate, hasVideo } from '../configuration'
 
@@ -43,21 +38,18 @@ export class OutputManager {
         if (hasVideo(videoFormat.recordingMode)) {
             const mediaVideoTrack = media.getVideoTracks()[0] as MediaStreamVideoTrack | undefined
             if (mediaVideoTrack) {
-                const videoSource = new MediaStreamVideoTrackSource(
-                    mediaVideoTrack,
-                    {
-                        codec: videoFormat.videoCodec,
-                        bitrate: resolveBitrate(videoFormat.videoBitratePreset, videoFormat.videoBitrate),
-                        sizeChangeBehavior: 'passThrough',
-                    },
-                )
+                const videoSource = new MediaStreamVideoTrackSource(mediaVideoTrack, {
+                    codec: videoFormat.videoCodec,
+                    bitrate: resolveBitrate(videoFormat.videoBitratePreset, videoFormat.videoBitrate),
+                    sizeChangeBehavior: 'passThrough',
+                })
                 output.addVideoTrack(videoSource)
                 sources.push(videoSource)
                 errorPromises.push(
                     videoSource.errorPromise.catch(e => {
                         console.error('Video source error:', e)
                         throw e
-                    })
+                    }),
                 )
             }
         }
@@ -66,20 +58,17 @@ export class OutputManager {
         if (hasAudioTrack) {
             const mediaAudioTrack = media.getAudioTracks()[0] as MediaStreamAudioTrack | undefined
             if (mediaAudioTrack) {
-                const audioSource = new MediaStreamAudioTrackSource(
-                    mediaAudioTrack,
-                    {
-                        codec: videoFormat.audioCodec,
-                        bitrate: resolveBitrate(videoFormat.audioBitratePreset, videoFormat.audioBitrate),
-                    },
-                )
+                const audioSource = new MediaStreamAudioTrackSource(mediaAudioTrack, {
+                    codec: videoFormat.audioCodec,
+                    bitrate: resolveBitrate(videoFormat.audioBitratePreset, videoFormat.audioBitrate),
+                })
                 output.addAudioTrack(audioSource)
                 sources.push(audioSource)
                 errorPromises.push(
                     audioSource.errorPromise.catch(e => {
                         console.error('Audio source error:', e)
                         throw e
-                    })
+                    }),
                 )
             }
         }

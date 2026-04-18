@@ -4,8 +4,10 @@ vi.mock('mediabunny', () => {
         addAudioTrack: vi.fn(),
     }
     return {
-        Output: vi.fn(function () { return mockOutput }),
-        StreamTarget: vi.fn(function () { }),
+        Output: vi.fn(function () {
+            return mockOutput
+        }),
+        StreamTarget: vi.fn(function () {}),
         MediaStreamVideoTrackSource: vi.fn(function () {
             return { errorPromise: Promise.resolve(), pause: vi.fn(), resume: vi.fn() }
         }),
@@ -13,11 +15,11 @@ vi.mock('mediabunny', () => {
             return { errorPromise: Promise.resolve(), pause: vi.fn(), resume: vi.fn() }
         }),
         canEncodeAudio: vi.fn().mockResolvedValue(true),
-        WebMOutputFormat: vi.fn(function () { }),
-        Mp4OutputFormat: vi.fn(function () { }),
-        OggOutputFormat: vi.fn(function () { }),
-        AdtsOutputFormat: vi.fn(function () { }),
-        FlacOutputFormat: vi.fn(function () { }),
+        WebMOutputFormat: vi.fn(function () {}),
+        Mp4OutputFormat: vi.fn(function () {}),
+        OggOutputFormat: vi.fn(function () {}),
+        AdtsOutputFormat: vi.fn(function () {}),
+        FlacOutputFormat: vi.fn(function () {}),
         QUALITY_HIGH: 'high',
         QUALITY_MEDIUM: 'medium',
         QUALITY_LOW: 'low',
@@ -97,13 +99,19 @@ describe('OutputManager', () => {
 
             const { sources, errorPromises } = manager.addTracks(output, media, videoFormat, true)
 
-            expect(MediaStreamVideoTrackSource).toHaveBeenCalledWith(videoTrack, expect.objectContaining({
-                codec: 'vp9',
-                sizeChangeBehavior: 'passThrough',
-            }))
-            expect(MediaStreamAudioTrackSource).toHaveBeenCalledWith(audioTrack, expect.objectContaining({
-                codec: 'opus',
-            }))
+            expect(MediaStreamVideoTrackSource).toHaveBeenCalledWith(
+                videoTrack,
+                expect.objectContaining({
+                    codec: 'vp9',
+                    sizeChangeBehavior: 'passThrough',
+                }),
+            )
+            expect(MediaStreamAudioTrackSource).toHaveBeenCalledWith(
+                audioTrack,
+                expect.objectContaining({
+                    codec: 'opus',
+                }),
+            )
             expect(output.addVideoTrack).toHaveBeenCalled()
             expect(output.addAudioTrack).toHaveBeenCalled()
             expect(sources).toHaveLength(2)
@@ -180,16 +188,17 @@ describe('OutputManager', () => {
             const writable = {} as WritableStream
             const audioTrack = createMockTrack('audio') as unknown as MediaStreamAudioTrack
 
-            const handle = manager.createAudioTrackOutput(
-                writable, audioTrack, 'ogg', 'opus', 'high', 256000,
-            )
+            const handle = manager.createAudioTrackOutput(writable, audioTrack, 'ogg', 'opus', 'high', 256000)
 
             expect(handle.output).toBeDefined()
             expect(handle.sources).toHaveLength(1)
             expect(handle.errorPromises).toHaveLength(1)
-            expect(MediaStreamAudioTrackSource).toHaveBeenCalledWith(audioTrack, expect.objectContaining({
-                codec: 'opus',
-            }))
+            expect(MediaStreamAudioTrackSource).toHaveBeenCalledWith(
+                audioTrack,
+                expect.objectContaining({
+                    codec: 'opus',
+                }),
+            )
         })
     })
 })

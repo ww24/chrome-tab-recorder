@@ -95,10 +95,42 @@ describe('handleApiRequest – recordings-list', () => {
     ]
     const recordingState: RecordingState = { isRecording: true, startAtMs: 3 }
     const expected: RecordingMetadata[] = [
-        { title: 'a.webm', size: 100, lastModified: 1, mimeType: 'video/webm', recordedAt: 1, isTemporary: false, isRecording: false },
-        { title: 'b.webm', size: 200, lastModified: 2, mimeType: 'video/webm', recordedAt: 2, isTemporary: false, isRecording: false },
-        { title: 'c.webm', size: 0, lastModified: 3, mimeType: 'video/webm', recordedAt: 3, isTemporary: false, isRecording: true },
-        { title: 'c.webm.crswap', size: 0, lastModified: 3, mimeType: 'video/webm', recordedAt: 3, isTemporary: true, isRecording: true },
+        {
+            title: 'a.webm',
+            size: 100,
+            lastModified: 1,
+            mimeType: 'video/webm',
+            recordedAt: 1,
+            isTemporary: false,
+            isRecording: false,
+        },
+        {
+            title: 'b.webm',
+            size: 200,
+            lastModified: 2,
+            mimeType: 'video/webm',
+            recordedAt: 2,
+            isTemporary: false,
+            isRecording: false,
+        },
+        {
+            title: 'c.webm',
+            size: 0,
+            lastModified: 3,
+            mimeType: 'video/webm',
+            recordedAt: 3,
+            isTemporary: false,
+            isRecording: true,
+        },
+        {
+            title: 'c.webm.crswap',
+            size: 0,
+            lastModified: 3,
+            mimeType: 'video/webm',
+            recordedAt: 3,
+            isTemporary: true,
+            isRecording: true,
+        },
     ]
 
     it('should list recordings on GET', async () => {
@@ -215,7 +247,7 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
 
     it('should return 206 for valid int-range', async () => {
         const req = new Request('https://ext.example/api/recordings/test.webm', {
-            headers: { 'Range': 'bytes=0-4' },
+            headers: { Range: 'bytes=0-4' },
         })
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
         const res = await handleApiRequest(req, storage, recordingState)
@@ -232,7 +264,7 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
 
     it('should return 206 for suffix-range', async () => {
         const req = new Request('https://ext.example/api/recordings/test.webm', {
-            headers: { 'Range': 'bytes=-3' },
+            headers: { Range: 'bytes=-3' },
         })
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
         const res = await handleApiRequest(req, storage, recordingState)
@@ -247,7 +279,7 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
 
     it('should return 206 for open-range', async () => {
         const req = new Request('https://ext.example/api/recordings/test.webm', {
-            headers: { 'Range': 'bytes=5-' },
+            headers: { Range: 'bytes=5-' },
         })
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
         const res = await handleApiRequest(req, storage, recordingState)
@@ -262,7 +294,7 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
 
     it('should clamp end to file size for int-range', async () => {
         const req = new Request('https://ext.example/api/recordings/test.webm', {
-            headers: { 'Range': 'bytes=0-99999' },
+            headers: { Range: 'bytes=0-99999' },
         })
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
         const res = await handleApiRequest(req, storage, recordingState)
@@ -274,7 +306,7 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
 
     it('should return 416 for unsatisfiable range', async () => {
         const req = new Request('https://ext.example/api/recordings/test.webm', {
-            headers: { 'Range': 'bytes=100-200' },
+            headers: { Range: 'bytes=100-200' },
         })
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
         const res = await handleApiRequest(req, storage, recordingState)
@@ -285,7 +317,7 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
 
     it('should return 200 for invalid Range header syntax', async () => {
         const req = new Request('https://ext.example/api/recordings/test.webm', {
-            headers: { 'Range': 'invalid' },
+            headers: { Range: 'invalid' },
         })
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
         const res = await handleApiRequest(req, storage, recordingState)
@@ -297,7 +329,7 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
 
     it('should return 200 for unsupported range unit', async () => {
         const req = new Request('https://ext.example/api/recordings/test.webm', {
-            headers: { 'Range': 'items=0-5' },
+            headers: { Range: 'items=0-5' },
         })
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
         const res = await handleApiRequest(req, storage, recordingState)
@@ -307,7 +339,7 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
 
     it('should include Content-Disposition with range response when download=true', async () => {
         const req = new Request('https://ext.example/api/recordings/test.webm?download=true', {
-            headers: { 'Range': 'bytes=0-4' },
+            headers: { Range: 'bytes=0-4' },
         })
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
         const res = await handleApiRequest(req, storage, recordingState)
@@ -318,7 +350,7 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
 
     it('should handle single-byte range', async () => {
         const req = new Request('https://ext.example/api/recordings/test.webm', {
-            headers: { 'Range': 'bytes=0-0' },
+            headers: { Range: 'bytes=0-0' },
         })
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
         const res = await handleApiRequest(req, storage, recordingState)
@@ -333,7 +365,7 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
 
     it('should handle last-byte range', async () => {
         const req = new Request('https://ext.example/api/recordings/test.webm', {
-            headers: { 'Range': 'bytes=9-9' },
+            headers: { Range: 'bytes=9-9' },
         })
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
         const res = await handleApiRequest(req, storage, recordingState)
@@ -348,7 +380,7 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
 
     it('should return 206 with multipart/byteranges for multi-range header', async () => {
         const req = new Request('https://ext.example/api/recordings/test.webm', {
-            headers: { 'Range': 'bytes=0-2,5-7' },
+            headers: { Range: 'bytes=0-2,5-7' },
         })
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
         const res = await handleApiRequest(req, storage, recordingState)
@@ -375,7 +407,7 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
 
     it('should return 206 with multipart/byteranges for three ranges', async () => {
         const req = new Request('https://ext.example/api/recordings/test.webm', {
-            headers: { 'Range': 'bytes=0-1,4-5,8-9' },
+            headers: { Range: 'bytes=0-1,4-5,8-9' },
         })
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
         const res = await handleApiRequest(req, storage, recordingState)
@@ -397,7 +429,7 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
 
     it('should return 416 when all ranges in multi-range are unsatisfiable', async () => {
         const req = new Request('https://ext.example/api/recordings/test.webm', {
-            headers: { 'Range': 'bytes=100-200,300-400' },
+            headers: { Range: 'bytes=100-200,300-400' },
         })
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
         const res = await handleApiRequest(req, storage, recordingState)
@@ -408,7 +440,7 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
 
     it('should skip unsatisfiable ranges and serve only satisfiable ones in multipart', async () => {
         const req = new Request('https://ext.example/api/recordings/test.webm', {
-            headers: { 'Range': 'bytes=0-2,100-200,7-9' },
+            headers: { Range: 'bytes=0-2,100-200,7-9' },
         })
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
         const res = await handleApiRequest(req, storage, recordingState)
@@ -426,7 +458,7 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
 
     it('should return single-range 206 when multi-range has only one satisfiable range', async () => {
         const req = new Request('https://ext.example/api/recordings/test.webm', {
-            headers: { 'Range': 'bytes=0-2,100-200' },
+            headers: { Range: 'bytes=0-2,100-200' },
         })
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
         const res = await handleApiRequest(req, storage, recordingState)
@@ -443,7 +475,7 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
 
     it('should include Accept-Ranges in multipart response', async () => {
         const req = new Request('https://ext.example/api/recordings/test.webm', {
-            headers: { 'Range': 'bytes=0-2,5-7' },
+            headers: { Range: 'bytes=0-2,5-7' },
         })
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
         const res = await handleApiRequest(req, storage, recordingState)

@@ -1,7 +1,4 @@
-import type {
-    Message,
-    Trigger,
-} from './message'
+import type { Message, Trigger } from './message'
 import { Configuration, type Resolution } from './configuration'
 import type { RecordingState } from './handler'
 import { deepMerge } from './element/util'
@@ -26,10 +23,7 @@ export type HandleMessageResult = {
     fireAndForget: boolean
 }
 
-export function handleMessage(
-    message: Message,
-    deps: ServiceWorkerDeps,
-): HandleMessageResult | null {
+export function handleMessage(message: Message, deps: ServiceWorkerDeps): HandleMessageResult | null {
     switch (message.type) {
         case 'resize-window':
             return { response: handleResizeWindow(message, deps), fireAndForget: true }
@@ -108,7 +102,11 @@ async function handleRequestRecordingState(deps: ServiceWorkerDeps): Promise<voi
 export function createMessageListener(
     deps: ServiceWorkerDeps,
     onError: (e: unknown) => void,
-): (message: Message, sender: chrome.runtime.MessageSender, sendResponse: (response?: Configuration) => void) => boolean | undefined {
+): (
+    message: Message,
+    sender: chrome.runtime.MessageSender,
+    sendResponse: (response?: Configuration) => void,
+) => boolean | undefined {
     return (message, _sender, sendResponse) => {
         const result = handleMessage(message, deps)
         if (result == null) return
@@ -120,13 +118,15 @@ export function createMessageListener(
             return
         }
 
-        result.response.then(config => {
-            if (config != null) sendResponse(config)
-            else sendResponse()
-        }).catch(e => {
-            onError(e)
-            sendResponse()
-        })
+        result.response
+            .then(config => {
+                if (config != null) sendResponse(config)
+                else sendResponse()
+            })
+            .catch(e => {
+                onError(e)
+                sendResponse()
+            })
         return true // asynchronous flag
     }
 }

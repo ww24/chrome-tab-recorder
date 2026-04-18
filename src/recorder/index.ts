@@ -23,11 +23,7 @@ import type { Crop } from '../crop'
 /**
  * Wire up all real implementations and create a RecordingSession.
  */
-export function createRecordingSession(
-    preview: Preview,
-    crop: Crop,
-    callbacks: RecorderCallbacks,
-): RecordingSession {
+export function createRecordingSession(preview: Preview, crop: Crop, callbacks: RecorderCallbacks): RecordingSession {
     const audioContextFactory = new SingletonAudioContextFactory()
     const audioMixer = new AudioMixer(audioContextFactory)
     const mediaCapture = new MediaCapture(navigator.mediaDevices)

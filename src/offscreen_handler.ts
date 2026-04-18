@@ -47,7 +47,7 @@ export class OffscreenHandler {
     private timerStopAtMs: number | null = null
     private timerRemainingMs: number | null = null
 
-    constructor(private readonly deps: OffscreenDeps) { }
+    constructor(private readonly deps: OffscreenDeps) {}
 
     handleMessage(message: Message): Promise<StartRecordingResponse | void> | null {
         switch (message.type) {
@@ -75,10 +75,7 @@ export class OffscreenHandler {
         return null
     }
 
-    private async handleStartRecording(
-        data: StartRecording,
-        trigger: StartTrigger,
-    ): Promise<StartRecordingResponse> {
+    private async handleStartRecording(data: StartRecording, trigger: StartTrigger): Promise<StartRecordingResponse> {
         const { videoFormat, recordingSize } = this.deps.getRecordingInfo(data.tabSize)
         const config = this.deps.getConfiguration()
 
@@ -185,10 +182,7 @@ export class OffscreenHandler {
         await this.deps.flush()
     }
 
-    private async handleUpdateRecordingTimer(
-        enabled: boolean,
-        durationMinutes: number,
-    ): Promise<void> {
+    private async handleUpdateRecordingTimer(enabled: boolean, durationMinutes: number): Promise<void> {
         if (this.deps.getLocationHash() !== '#recording') return
         if (enabled && durationMinutes > 0) {
             this.setRecordingTimer(durationMinutes)

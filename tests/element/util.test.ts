@@ -63,24 +63,42 @@ describe('deepMerge', () => {
     })
 
     test('nested objects', () => {
-        const actual = deepMerge({
-            a: { a1: 1 }, c: { c1: 3 }, d: 'd',
-        } as any, {
-            a: { a2: 2 }, c: { c1: 4 }, d: {}
-        })
+        const actual = deepMerge(
+            {
+                a: { a1: 1 },
+                c: { c1: 3 },
+                d: 'd',
+            } as any,
+            {
+                a: { a2: 2 },
+                c: { c1: 4 },
+                d: {},
+            },
+        )
         expect(actual).toStrictEqual({
-            a: { a1: 1, a2: 2 }, c: { c1: 4 }, d: {}
+            a: { a1: 1, a2: 2 },
+            c: { c1: 4 },
+            d: {},
         })
     })
 
     test('null behavior', () => {
-        const actual = deepMerge({
-            a: { a1: 1 }, c: { c1: 3 }, d: 'd',
-        } as any, {
-            a: { a1: null, a2: null }, c: null, d: null
-        })
+        const actual = deepMerge(
+            {
+                a: { a1: 1 },
+                c: { c1: 3 },
+                d: 'd',
+            } as any,
+            {
+                a: { a1: null, a2: null },
+                c: null,
+                d: null,
+            },
+        )
         expect(actual).toStrictEqual({
-            a: { a1: 1 }, c: { c1: 3 }, d: 'd'
+            a: { a1: 1 },
+            c: { c1: 3 },
+            d: 'd',
         })
     })
 })

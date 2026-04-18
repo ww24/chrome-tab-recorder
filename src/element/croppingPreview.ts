@@ -1,7 +1,7 @@
 import { html, css, LitElement, PropertyValues } from 'lit'
 import { customElement, property, state, query } from 'lit/decorators.js'
 import { CropRegion } from '../configuration'
-import type { PreviewFrameMessage, } from '../message'
+import type { PreviewFrameMessage } from '../message'
 import { roundToEven, clampCoordinate, clampDimension } from './util'
 import { t } from '../i18n'
 
@@ -78,11 +78,29 @@ export class CroppingPreview extends LitElement {
         .resize-handle.disabled {
             background: var(--theme-crop-disabled, #666);
         }
-        .resize-handle.nw { top: -6px; left: -6px; cursor: nw-resize; }
-        .resize-handle.ne { top: -6px; right: -6px; cursor: ne-resize; }
-        .resize-handle.sw { bottom: -6px; left: -6px; cursor: sw-resize; }
-        .resize-handle.se { bottom: -6px; right: -6px; cursor: se-resize; }
-        .resize-handle.disabled { cursor: default; }
+        .resize-handle.nw {
+            top: -6px;
+            left: -6px;
+            cursor: nw-resize;
+        }
+        .resize-handle.ne {
+            top: -6px;
+            right: -6px;
+            cursor: ne-resize;
+        }
+        .resize-handle.sw {
+            bottom: -6px;
+            left: -6px;
+            cursor: sw-resize;
+        }
+        .resize-handle.se {
+            bottom: -6px;
+            right: -6px;
+            cursor: se-resize;
+        }
+        .resize-handle.disabled {
+            cursor: default;
+        }
         .dim-overlay {
             position: absolute;
             background: var(--theme-overlay-dim, rgba(0, 0, 0, 0.5));
@@ -111,16 +129,16 @@ export class CroppingPreview extends LitElement {
     private hasPreview: boolean = false
 
     @state()
-    private recordingWidth: number = 0  // Recording resolution width
+    private recordingWidth: number = 0 // Recording resolution width
 
     @state()
-    private recordingHeight: number = 0  // Recording resolution height
+    private recordingHeight: number = 0 // Recording resolution height
 
     @state()
-    private displayWidth: number = 0  // Actual display width
+    private displayWidth: number = 0 // Actual display width
 
     @state()
-    private displayHeight: number = 0  // Actual display height
+    private displayHeight: number = 0 // Actual display height
 
     @state()
     private isDragging: boolean = false
@@ -166,8 +184,8 @@ export class CroppingPreview extends LitElement {
     // NOTE: Must not return true or a truthy value (e.g. Promise from async function)
     // to avoid interfering with sendMessage responses from other contexts.
     private handleMessage = (message: PreviewFrameMessage) => {
-        if (message.type !== 'preview-frame' || !message.image) return;
-        (async () => {
+        if (message.type !== 'preview-frame' || !message.image) return
+        ;(async () => {
             this.recordingWidth = message.recordingSize.width
             this.recordingHeight = message.recordingSize.height
 
@@ -252,8 +270,12 @@ export class CroppingPreview extends LitElement {
         if (this.isDragging) {
             // Move the crop region
             // x, y: must be non-negative and even for VideoFrame
-            const newX = clampCoordinate(Math.min(this.initialCropRegion.x + deltaX, this.recordingWidth - this.initialCropRegion.width))
-            const newY = clampCoordinate(Math.min(this.initialCropRegion.y + deltaY, this.recordingHeight - this.initialCropRegion.height))
+            const newX = clampCoordinate(
+                Math.min(this.initialCropRegion.x + deltaX, this.recordingWidth - this.initialCropRegion.width),
+            )
+            const newY = clampCoordinate(
+                Math.min(this.initialCropRegion.y + deltaY, this.recordingHeight - this.initialCropRegion.height),
+            )
             newRegion = {
                 ...this.initialCropRegion,
                 x: roundToEven(newX),
@@ -275,7 +297,10 @@ export class CroppingPreview extends LitElement {
         const { x, y, width, height } = this.initialCropRegion
         const minSize = 10
 
-        let newX = x, newY = y, newWidth = width, newHeight = height
+        let newX = x,
+            newY = y,
+            newWidth = width,
+            newHeight = height
 
         // Handle resize based on direction
         // x/y: must be non-negative and even for VideoFrame
@@ -305,11 +330,13 @@ export class CroppingPreview extends LitElement {
     }
 
     private dispatchRegionChange(region: CropRegion) {
-        this.dispatchEvent(new CustomEvent<CropRegionChangeEvent>('crop-region-change', {
-            detail: { region },
-            bubbles: true,
-            composed: true,
-        }))
+        this.dispatchEvent(
+            new CustomEvent<CropRegionChangeEvent>('crop-region-change', {
+                detail: { region },
+                bubbles: true,
+                composed: true,
+            }),
+        )
     }
 
     private renderDimOverlays() {
@@ -328,11 +355,19 @@ export class CroppingPreview extends LitElement {
             <!-- Top -->
             <div class="dim-overlay" style="top: 0; left: 0; width: ${screenW}px; height: ${cropY}px;"></div>
             <!-- Bottom -->
-            <div class="dim-overlay" style="top: ${cropY + cropH}px; left: 0; width: ${screenW}px; height: ${screenH - cropY - cropH}px;"></div>
+            <div
+                class="dim-overlay"
+                style="top: ${cropY + cropH}px; left: 0; width: ${screenW}px; height: ${screenH -
+                cropY -
+                cropH}px;"></div>
             <!-- Left -->
             <div class="dim-overlay" style="top: ${cropY}px; left: 0; width: ${cropX}px; height: ${cropH}px;"></div>
             <!-- Right -->
-            <div class="dim-overlay" style="top: ${cropY}px; left: ${cropX + cropW}px; width: ${screenW - cropX - cropW}px; height: ${cropH}px;"></div>
+            <div
+                class="dim-overlay"
+                style="top: ${cropY}px; left: ${cropX + cropW}px; width: ${screenW -
+                cropX -
+                cropW}px; height: ${cropH}px;"></div>
         `
     }
 
@@ -352,19 +387,36 @@ export class CroppingPreview extends LitElement {
                 style="left: ${cropX}px; top: ${cropY}px; width: ${cropW}px; height: ${cropH}px;"
                 @pointerdown=${this.handleCropPointerDown}
                 @pointermove=${this.handlePointerMove}
-                @pointerup=${this.handlePointerUp}
-            >
-                ${!disabled ? html`
-                    <div class="resize-handle nw" @pointerdown=${(e: PointerEvent) => this.handleResizePointerDown(e, 'nw')} @pointermove=${this.handlePointerMove} @pointerup=${this.handlePointerUp}></div>
-                    <div class="resize-handle ne" @pointerdown=${(e: PointerEvent) => this.handleResizePointerDown(e, 'ne')} @pointermove=${this.handlePointerMove} @pointerup=${this.handlePointerUp}></div>
-                    <div class="resize-handle sw" @pointerdown=${(e: PointerEvent) => this.handleResizePointerDown(e, 'sw')} @pointermove=${this.handlePointerMove} @pointerup=${this.handlePointerUp}></div>
-                    <div class="resize-handle se" @pointerdown=${(e: PointerEvent) => this.handleResizePointerDown(e, 'se')} @pointermove=${this.handlePointerMove} @pointerup=${this.handlePointerUp}></div>
-                ` : html`
-                    <div class="resize-handle nw disabled"></div>
-                    <div class="resize-handle ne disabled"></div>
-                    <div class="resize-handle sw disabled"></div>
-                    <div class="resize-handle se disabled"></div>
-                `}
+                @pointerup=${this.handlePointerUp}>
+                ${!disabled
+                    ? html`
+                          <div
+                              class="resize-handle nw"
+                              @pointerdown=${(e: PointerEvent) => this.handleResizePointerDown(e, 'nw')}
+                              @pointermove=${this.handlePointerMove}
+                              @pointerup=${this.handlePointerUp}></div>
+                          <div
+                              class="resize-handle ne"
+                              @pointerdown=${(e: PointerEvent) => this.handleResizePointerDown(e, 'ne')}
+                              @pointermove=${this.handlePointerMove}
+                              @pointerup=${this.handlePointerUp}></div>
+                          <div
+                              class="resize-handle sw"
+                              @pointerdown=${(e: PointerEvent) => this.handleResizePointerDown(e, 'sw')}
+                              @pointermove=${this.handlePointerMove}
+                              @pointerup=${this.handlePointerUp}></div>
+                          <div
+                              class="resize-handle se"
+                              @pointerdown=${(e: PointerEvent) => this.handleResizePointerDown(e, 'se')}
+                              @pointermove=${this.handlePointerMove}
+                              @pointerup=${this.handlePointerUp}></div>
+                      `
+                    : html`
+                          <div class="resize-handle nw disabled"></div>
+                          <div class="resize-handle ne disabled"></div>
+                          <div class="resize-handle sw disabled"></div>
+                          <div class="resize-handle se disabled"></div>
+                      `}
             </div>
         `
     }
@@ -376,12 +428,9 @@ export class CroppingPreview extends LitElement {
             <div class="preview-container">
                 <div class="preview-wrapper">
                     <canvas class="preview-canvas ${showPreview ? '' : 'hidden'}"></canvas>
-                    ${showPreview ? html`
-                        ${this.renderDimOverlays()}
-                        ${this.renderCropOverlay()}
-                    ` : html`
-                        <p class="preview-message">${t('croppingPreviewMessage')}</p>
-                    `}
+                    ${showPreview
+                        ? html` ${this.renderDimOverlays()} ${this.renderCropOverlay()} `
+                        : html` <p class="preview-message">${t('croppingPreviewMessage')}</p> `}
                 </div>
             </div>
         `

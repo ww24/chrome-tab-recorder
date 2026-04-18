@@ -121,7 +121,16 @@ describe('start-recording', () => {
         config.muteRecordingTab = true
         config.audioSeparation = { enabled: true }
         const videoFormat = new VideoFormat(
-            'video-and-audio', 'webm', 'opus', 'high', 256000, 44100, 'vp9', 'high', 8000000, 30,
+            'video-and-audio',
+            'webm',
+            'opus',
+            'high',
+            256000,
+            44100,
+            'vp9',
+            'high',
+            8000000,
+            30,
         )
         const deps = createMockDeps({
             getRecordingInfo: vi.fn().mockReturnValue({
@@ -503,17 +512,13 @@ describe('exception', () => {
         const deps = createMockDeps()
         const handler = new OffscreenHandler(deps)
         const error = new Error('test exception')
-        await expect(
-            handler.handleMessage({ type: 'exception', data: error }),
-        ).rejects.toBe(error)
+        await expect(handler.handleMessage({ type: 'exception', data: error })).rejects.toBe(error)
     })
 
     it('throws non-Error data as-is', async () => {
         const deps = createMockDeps()
         const handler = new OffscreenHandler(deps)
-        await expect(
-            handler.handleMessage({ type: 'exception', data: 'string error' }),
-        ).rejects.toBe('string error')
+        await expect(handler.handleMessage({ type: 'exception', data: 'string error' })).rejects.toBe('string error')
     })
 })
 
@@ -707,16 +712,14 @@ describe('pause/resume timer coordination', () => {
             durationMinutes: 1,
         })
 
-            // Clear the timer-updated from setRecordingTimer
-            ; (deps.sendRuntimeMessage as import('vitest').Mock).mockClear()
+        // Clear the timer-updated from setRecordingTimer
+        ;(deps.sendRuntimeMessage as import('vitest').Mock).mockClear()
 
         vi.advanceTimersByTime(30_000)
         await handler.handleMessage({ type: 'pause-recording', trigger: 'keyboard-shortcut' })
 
         // timer-updated should NOT have been sent on pause
-        expect(deps.sendRuntimeMessage).not.toHaveBeenCalledWith(
-            expect.objectContaining({ type: 'timer-updated' }),
-        )
+        expect(deps.sendRuntimeMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'timer-updated' }))
     })
 
     it('resuming recording sends timer-updated with new stopAtMs', async () => {

@@ -14,9 +14,7 @@ export type ByteRangeSpec =
 /**
  * Result of parsing a Range header
  */
-export type RangeParseResult =
-    | { type: 'bytes'; ranges: ByteRangeSpec[] }
-    | { type: 'unsupported' }
+export type RangeParseResult = { type: 'bytes'; ranges: ByteRangeSpec[] } | { type: 'unsupported' }
 
 /**
  * Parse HTTP Range header value (RFC 9110 Section 14.2)

@@ -89,7 +89,7 @@ async function createOffscreenDocument() {
     await chrome.offscreen.createDocument({
         url: 'offscreen.html',
         reasons: [chrome.offscreen.Reason.USER_MEDIA],
-        justification: 'Recording from chrome.tabCapture API'
+        justification: 'Recording from chrome.tabCapture API',
     })
 }
 
@@ -216,7 +216,7 @@ async function startRecording(tab: chrome.tabs.Tab, trigger: StartTrigger) {
 
     // Get a MediaStream for the active tab.
     const streamId = await (chrome.tabCapture.getMediaStreamId as typeof getMediaStreamId)({
-        targetTabId: tab.id
+        targetTabId: tab.id,
     })
 
     // Track screen size for preview functionality
@@ -258,7 +258,10 @@ async function stopRecording(trigger: Trigger, skipConfirmation = false) {
             const state = await getRecordingState()
             if (state.isRecording && state.stopAtMs != null) {
                 // Timer is active: open option page for confirmation instead of stopping
-                await chrome.storage.local.set({ [TIMER_STOP_CONFIRM_PENDING_KEY]: true, [TIMER_STOP_TRIGGER_KEY]: trigger })
+                await chrome.storage.local.set({
+                    [TIMER_STOP_CONFIRM_PENDING_KEY]: true,
+                    [TIMER_STOP_TRIGGER_KEY]: trigger,
+                })
                 await chrome.runtime.openOptionsPage()
                 return
             }
@@ -383,7 +386,8 @@ async function updateBadge(state: RecordingState) {
 
 // Broadcast recording state to all option pages
 async function broadcastRecordingState() {
-    const { isRecording, isPaused, totalPausedMs, pausedAtMs, screenSize, startAtMs, stopAtMs } = await getRecordingState()
+    const { isRecording, isPaused, totalPausedMs, pausedAtMs, screenSize, startAtMs, stopAtMs } =
+        await getRecordingState()
     // When paused, include current pause duration in totalPausedMs
     const effectivePausedMs = (totalPausedMs ?? 0) + (isPaused && pausedAtMs != null ? Date.now() - pausedAtMs : 0)
     const msg: RecordingStateMessage = {
@@ -419,14 +423,16 @@ const messageHandlerDeps: ServiceWorkerDeps = {
     storageSyncSet: (key, value) => storage.set(key, value),
 }
 
-chrome.runtime.onMessage.addListener(createMessageListener(messageHandlerDeps, async (e) => {
-    console.error(e)
-    const msg: ExceptionMessage = {
-        type: 'exception',
-        data: e,
-    }
-    await chrome.runtime.sendMessage(msg)
-}))
+chrome.runtime.onMessage.addListener(
+    createMessageListener(messageHandlerDeps, async e => {
+        console.error(e)
+        const msg: ExceptionMessage = {
+            type: 'exception',
+            data: e,
+        }
+        await chrome.runtime.sendMessage(msg)
+    }),
+)
 
 async function resizeWindow({ width, height }: Resolution) {
     const window = await chrome.windows.getCurrent()
@@ -471,8 +477,10 @@ self.addEventListener('fetch', (event: FetchEvent) => {
 
     // Only intercept /api/* requests from the same origin
     if (url.origin === location.origin && url.pathname.startsWith(API_PREFIX)) {
-        event.respondWith((async () => {
-            return handleApiRequest(event.request, recordingStorage, await getRecordingState())
-        })())
+        event.respondWith(
+            (async () => {
+                return handleApiRequest(event.request, recordingStorage, await getRecordingState())
+            })(),
+        )
     }
 })

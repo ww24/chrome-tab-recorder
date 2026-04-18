@@ -1,17 +1,20 @@
 export interface PreviewFrame {
-    image: Blob;
-    width: number;
-    height: number;
+    image: Blob
+    width: number
+    height: number
 }
 
 export class Preview {
     private interval: number = 500 // 500ms
     private maxPreviewSize: number = 1200 // 1,200px
-    private callback: ((frame: PreviewFrame) => void)
+    private callback: (frame: PreviewFrame) => void
     private intervalId?: ReturnType<typeof setInterval>
     private imageCapture?: ImageCapture
     private canvas: OffscreenCanvas = new OffscreenCanvas(1, 1)
-    private canvasCtx?: ImageBitmapRenderingContext | null = this.canvas.getContext('bitmaprenderer', { alpha: false, willReadFrequently: false })
+    private canvasCtx?: ImageBitmapRenderingContext | null = this.canvas.getContext('bitmaprenderer', {
+        alpha: false,
+        willReadFrequently: false,
+    })
     constructor(callback: (frame: PreviewFrame) => void) {
         this.callback = callback
     }

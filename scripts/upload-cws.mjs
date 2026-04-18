@@ -51,10 +51,8 @@ const MAX_POLL = parseInt(process.env.CWS_UPLOAD_MAX_POLL ?? '30', 10)
 const POLL_INTERVAL_MS = parseInt(process.env.CWS_UPLOAD_POLL_INTERVAL_MS ?? '5000', 10)
 
 for (let i = 0; i < MAX_POLL && uploadState === 'IN_PROGRESS'; i++) {
-    console.log(
-        `Upload in progress, polling status (${i + 1}/${MAX_POLL})...`,
-    )
-    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS))
+    console.log(`Upload in progress, polling status (${i + 1}/${MAX_POLL})...`)
+    await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS))
 
     const statusRes = await cws.publishers.items.fetchStatus({ name })
     console.log('Status response:', JSON.stringify(statusRes.data, null, 2))
@@ -66,7 +64,7 @@ if (uploadState === 'SUCCEEDED') {
 } else if (uploadState === 'IN_PROGRESS') {
     console.error(
         `Error: upload still in progress after ${MAX_POLL} attempts (${(MAX_POLL * POLL_INTERVAL_MS) / 1000}s). ` +
-        'Consider increasing CWS_UPLOAD_MAX_POLL or CWS_UPLOAD_POLL_INTERVAL_MS.',
+            'Consider increasing CWS_UPLOAD_MAX_POLL or CWS_UPLOAD_POLL_INTERVAL_MS.',
     )
     process.exit(2)
 } else {

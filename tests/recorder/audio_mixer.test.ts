@@ -9,9 +9,15 @@ globalThis.MediaStream = class MockMediaStream {
     constructor(tracks?: MediaStreamTrack[]) {
         this.tracks = tracks ?? []
     }
-    getAudioTracks() { return this.tracks.filter(t => t.kind === 'audio') }
-    getVideoTracks() { return this.tracks.filter(t => t.kind === 'video') }
-    getTracks() { return [...this.tracks] }
+    getAudioTracks() {
+        return this.tracks.filter(t => t.kind === 'audio')
+    }
+    getVideoTracks() {
+        return this.tracks.filter(t => t.kind === 'video')
+    }
+    getTracks() {
+        return [...this.tracks]
+    }
 } as unknown as typeof MediaStream
 
 // ---------- mocks ----------
@@ -48,14 +54,14 @@ interface MockMediaStreamDestination {
 
 function createMockAudioContext(): AudioContext & {
     _dest: MockMediaStreamDestination
-    _gains: Array<{ gain: { value: number }, connect: Mock }>
+    _gains: Array<{ gain: { value: number }; connect: Mock }>
     _sources: Array<{ connect: Mock }>
 } {
     const destTracks = [createMockTrack('audio', 'dest-audio')]
     const destStream = createMockStream(destTracks)
     const dest: MockMediaStreamDestination = { stream: destStream }
 
-    const gains: Array<{ gain: { value: number }, connect: Mock }> = []
+    const gains: Array<{ gain: { value: number }; connect: Mock }> = []
     const sources: Array<{ connect: Mock }> = []
 
     return {
@@ -76,7 +82,7 @@ function createMockAudioContext(): AudioContext & {
         }),
     } as unknown as AudioContext & {
         _dest: MockMediaStreamDestination
-        _gains: Array<{ gain: { value: number }, connect: Mock }>
+        _gains: Array<{ gain: { value: number }; connect: Mock }>
         _sources: Array<{ connect: Mock }>
     }
 }
@@ -94,7 +100,7 @@ describe('SingletonAudioContextFactory', () => {
         const factory = new SingletonAudioContextFactory()
         // Can't construct a real AudioContext in Node, so we patch it
         const fakeCtx = {} as AudioContext
-            ; (factory as unknown as { audioCtx: AudioContext }).audioCtx = fakeCtx
+        ;(factory as unknown as { audioCtx: AudioContext }).audioCtx = fakeCtx
         expect(factory.create(44100)).toBe(fakeCtx)
     })
 })

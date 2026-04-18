@@ -27,7 +27,8 @@ import { VideoFormat } from '../../src/configuration'
 function createMockTrack(kind: 'audio' | 'video', id = '1'): MediaStreamTrack {
     const listeners = new Map<string, EventListener[]>()
     return {
-        kind, id,
+        kind,
+        id,
         stop: vi.fn(),
         clone: vi.fn(() => createMockTrack(kind, `${id}-clone`)),
         addEventListener: vi.fn((event: string, listener: EventListener) => {
@@ -61,10 +62,7 @@ function createMockOutput(state: string = 'idle') {
 }
 
 function createMockMediaCapture(): MediaCapture {
-    const tabStream = createMockStream(
-        [createMockTrack('audio', 'tab-audio')],
-        [createMockTrack('video', 'tab-video')],
-    )
+    const tabStream = createMockStream([createMockTrack('audio', 'tab-audio')], [createMockTrack('video', 'tab-video')])
     const micStream = createMockStream([createMockTrack('audio', 'mic-audio')])
     return {
         captureTab: vi.fn().mockResolvedValue(tabStream),
@@ -146,8 +144,16 @@ function createMockCallbacks(): RecorderCallbacks & {
 function createDefaultConfig(overrides: Partial<RecordingConfig> = {}): RecordingConfig {
     return {
         videoFormat: new VideoFormat(
-            'video-and-audio', 'webm', 'opus', 'high', 256000, 44100,
-            'vp9', 'high', 8000000, 30,
+            'video-and-audio',
+            'webm',
+            'opus',
+            'high',
+            256000,
+            44100,
+            'vp9',
+            'high',
+            8000000,
+            30,
         ),
         recordingSize: { width: 1920, height: 1080 },
         microphone: { enabled: true, gain: 1.0, deviceId: null },
@@ -188,8 +194,14 @@ describe('RecordingSession', () => {
         callbacks = createMockCallbacks()
 
         session = new RecordingSession(
-            mediaCapture, audioMixer, outputManager,
-            audioSeparation, fileManager, preview, crop, callbacks,
+            mediaCapture,
+            audioMixer,
+            outputManager,
+            audioSeparation,
+            fileManager,
+            preview,
+            crop,
+            callbacks,
         )
     })
 
@@ -220,10 +232,7 @@ describe('RecordingSession', () => {
                 'video-and-audio',
                 44100,
             )
-            expect(mediaCapture.captureMicrophone).toHaveBeenCalledWith(
-                config.microphone,
-                44100,
-            )
+            expect(mediaCapture.captureMicrophone).toHaveBeenCalledWith(config.microphone, 44100)
         })
 
         test('mixes audio streams', async () => {
@@ -259,8 +268,16 @@ describe('RecordingSession', () => {
         test('does not apply cropping for audio-only mode', async () => {
             const config = createDefaultConfig({
                 videoFormat: new VideoFormat(
-                    'audio-only', 'ogg', 'opus', 'high', 256000, 44100,
-                    'vp9', 'high', 8000000, 30,
+                    'audio-only',
+                    'ogg',
+                    'opus',
+                    'high',
+                    256000,
+                    44100,
+                    'vp9',
+                    'high',
+                    8000000,
+                    30,
                 ),
                 cropping: { enabled: true, region: { x: 10, y: 20, width: 100, height: 200 } },
             })
@@ -287,23 +304,27 @@ describe('RecordingSession', () => {
             const config = createDefaultConfig()
             await session.start(defaultRequest, config)
 
-            await expect(session.start(defaultRequest, config))
-                .rejects.toThrow('Called startRecording while recording is in progress.')
+            await expect(session.start(defaultRequest, config)).rejects.toThrow(
+                'Called startRecording while recording is in progress.',
+            )
         })
 
         test('throws if start is called while starting', async () => {
             const config = createDefaultConfig()
             // Make captureTab hang so session stays in 'starting' state
             let resolveCapture!: (value: MediaStream) => void
-                ; (mediaCapture.captureTab as Mock).mockReturnValue(new Promise<MediaStream>(resolve => {
+            ;(mediaCapture.captureTab as Mock).mockReturnValue(
+                new Promise<MediaStream>(resolve => {
                     resolveCapture = resolve
-                }))
+                }),
+            )
 
             const startPromise = session.start(defaultRequest, config)
             expect(session.state).toBe('starting')
 
-            await expect(session.start(defaultRequest, config))
-                .rejects.toThrow('Called startRecording while recording is in progress.')
+            await expect(session.start(defaultRequest, config)).rejects.toThrow(
+                'Called startRecording while recording is in progress.',
+            )
 
             // Resolve the hanging capture to let the first start complete
             const tabStream = createMockStream(
@@ -315,7 +336,7 @@ describe('RecordingSession', () => {
         })
 
         test('cleans up on error during start', async () => {
-            (mediaCapture.captureTab as Mock).mockRejectedValue(new Error('capture failed'))
+            ;(mediaCapture.captureTab as Mock).mockRejectedValue(new Error('capture failed'))
             const config = createDefaultConfig()
 
             await expect(session.start(defaultRequest, config)).rejects.toThrow('capture failed')
@@ -323,7 +344,7 @@ describe('RecordingSession', () => {
         })
 
         test('micEnabled is false when mic capture returns null', async () => {
-            (mediaCapture.captureMicrophone as Mock).mockResolvedValue(null)
+            ;(mediaCapture.captureMicrophone as Mock).mockResolvedValue(null)
             const config = createDefaultConfig()
             const response = await session.start(defaultRequest, config)
 
@@ -350,7 +371,8 @@ describe('RecordingSession', () => {
             await session.start(defaultRequest, config)
 
             // Patch output state to 'started'
-            const mockOutput = (outputManager as unknown as { _mockOutput: ReturnType<typeof createMockOutput> })._mockOutput
+            const mockOutput = (outputManager as unknown as { _mockOutput: ReturnType<typeof createMockOutput> })
+                ._mockOutput
             mockOutput.state = 'started'
 
             const result = await session.stop()
@@ -365,7 +387,8 @@ describe('RecordingSession', () => {
             const config = createDefaultConfig()
             await session.start(defaultRequest, config)
 
-            const mockOutput = (outputManager as unknown as { _mockOutput: ReturnType<typeof createMockOutput> })._mockOutput
+            const mockOutput = (outputManager as unknown as { _mockOutput: ReturnType<typeof createMockOutput> })
+                ._mockOutput
             mockOutput.state = 'started'
 
             await session.stop()
@@ -376,7 +399,8 @@ describe('RecordingSession', () => {
             const config = createDefaultConfig({ audioSeparation: { enabled: true } })
             await session.start(defaultRequest, config)
 
-            const mockOutput = (outputManager as unknown as { _mockOutput: ReturnType<typeof createMockOutput> })._mockOutput
+            const mockOutput = (outputManager as unknown as { _mockOutput: ReturnType<typeof createMockOutput> })
+                ._mockOutput
             mockOutput.state = 'started'
 
             await session.stop()
@@ -401,7 +425,8 @@ describe('RecordingSession', () => {
             const config = createDefaultConfig()
             await session.start(defaultRequest, config)
 
-            const mockOutput = (outputManager as unknown as { _mockOutput: ReturnType<typeof createMockOutput> })._mockOutput
+            const mockOutput = (outputManager as unknown as { _mockOutput: ReturnType<typeof createMockOutput> })
+                ._mockOutput
             mockOutput.state = 'started'
 
             await session.stop()
@@ -469,14 +494,14 @@ describe('RecordingSession', () => {
         })
 
         test('pause throws if not recording', () => {
-            expect(() => session.pause()).toThrow('Cannot pause in state \'idle\'')
+            expect(() => session.pause()).toThrow("Cannot pause in state 'idle'")
         })
 
         test('resume throws if not paused', async () => {
             const config = createDefaultConfig()
             await session.start(defaultRequest, config)
 
-            expect(() => session.resume()).toThrow('Cannot resume in state \'recording\'')
+            expect(() => session.resume()).toThrow("Cannot resume in state 'recording'")
         })
 
         test('double pause throws', async () => {
@@ -484,7 +509,7 @@ describe('RecordingSession', () => {
             await session.start(defaultRequest, config)
 
             session.pause()
-            expect(() => session.pause()).toThrow('Cannot pause in state \'paused\'')
+            expect(() => session.pause()).toThrow("Cannot pause in state 'paused'")
         })
 
         test('pause calls pause on all sources', async () => {
@@ -497,8 +522,14 @@ describe('RecordingSession', () => {
             } as unknown as OutputManager & { _mockOutput: ReturnType<typeof createMockOutput> }
 
             const s = new RecordingSession(
-                mediaCapture, audioMixer, om,
-                audioSeparation, fileManager, preview, crop, callbacks,
+                mediaCapture,
+                audioMixer,
+                om,
+                audioSeparation,
+                fileManager,
+                preview,
+                crop,
+                callbacks,
             )
             const config = createDefaultConfig()
             await s.start(defaultRequest, config)
@@ -517,8 +548,14 @@ describe('RecordingSession', () => {
             } as unknown as OutputManager & { _mockOutput: ReturnType<typeof createMockOutput> }
 
             const s = new RecordingSession(
-                mediaCapture, audioMixer, om,
-                audioSeparation, fileManager, preview, crop, callbacks,
+                mediaCapture,
+                audioMixer,
+                om,
+                audioSeparation,
+                fileManager,
+                preview,
+                crop,
+                callbacks,
             )
             const config = createDefaultConfig()
             await s.start(defaultRequest, config)
@@ -539,8 +576,14 @@ describe('RecordingSession', () => {
             } as unknown as OutputManager & { _mockOutput: ReturnType<typeof createMockOutput> }
 
             const s = new RecordingSession(
-                mediaCapture, audioMixer, om,
-                audioSeparation, fileManager, preview, crop, callbacks,
+                mediaCapture,
+                audioMixer,
+                om,
+                audioSeparation,
+                fileManager,
+                preview,
+                crop,
+                callbacks,
             )
             const config = createDefaultConfig()
             await s.start(defaultRequest, config)
@@ -557,7 +600,8 @@ describe('RecordingSession', () => {
             const config = createDefaultConfig()
             await session.start(defaultRequest, config)
 
-            const mockOutput = (outputManager as unknown as { _mockOutput: ReturnType<typeof createMockOutput> })._mockOutput
+            const mockOutput = (outputManager as unknown as { _mockOutput: ReturnType<typeof createMockOutput> })
+                ._mockOutput
             mockOutput.state = 'started'
 
             // Advance 10 seconds, pause, advance 5 seconds, resume, advance 10 seconds

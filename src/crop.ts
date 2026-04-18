@@ -18,7 +18,7 @@ export class Crop {
                 })
                 frame.close()
                 controller.enqueue(croppedFrame)
-            }
+            },
         })
 
         processor.readable
@@ -33,17 +33,15 @@ export class Crop {
                 console.error('Crop pipeline error:', e)
             })
 
-        return new MediaStream([
-            generator,
-            ...originalStream.getAudioTracks()
-        ])
+        return new MediaStream([generator, ...originalStream.getAudioTracks()])
     }
 
     static alignRegion(frame: VideoFrame, region: CropRegion): CropRegion {
         const x = Math.max(0, Math.min(region.x, frame.codedWidth - 1))
         const y = Math.max(0, Math.min(region.y, frame.codedHeight - 1))
         return {
-            x, y,
+            x,
+            y,
             width: Math.min(region.width, frame.codedWidth - x),
             height: Math.min(region.height, frame.codedHeight - y),
         }

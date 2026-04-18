@@ -53,15 +53,15 @@ export function parseApiPath(pathname: string): { route: string; name?: string }
 }
 
 export interface RecordingState {
-    isRecording: boolean;
-    isPaused?: boolean;
-    totalPausedMs?: number;
-    pausedAtMs?: number;
-    startAtMs?: number;
-    screenSize?: Resolution;
-    recordingMode?: VideoRecordingMode;
-    micEnabled?: boolean;
-    stopAtMs?: number;
+    isRecording: boolean
+    isPaused?: boolean
+    totalPausedMs?: number
+    pausedAtMs?: number
+    startAtMs?: number
+    screenSize?: Resolution
+    recordingMode?: VideoRecordingMode
+    micEnabled?: boolean
+    stopAtMs?: number
 }
 
 /**
@@ -73,7 +73,11 @@ export interface RecordingState {
  * - GET  /api/recordings/:name       - Download recording (with Range Request support)
  * - DELETE /api/recordings/:name     - Delete recording
  */
-export async function handleApiRequest(request: Request, storage: RecordingStorage, state: RecordingState): Promise<Response> {
+export async function handleApiRequest(
+    request: Request,
+    storage: RecordingStorage,
+    state: RecordingState,
+): Promise<Response> {
     const url = new URL(request.url)
     const parsed = parseApiPath(url.pathname)
 

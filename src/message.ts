@@ -27,11 +27,10 @@ export type Message =
     | TimerUpdatedMessage
     | ConfirmTimerStopMessage
     | UpdateRecordingTimerMessage
-    ;
 
 export interface ExceptionMessage {
-    type: 'exception';
-    data: unknown;
+    type: 'exception'
+    data: unknown
 }
 
 export type Trigger = 'action-icon' | 'context-menu' | 'keyboard-shortcut' | 'tab-track-ended' | 'timer'
@@ -39,123 +38,123 @@ export type Trigger = 'action-icon' | 'context-menu' | 'keyboard-shortcut' | 'ta
 export type StartTrigger = Exclude<Trigger, 'tab-track-ended' | 'timer'>
 
 export interface StartRecordingMessage {
-    type: 'start-recording';
-    data: StartRecording;
-    trigger: StartTrigger;
+    type: 'start-recording'
+    data: StartRecording
+    trigger: StartTrigger
 }
 export interface StartRecording {
-    tabSize: Resolution;
-    streamId: string;
+    tabSize: Resolution
+    streamId: string
 }
 export interface StartRecordingResponse {
-    startAtMs: number;
-    recordingMode: VideoRecordingMode;
-    micEnabled: boolean;
-    stopAtMs?: number;
+    startAtMs: number
+    recordingMode: VideoRecordingMode
+    micEnabled: boolean
+    stopAtMs?: number
 }
 
 export interface TabTrackEndedMessage {
-    type: 'tab-track-ended';
+    type: 'tab-track-ended'
 }
 
 export interface StopRecordingMessage {
-    type: 'stop-recording';
-    trigger: Trigger;
+    type: 'stop-recording'
+    trigger: Trigger
 }
 
 export interface PauseRecordingMessage {
-    type: 'pause-recording';
-    trigger: Trigger;
+    type: 'pause-recording'
+    trigger: Trigger
 }
 
 export interface ResumeRecordingMessage {
-    type: 'resume-recording';
-    trigger: Trigger;
+    type: 'resume-recording'
+    trigger: Trigger
 }
 
 export interface UnexpectedRecordingStateMessage {
-    type: 'unexpected-recording-state';
-    error: string;
+    type: 'unexpected-recording-state'
+    error: string
 }
 
 export interface CancelRecordingMessage {
-    type: 'cancel-recording';
+    type: 'cancel-recording'
 }
 
 export interface ResizeWindowMessage {
-    type: 'resize-window';
-    data: Resolution;
+    type: 'resize-window'
+    data: Resolution
 }
 
 export interface FetchConfigMessage {
-    type: 'fetch-config';
+    type: 'fetch-config'
 }
 
 export interface SaveConfigLocalMessage {
-    type: 'save-config-local';
-    data: Configuration;
+    type: 'save-config-local'
+    data: Configuration
 }
 
 export interface SaveConfigSyncMessage {
-    type: 'save-config-sync';
-    data: SyncConfiguration;
+    type: 'save-config-sync'
+    data: SyncConfiguration
 }
 
 // Recording state notification (service_worker → option page)
 export interface RecordingStateMessage {
-    type: 'recording-state';
-    data: RecordingState;
+    type: 'recording-state'
+    data: RecordingState
 }
 
 // Request current recording state (option page → service_worker)
 export interface RequestRecordingStateMessage {
-    type: 'request-recording-state';
+    type: 'request-recording-state'
 }
 
 // Preview frame transfer (offscreen → service_worker → option page)
 export interface PreviewFrameMessage {
-    type: 'preview-frame';
-    recordingSize: Resolution;
-    image: string; // base64 encoded jpeg image
+    type: 'preview-frame'
+    recordingSize: Resolution
+    image: string // base64 encoded jpeg image
 }
 
 // Preview start/stop request (option page → service_worker → offscreen)
 export interface PreviewControlMessage {
-    type: 'preview-control';
-    action: 'start' | 'stop';
+    type: 'preview-control'
+    action: 'start' | 'stop'
 }
 
 // Cropping region update (option page → service_worker → offscreen)
 export interface UpdateCropRegionMessage {
-    type: 'update-crop-region';
-    region: CropRegion;
+    type: 'update-crop-region'
+    region: CropRegion
 }
 
 // Periodic tick during recording (offscreen → service_worker)
 export interface RecordingTickMessage {
-    type: 'recording-tick';
+    type: 'recording-tick'
 }
 
 // Timer expired notification (offscreen → service_worker)
 export interface TimerExpiredMessage {
-    type: 'timer-expired';
+    type: 'timer-expired'
 }
 
 // Timer updated notification (offscreen → service_worker)
 export interface TimerUpdatedMessage {
-    type: 'timer-updated';
-    stopAtMs: number | null;
+    type: 'timer-updated'
+    stopAtMs: number | null
 }
 
 // Confirm timer stop (option page → service_worker)
 export interface ConfirmTimerStopMessage {
-    type: 'confirm-timer-stop';
-    trigger: Trigger;
+    type: 'confirm-timer-stop'
+    trigger: Trigger
 }
 
 // Update recording timer (option page → offscreen)
 export interface UpdateRecordingTimerMessage {
-    type: 'update-recording-timer';
-    enabled: boolean;
-    durationMinutes: number;
+    type: 'update-recording-timer'
+    enabled: boolean
+    durationMinutes: number
 }
