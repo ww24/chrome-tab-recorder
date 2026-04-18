@@ -333,13 +333,10 @@
         "message": "デフォルト設定に戻す"
     },
     "recordListStorage": {
-        "message": "ストレージ (合計: $SIZE$ MB, $PERCENT$)",
+        "message": "ストレージ (合計: $SIZE$ MB)",
         "placeholders": {
             "size": {
                 "content": "$1"
-            },
-            "percent": {
-                "content": "$2"
             }
         }
     },

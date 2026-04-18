@@ -438,16 +438,12 @@
         "description": "Button to restore default settings"
     },
     "recordListStorage": {
-        "message": "Storage (total: $SIZE$ MB, $PERCENT$)",
+        "message": "Storage (total: $SIZE$ MB)",
         "description": "Storage heading with usage info",
         "placeholders": {
             "size": {
                 "content": "$1",
                 "example": "150.5"
-            },
-            "percent": {
-                "content": "$2",
-                "example": "12.3%"
             }
         }
     },
