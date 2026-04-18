@@ -51,7 +51,7 @@ function isSubFile(title: string): boolean {
     return m != null && m[2] != null
 }
 
-function selected(record: RecordEntry): boolean {
+function isSelected(record: RecordEntry): boolean {
     return record.selected
 }
 
@@ -185,17 +185,17 @@ export class RecordList extends LitElement {
     private handleMessage = (message: Message) => {
         if (message.type !== 'recording-state') return;
         (async () => {
-            const state = message.data
-            if (state.isRecording && state.startAtMs != null) {
-                this.recordingTotalPausedMs = state.totalPausedMs ?? 0
-                if (state.isPaused) {
+            const recordingState = message.data
+            if (recordingState.isRecording && recordingState.startAtMs != null) {
+                this.recordingTotalPausedMs = recordingState.totalPausedMs ?? 0
+                if (recordingState.isPaused) {
                     this.recordingPaused = true
-                    this.pauseElapsedTimer(state.startAtMs)
+                    this.pauseElapsedTimer(recordingState.startAtMs)
                 } else {
                     this.recordingPaused = false
-                    this.startElapsedTimer(state.startAtMs)
+                    this.startElapsedTimer(recordingState.startAtMs)
                 }
-                this.recordingStopAtMs = state.stopAtMs ?? null
+                this.recordingStopAtMs = recordingState.stopAtMs ?? null
                 this.updateTimerStopText()
             } else {
                 this.stopElapsedTimer()
@@ -266,16 +266,16 @@ export class RecordList extends LitElement {
         ${t('recordListStorage', [formatNum(usage / 1024 / 1024, 1), formatRate(usage / quota, 1)])}
         </h2>
         <md-chip-set class="selected-actions">
-            <md-filter-chip label=${t('recordListSelectAll')} has-icon="true" ?disabled=${this.records.length === 0} ?selected=${this.records.length > 0 && this.records.every(selected)} @click=${this.selectAll}>
+            <md-filter-chip label=${t('recordListSelectAll')} has-icon="true" ?disabled=${this.records.length === 0} ?selected=${this.records.length > 0 && this.records.every(isSelected)} @click=${this.selectAll}>
                 <md-icon slot="icon">check_box_outline_blank</md-icon>
             </md-filter-chip>
             <md-assist-chip class="sort-chip" label="${sortLabel}" has-icon="true" @click=${this.toggleSortOrder}>
                 <md-icon slot="icon">${sortIcon}</md-icon>
             </md-assist-chip>
-            <md-assist-chip label=${t('recordListSave')} ?disabled=${!this.records.some(selected)} @click=${this.saveSelectedRecords}>
+            <md-assist-chip label=${t('recordListSave')} ?disabled=${!this.records.some(isSelected)} @click=${this.saveSelectedRecords}>
                 <md-icon slot="icon">save</md-icon>
             </md-assist-chip>
-            <md-assist-chip label=${t('recordListDelete')} ?disabled=${!this.records.some(selected)} @click=${this.deleteSelectedRecords}>
+            <md-assist-chip label=${t('recordListDelete')} ?disabled=${!this.records.some(isSelected)} @click=${this.deleteSelectedRecords}>
                 <md-icon slot="icon">delete</md-icon>
             </md-assist-chip>
         </md-chip-set>
@@ -442,7 +442,7 @@ export class RecordList extends LitElement {
             throw new Error('permission denied')
         }
 
-        const selectedRecords = this.records.filter(selected)
+        const selectedRecords = this.records.filter(isSelected)
 
         for (const record of selectedRecords) {
             // Save main file
@@ -482,7 +482,7 @@ export class RecordList extends LitElement {
     }
     private deleteSelectedRecords() {
         const dialogWrapper = document.getElementById('confirm-dialog') as Confirm
-        const selectedRecords = this.records.filter(selected)
+        const selectedRecords = this.records.filter(isSelected)
         dialogWrapper.setRecords(selectedRecords)
 
         if (dialogWrapper.shadowRoot == null) return

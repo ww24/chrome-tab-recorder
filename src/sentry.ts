@@ -30,18 +30,19 @@ const client = new BrowserClient({
     release: `${process.env.PKG_NAME}@${process.env.VERSION}`,
 })
 
-const scope = new Scope()
-scope.setClient(client)
+const getScope = (() => {
+    const scope = new Scope()
+    scope.setClient(client)
+    return () => {
+        const config = Settings.getConfiguration()
+        if (!config.enableBugTracking) return
+        scope.setUser({ id: config.userId })
+        scope.setAttribute('version', process.env.VERSION)
+        return scope
+    }
+})()
 
 client.init() // initializing has to be done after setting the client on the scope
-
-function getScope(): Scope | undefined {
-    const config = Settings.getConfiguration()
-    if (!config.enableBugTracking) return
-    scope.setUser({ id: config.userId })
-    scope.setAttribute('version', process.env.VERSION)
-    return scope
-}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === 'object' && !Array.isArray(value)
