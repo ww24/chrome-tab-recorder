@@ -16,6 +16,7 @@ import Settings from './settings'
 import './croppingPreview'
 import { CropRegionChangeEvent } from './croppingPreview'
 import { roundToEven, clampCoordinate, clampDimension } from './util'
+import { t } from '../i18n'
 
 @customElement('extension-cropping')
 export class Cropping extends LitElement {
@@ -235,10 +236,10 @@ export class Cropping extends LitElement {
 
     private renderMessages() {
         if (this.isAudioOnlyMode) {
-            return html`<p class="message warning">Cropping is not available in Audio only mode.</p>`
+            return html`<p class="message warning">${t('croppingAudioOnlyWarning')}</p>`
         }
         if (this.isRecording) {
-            return html`<p class="message warning">Cannot enable or disable cropping during recording. You can still adjust the crop region.</p>`
+            return html`<p class="message warning">${t('croppingRecordingWarning')}</p>`
         }
         return null
     }
@@ -249,9 +250,9 @@ export class Cropping extends LitElement {
         const inputsDisabled = !this.canChangeRegion
 
         return html`
-            <h2>Cropping</h2>
+            <h2>${t('croppingHeading')}</h2>
             <div class="switch-row">
-                <label class="switch-label">Enable Cropping</label>
+                <label class="switch-label">${t('croppingEnable')}</label>
                 <md-switch
                     ?selected=${enabled}
                     ?disabled=${switchDisabled}
@@ -260,8 +261,8 @@ export class Cropping extends LitElement {
             </div>
             ${this.renderMessages()}
 
-            <h3>Preview</h3>
-            <p class="hint">Adjust the cropping area during a test recording, then apply to actual recordings.</p>
+            <h3>${t('croppingPreviewHeading')}</h3>
+            <p class="hint">${t('croppingPreviewHint')}</p>
             <cropping-preview
                 ?croppingEnabled=${enabled}
                 .cropRegion=${region}
@@ -271,8 +272,8 @@ export class Cropping extends LitElement {
                 @crop-region-change=${this.handleCropRegionChange}
             ></cropping-preview>
 
-            <h3>Region</h3>
-            <p class="hint">Due to technical constraints, X and Y values must be even numbers.</p>
+            <h3>${t('croppingRegionHeading')}</h3>
+            <p class="hint">${t('croppingRegionHint')}</p>
             <div class="region-inputs">
                 <md-filled-text-field
                     label="X"
@@ -295,7 +296,7 @@ export class Cropping extends LitElement {
                     @change=${this.updateRegion('y')}
                 ></md-filled-text-field>
                 <md-filled-text-field
-                    label="Width"
+                    label=${t('croppingLabelWidth')}
                     type="number"
                     min="1"
                     suffix-text="px"
@@ -304,7 +305,7 @@ export class Cropping extends LitElement {
                     @change=${this.updateRegion('width')}
                 ></md-filled-text-field>
                 <md-filled-text-field
-                    label="Height"
+                    label=${t('croppingLabelHeight')}
                     type="number"
                     min="1"
                     suffix-text="px"

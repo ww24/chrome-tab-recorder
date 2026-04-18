@@ -43,8 +43,6 @@ export default defineConfig(({ mode }) => ({
         'process.env.PKG_NAME': JSON.stringify(pkg.name),
         'process.env.VERSION': JSON.stringify(pkg.version),
         'process.env.ENV_NAME': JSON.stringify(envName),
-        'process.env.APP_NAME': JSON.stringify(manifest.name),
-        'process.env.DEFAULT_TITLE': JSON.stringify(manifest.action.default_title),
         'process.env.SENTRY_DSN': JSON.stringify(sentryDSN),
     },
 }))

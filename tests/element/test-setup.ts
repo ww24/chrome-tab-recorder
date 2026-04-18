@@ -1,5 +1,6 @@
 import 'vitest-browser-lit'
 import { beforeEach, vi } from 'vitest'
+import { mockGetMessage } from '../i18n-mock'
 
 // ── Chrome API Mocks ─────────────────────────────────────────────────────────
 
@@ -10,6 +11,10 @@ const messageListeners: MessageListener[] = []
 const storageListeners: StorageListener[] = []
 
 const chromeMock = {
+    i18n: {
+        getMessage: vi.fn(mockGetMessage),
+        getUILanguage: vi.fn(() => 'en'),
+    },
     runtime: {
         onMessage: {
             addListener: vi.fn((listener: MessageListener) => {

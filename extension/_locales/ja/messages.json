@@ -1,0 +1,562 @@
+{
+    "appName": {
+        "message": "Instant Tab Recorder"
+    },
+    "appShortName": {
+        "message": "Tab Recorder"
+    },
+    "appDescription": {
+        "message": "非常にシンプルなタブレコーダー"
+    },
+    "actionDefaultTitle": {
+        "message": "Instant Tab Recorder\nクリックして録画を開始"
+    },
+    "commandStartRecording": {
+        "message": "録画を開始"
+    },
+    "commandStopRecording": {
+        "message": "録画を停止"
+    },
+    "commandToggleRecording": {
+        "message": "録画の開始/停止"
+    },
+    "commandTogglePauseRecording": {
+        "message": "録画の一時停止/再開"
+    },
+    "commandOpenOptionPage": {
+        "message": "オプションページを開く"
+    },
+    "contextMenuStartRecording": {
+        "message": "録画を開始"
+    },
+    "contextMenuStopRecording": {
+        "message": "録画を停止"
+    },
+    "contextMenuPauseRecording": {
+        "message": "録画を一時停止"
+    },
+    "contextMenuResumeRecording": {
+        "message": "録画を再開"
+    },
+    "formatPaused": {
+        "message": "一時停止 ($TIME$)",
+        "placeholders": {
+            "time": {
+                "content": "$1"
+            }
+        }
+    },
+    "formatRecording": {
+        "message": "録画中 ($TIME$)",
+        "placeholders": {
+            "time": {
+                "content": "$1"
+            }
+        }
+    },
+    "formatVideoAudioMic": {
+        "message": "映像: $VIDEO$ / 音声: $AUDIO$ / マイク: $MIC$",
+        "placeholders": {
+            "video": {
+                "content": "$1"
+            },
+            "audio": {
+                "content": "$2"
+            },
+            "mic": {
+                "content": "$3"
+            }
+        }
+    },
+    "formatTimerRemaining": {
+        "message": "タイマー: 残り $TIME$",
+        "placeholders": {
+            "time": {
+                "content": "$1"
+            }
+        }
+    },
+    "formatTimerPaused": {
+        "message": "タイマー: 一時停止中 (残り $TIME$)",
+        "placeholders": {
+            "time": {
+                "content": "$1"
+            }
+        }
+    },
+    "formatClickToStop": {
+        "message": "クリックして録画を停止"
+    },
+    "formatOn": {
+        "message": "オン"
+    },
+    "formatOff": {
+        "message": "オフ"
+    },
+    "tabRecords": {
+        "message": "録画一覧"
+    },
+    "tabSettings": {
+        "message": "設定"
+    },
+    "tabCropping": {
+        "message": "切り抜き"
+    },
+    "tabSupport": {
+        "message": "サポート"
+    },
+    "alertDefaultHeadline": {
+        "message": "通知"
+    },
+    "alertOk": {
+        "message": "OK"
+    },
+    "confirmDeleteHeadline": {
+        "message": "完全に削除しますか？"
+    },
+    "confirmDeleteDescription": {
+        "message": "選択した録画は完全に削除されます。"
+    },
+    "confirmDeleteRecords": {
+        "message": "録画ファイル:"
+    },
+    "confirmDeleteButton": {
+        "message": "削除"
+    },
+    "confirmCancelButton": {
+        "message": "キャンセル"
+    },
+    "confirmSizeLabel": {
+        "message": "サイズ: $SIZE$ MB",
+        "placeholders": {
+            "size": {
+                "content": "$1"
+            }
+        }
+    },
+    "timerStopHeadline": {
+        "message": "録画を停止しますか？"
+    },
+    "timerStopDescription": {
+        "message": "録画タイマーが動作中です。今すぐ録画を停止しますか？"
+    },
+    "timerStopDontShowAgain": {
+        "message": "今後表示しない"
+    },
+    "timerStopStopButton": {
+        "message": "録画を停止"
+    },
+    "timerStopContinueButton": {
+        "message": "録画を続行"
+    },
+    "settingsAppearance": {
+        "message": "外観"
+    },
+    "settingsUITheme": {
+        "message": "UI テーマ"
+    },
+    "settingsThemeClassic": {
+        "message": "クラシック"
+    },
+    "settingsThemeLight": {
+        "message": "ライト"
+    },
+    "settingsThemeDark": {
+        "message": "ダーク"
+    },
+    "settingsThemeAuto": {
+        "message": "自動（システム設定に従う）"
+    },
+    "settingsWindowSize": {
+        "message": "ウィンドウサイズ"
+    },
+    "settingsWidth": {
+        "message": "幅"
+    },
+    "settingsHeight": {
+        "message": "高さ"
+    },
+    "settingsResize": {
+        "message": "リサイズ"
+    },
+    "settingsScreenRecordingSize": {
+        "message": "画面録画サイズ"
+    },
+    "settingsAutoUseTabSize": {
+        "message": "自動（利用可能な場合はタブサイズを使用）"
+    },
+    "settingsRecordingScale": {
+        "message": "録画スケール"
+    },
+    "settingsVideoFormat": {
+        "message": "動画フォーマット"
+    },
+    "settingsRecordingMode": {
+        "message": "録画モード"
+    },
+    "settingsVideoAndAudio": {
+        "message": "映像と音声"
+    },
+    "settingsVideoOnly": {
+        "message": "映像のみ"
+    },
+    "settingsAudioOnly": {
+        "message": "音声のみ"
+    },
+    "settingsContainer": {
+        "message": "コンテナ"
+    },
+    "settingsAudioCodec": {
+        "message": "音声コーデック"
+    },
+    "settingsAudioSamplingRate": {
+        "message": "音声サンプリングレート"
+    },
+    "settingsAudioBitrate": {
+        "message": "音声ビットレート"
+    },
+    "settingsBitrateHigh": {
+        "message": "高"
+    },
+    "settingsBitrateMedium": {
+        "message": "中"
+    },
+    "settingsBitrateLow": {
+        "message": "低"
+    },
+    "settingsBitrateCustom": {
+        "message": "カスタム"
+    },
+    "settingsCustomAudioBitrate": {
+        "message": "カスタム音声ビットレート"
+    },
+    "settingsVideoCodec": {
+        "message": "映像コーデック"
+    },
+    "settingsFrameRate": {
+        "message": "フレームレート"
+    },
+    "settingsVideoBitrate": {
+        "message": "映像ビットレート"
+    },
+    "settingsCustomVideoBitrate": {
+        "message": "カスタム映像ビットレート"
+    },
+    "settingsMicrophone": {
+        "message": "マイク"
+    },
+    "settingsEnableMicrophone": {
+        "message": "マイク録音を有効にする"
+    },
+    "settingsPermissionGranted": {
+        "message": "許可済み"
+    },
+    "settingsPermissionRequired": {
+        "message": "許可が必要"
+    },
+    "settingsMicStatus": {
+        "message": "ステータス: $STATUS$",
+        "placeholders": {
+            "status": {
+                "content": "$1"
+            }
+        }
+    },
+    "settingsMicDevice": {
+        "message": "マイクデバイス:"
+    },
+    "settingsDefaultDevice": {
+        "message": "デフォルトデバイス"
+    },
+    "settingsMicVolume": {
+        "message": "マイク音量: x$GAIN$",
+        "placeholders": {
+            "gain": {
+                "content": "$1"
+            }
+        }
+    },
+    "settingsAudioSeparation": {
+        "message": "音声分離"
+    },
+    "settingsSaveAudioSeparation": {
+        "message": "音声を分離して保存（タブ / マイク）"
+    },
+    "settingsSaveAudioSeparationTitle": {
+        "message": "メイン録画と一緒にタブ音声とマイク音声の分離ファイルを保存します。"
+    },
+    "settingsRecordingTimer": {
+        "message": "録画タイマー"
+    },
+    "settingsEnableRecordingTimer": {
+        "message": "録画タイマーを有効にする"
+    },
+    "settingsEnableRecordingTimerTitle": {
+        "message": "指定した時間が経過したら自動的に録画を停止します。"
+    },
+    "settingsDuration": {
+        "message": "時間"
+    },
+    "settingsTimerEstimate": {
+        "message": "今開始すると、約 $TIME$ に録画が停止します",
+        "placeholders": {
+            "time": {
+                "content": "$1"
+            }
+        }
+    },
+    "settingsShowTimerStopConfirmation": {
+        "message": "タイマー停止の確認を表示"
+    },
+    "settingsShowTimerStopConfirmationTitle": {
+        "message": "タイマー動作中に手動で録画を停止する際、確認ダイアログを表示します。"
+    },
+    "settingsOption": {
+        "message": "オプション"
+    },
+    "settingsOpenOptionPage": {
+        "message": "録画後にオプションページを開く"
+    },
+    "settingsMuteRecordingTab": {
+        "message": "録画タブをミュート"
+    },
+    "settingsMuteRecordingTabTitle": {
+        "message": "録画中に他の作業に集中したい場合に使用します。"
+    },
+    "settingsSync": {
+        "message": "同期"
+    },
+    "settingsFetchSyncedSettings": {
+        "message": "同期設定を取得"
+    },
+    "settingsRestoreDefaults": {
+        "message": "デフォルト設定に戻す"
+    },
+    "recordListStorage": {
+        "message": "ストレージ (合計: $SIZE$ MB, $PERCENT$)",
+        "placeholders": {
+            "size": {
+                "content": "$1"
+            },
+            "percent": {
+                "content": "$2"
+            }
+        }
+    },
+    "recordListSelectAll": {
+        "message": "すべて選択"
+    },
+    "recordListSortAsc": {
+        "message": "昇順"
+    },
+    "recordListSortDesc": {
+        "message": "降順"
+    },
+    "recordListSave": {
+        "message": "保存"
+    },
+    "recordListDelete": {
+        "message": "削除"
+    },
+    "recordListNoEntry": {
+        "message": "エントリなし"
+    },
+    "recordListTabAudio": {
+        "message": "タブ音声"
+    },
+    "recordListMicAudio": {
+        "message": "マイク音声"
+    },
+    "recordListDownloadLabel": {
+        "message": "$LABEL$ をダウンロード",
+        "placeholders": {
+            "label": {
+                "content": "$1"
+            }
+        }
+    },
+    "recordListSeparatedSize": {
+        "message": "分離された音声 $SIZE$ MB",
+        "placeholders": {
+            "size": {
+                "content": "$1"
+            }
+        }
+    },
+    "recordListRecording": {
+        "message": "録画中"
+    },
+    "recordListPaused": {
+        "message": "一時停止"
+    },
+    "recordListTimerPaused": {
+        "message": "タイマー一時停止"
+    },
+    "recordListTimerStopsAt": {
+        "message": "$TIME$ に停止",
+        "placeholders": {
+            "time": {
+                "content": "$1"
+            }
+        }
+    },
+    "recordListTitleFileSize": {
+        "message": "ファイルサイズ"
+    },
+    "recordListTitleSeparatedSize": {
+        "message": "分離された音声のファイルサイズ"
+    },
+    "recordListTitleRecordedAt": {
+        "message": "録画日時"
+    },
+    "recordListTitleRecording": {
+        "message": "録画中"
+    },
+    "recordListTitleTimerStop": {
+        "message": "タイマー停止時刻"
+    },
+    "recordListRecordingFailed": {
+        "message": "録画に失敗しました"
+    },
+    "supportReview": {
+        "message": "レビュー"
+    },
+    "supportReviewDescription": {
+        "message": "この拡張機能が役に立った場合はレビューにご協力ください。"
+    },
+    "supportWriteReview": {
+        "message": "レビューを書く"
+    },
+    "supportDevelopment": {
+        "message": "開発を支援"
+    },
+    "supportDevelopmentDescription": {
+        "message": "みなさまのご支援がこの拡張機能の維持と改善に役立ちます。"
+    },
+    "supportFeedback": {
+        "message": "フィードバック"
+    },
+    "supportFeedbackDescription": {
+        "message": "開発者に直接フィードバックを送信できます。バグトラッキングを有効にしても個人情報は共有されません。"
+    },
+    "supportBugTracking": {
+        "message": "バグトラッキング"
+    },
+    "supportBugTrackingRequired": {
+        "message": "フィードバックを送信するには、バグトラッキングを有効にしてください。"
+    },
+    "supportFeedbackType": {
+        "message": "フィードバックの種類"
+    },
+    "supportBugReport": {
+        "message": "不具合報告"
+    },
+    "supportFeatureRequest": {
+        "message": "機能リクエスト / その他"
+    },
+    "supportMessage": {
+        "message": "メッセージ"
+    },
+    "supportCharCount": {
+        "message": "$COUNT$ / $MAX$ 文字",
+        "placeholders": {
+            "count": {
+                "content": "$1"
+            },
+            "max": {
+                "content": "$2"
+            }
+        }
+    },
+    "supportImportantNotice": {
+        "message": "メッセージに個人情報を含めないでください。個別の返信は原則行っておりません。すべてのフィードバックはベストエフォートで対応します。"
+    },
+    "supportImportantLabel": {
+        "message": "重要:"
+    },
+    "supportSending": {
+        "message": "送信中..."
+    },
+    "supportSendFeedback": {
+        "message": "フィードバックを送信"
+    },
+    "supportThankYou": {
+        "message": "フィードバックありがとうございます！"
+    },
+    "supportInformation": {
+        "message": "お知らせ"
+    },
+    "supportSendFailed": {
+        "message": "フィードバックの送信に失敗しました。バグトラッキングが有効になっていることを確認してください。"
+    },
+    "supportSendError": {
+        "message": "フィードバックの送信に失敗しました。もう一度お試しください。"
+    },
+    "croppingHeading": {
+        "message": "切り抜き"
+    },
+    "croppingEnable": {
+        "message": "切り抜きを有効にする"
+    },
+    "croppingAudioOnlyWarning": {
+        "message": "音声のみモードでは切り抜きは使用できません。"
+    },
+    "croppingRecordingWarning": {
+        "message": "録画中は切り抜きの有効/無効を変更できません。切り抜き領域の調整は可能です。"
+    },
+    "croppingPreviewHeading": {
+        "message": "プレビュー"
+    },
+    "croppingPreviewHint": {
+        "message": "録画中に切り抜き領域を調整すると録画サイズが変更されます。一度録画を停止し改めて本番の録画を開始してください。"
+    },
+    "croppingPreviewMessage": {
+        "message": "録画を開始すると切り抜き領域のプレビューが表示されます。"
+    },
+    "croppingRegionHeading": {
+        "message": "領域"
+    },
+    "croppingRegionHint": {
+        "message": "技術的な制約により、X と Y の値は偶数である必要があります。"
+    },
+    "croppingLabelWidth": {
+        "message": "幅"
+    },
+    "croppingLabelHeight": {
+        "message": "高さ"
+    },
+    "settingsSuffixMin": {
+        "message": "分"
+    },
+    "settingsCodecNotAvailable": {
+        "message": "$CODEC_TYPE$ コーデック「$CODEC_NAME$」は、現在の設定ではこのブラウザで使用できません。",
+        "placeholders": {
+            "codec_type": {
+                "content": "$1"
+            },
+            "codec_name": {
+                "content": "$2"
+            }
+        }
+    },
+    "settingsCodecCheckFailed": {
+        "message": "$CODEC_TYPE$ コーデックの確認に失敗しました: $ERROR$",
+        "placeholders": {
+            "codec_type": {
+                "content": "$1"
+            },
+            "error": {
+                "content": "$2"
+            }
+        }
+    },
+    "settingsCodecTypeVideo": {
+        "message": "映像"
+    },
+    "settingsCodecTypeAudio": {
+        "message": "音声"
+    },
+    "settingsMicPermissionRequired": {
+        "message": "録音にはマイクの許可が必要です。\nプロンプトが表示されたらアクセスを許可してください。"
+    }
+}

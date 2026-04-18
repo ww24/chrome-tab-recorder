@@ -24,6 +24,7 @@ import type { StorageEstimateInfo } from '../storage'
 import { Settings } from './settings'
 import { Configuration, RecordingSortOrder } from '../configuration'
 import { formatElapsedTime } from '../format'
+import { t } from '../i18n'
 
 export interface RecordEntry {
     title: string;
@@ -110,6 +111,9 @@ export class RecordList extends LitElement {
             color: var(--theme-text-secondary, #3f4948);
             margin-left: 4px;
             vertical-align: middle;
+        }
+        .separated-size {
+            margin-left: 0.25em;
         }
         a {
             color: var(--theme-link, inherit);
@@ -222,7 +226,7 @@ export class RecordList extends LitElement {
     private static showRecordingError(error: string) {
         const alertDialog = document.getElementById('alert-dialog') as Alert | null
         if (alertDialog == null) return
-        alertDialog.setContent('Recording Failed', error)
+        alertDialog.setContent(t('recordListRecordingFailed'), error)
         const dialog = alertDialog.shadowRoot?.querySelector('md-dialog') as MdDialog | null
         dialog?.show()
     }
@@ -240,13 +244,13 @@ export class RecordList extends LitElement {
                     : html`<a href="${downloadUrl}">${record.title}</a>`}
                 ${record.isRecording ? '' : record.subFiles.map(sub => {
                         const subUrl = `${getRecordingFileUrl(sub)}?download=true`
-                        const label = sub.includes('-tab') ? 'Tab audio' : 'Mic audio'
+                        const label = sub.includes('-tab') ? t('recordListTabAudio') : t('recordListMicAudio')
                         const icon = sub.includes('-tab') ? 'headphones' : 'mic'
-                        return html`<a href="${subUrl}" title="${label}" aria-label="Download ${label}" class="sub-file-icon"><md-icon>${icon}</md-icon></a>`
+                        return html`<a href="${subUrl}" title="${label}" aria-label="${t('recordListDownloadLabel', label)}" class="sub-file-icon"><md-icon>${icon}</md-icon></a>`
                     })}
-                <div class="meta" title="file size"><md-icon>storage</md-icon> ${formatNum((record.size + record.subFilesSize) / 1024 / 1024, 2)} MB ${record.subFilesSize > 0 ? html` <span title="separated audio file size">(${formatNum(record.subFilesSize / 1024 / 1024, 2)} MB separated)</span>` : ''}</div>
-                ${record.recordedAt != null ? html`<div class="meta" title="recorded at"><md-icon>schedule</md-icon> ${RecordList.dateTimeFormat.format(record.recordedAt)}</div>` : ''}
-                ${record.isRecording ? html`<div class="meta recording" title="recording"><md-icon>screen_record</md-icon> ${this.recordingPaused ? 'Paused' : 'Recording'} <span class="elapsed-time${this.recordingPaused ? ' elapsed-blink' : ''}">${this.elapsedTimeText}</span>${this.timerStopText ? html` <span title="timer stop time">(⏱ ${this.recordingPaused ? 'timer paused' : `stops at ${this.timerStopText}`})</span>` : ''}</div>` : ''}
+                <div class="meta" title=${t('recordListTitleFileSize')}><md-icon>storage</md-icon> ${formatNum((record.size + record.subFilesSize) / 1024 / 1024, 2)} MB ${record.subFilesSize > 0 ? html` <span class="separated-size" title=${t('recordListTitleSeparatedSize')}>(${t('recordListSeparatedSize', formatNum(record.subFilesSize / 1024 / 1024, 2))})</span>` : ''}</div>
+                ${record.recordedAt != null ? html`<div class="meta" title=${t('recordListTitleRecordedAt')}><md-icon>schedule</md-icon> ${RecordList.dateTimeFormat.format(record.recordedAt)}</div>` : ''}
+                ${record.isRecording ? html`<div class="meta recording" title=${t('recordListTitleRecording')}><md-icon>screen_record</md-icon> ${this.recordingPaused ? t('recordListPaused') : t('recordListRecording')} <span class="elapsed-time${this.recordingPaused ? ' elapsed-blink' : ''}">${this.elapsedTimeText}</span>${this.timerStopText ? html` <span title=${t('recordListTitleTimerStop')}>(⏱ ${this.recordingPaused ? t('recordListTimerPaused') : t('recordListTimerStopsAt', this.timerStopText)})</span>` : ''}</div>` : ''}
                 <md-filled-icon-button slot="end" ?disabled=${record.isRecording} @click=${this.playRecord(record)}>
                     <md-icon>play_arrow</md-icon>
                 </md-filled-icon-button>
@@ -256,27 +260,27 @@ export class RecordList extends LitElement {
         const usage = est.usage
         const quota = est.quota || 1
         const sortIcon = this.sortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward'
-        const sortLabel = this.sortOrder.toUpperCase()
+        const sortLabel = this.sortOrder === 'asc' ? t('recordListSortAsc') : t('recordListSortDesc')
         return html`
         <h2 class="storage-heading">
-        Storage (total: ${formatNum(usage / 1024 / 1024, 1)} MB, ${formatRate(usage / quota, 1)})
+        ${t('recordListStorage', [formatNum(usage / 1024 / 1024, 1), formatRate(usage / quota, 1)])}
         </h2>
         <md-chip-set class="selected-actions">
-            <md-filter-chip label="Select all" has-icon="true" ?disabled=${this.records.length === 0} ?selected=${this.records.length > 0 && this.records.every(selected)} @click=${this.selectAll}>
+            <md-filter-chip label=${t('recordListSelectAll')} has-icon="true" ?disabled=${this.records.length === 0} ?selected=${this.records.length > 0 && this.records.every(selected)} @click=${this.selectAll}>
                 <md-icon slot="icon">check_box_outline_blank</md-icon>
             </md-filter-chip>
             <md-assist-chip class="sort-chip" label="${sortLabel}" has-icon="true" @click=${this.toggleSortOrder}>
                 <md-icon slot="icon">${sortIcon}</md-icon>
             </md-assist-chip>
-            <md-assist-chip label="Save" ?disabled=${!this.records.some(selected)} @click=${this.saveSelectedRecords}>
+            <md-assist-chip label=${t('recordListSave')} ?disabled=${!this.records.some(selected)} @click=${this.saveSelectedRecords}>
                 <md-icon slot="icon">save</md-icon>
             </md-assist-chip>
-            <md-assist-chip label="Delete" ?disabled=${!this.records.some(selected)} @click=${this.deleteSelectedRecords}>
+            <md-assist-chip label=${t('recordListDelete')} ?disabled=${!this.records.some(selected)} @click=${this.deleteSelectedRecords}>
                 <md-icon slot="icon">delete</md-icon>
             </md-assist-chip>
         </md-chip-set>
         <md-list>
-            ${this.records.length === 0 ? html`<md-list-item>no entry</md-list-item>` : repeat(this.records, record => record.title, row)}
+            ${this.records.length === 0 ? html`<md-list-item>${t('recordListNoEntry')}</md-list-item>` : repeat(this.records, record => record.title, row)}
         </md-list>`
     }
 

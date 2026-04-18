@@ -17,6 +17,7 @@ export default defineConfig({
                     name: 'node',
                     include: ['tests/**/*.test.ts'],
                     exclude: ['tests/element/**/*.test.ts'],
+                    setupFiles: ['tests/test-setup.ts'],
                 },
             },
             {

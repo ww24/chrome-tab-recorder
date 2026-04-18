@@ -6,6 +6,7 @@ import { MdTabs } from '@material/web/tabs/tabs'
 import { Tab } from '@material/web/tabs/internal/tab'
 import '@material/web/icon/icon'
 import type { Cropping } from './cropping'
+import { t } from '../i18n'
 
 @customElement('option-tab')
 export class OptionTab extends LitElement {
@@ -58,19 +59,19 @@ export class OptionTab extends LitElement {
         <md-tabs @change=${OptionTab.changeTab}>
             <md-primary-tab id="tab-main" aria-controls="panel-main" inline-icon active>
                 <md-icon slot="icon">video_library</md-icon>
-                Records
+                ${t('tabRecords')}
             </md-primary-tab>
             <md-primary-tab id="tab-settings" aria-controls="panel-settings" inline-icon>
                 <md-icon slot="icon">settings</md-icon>
-                Settings
+                ${t('tabSettings')}
             </md-primary-tab>
             <md-primary-tab id="tab-cropping" aria-controls="panel-cropping" inline-icon>
                 <md-icon slot="icon">crop</md-icon>
-                Cropping
+                ${t('tabCropping')}
             </md-primary-tab>
             <md-primary-tab id="tab-support" aria-controls="panel-support" inline-icon>
                 <md-icon slot="icon">support</md-icon>
-                Support
+                ${t('tabSupport')}
             </md-primary-tab>
         </md-tabs>
         <div role="tabpanel" id="panel-main" aria-labelledby="tab-main">

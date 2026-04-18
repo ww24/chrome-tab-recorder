@@ -1,0 +1,738 @@
+{
+    "appName": {
+        "message": "Instant Tab Recorder",
+        "description": "Extension name"
+    },
+    "appShortName": {
+        "message": "Tab Recorder",
+        "description": "Short extension name"
+    },
+    "appDescription": {
+        "message": "Blazingly simple tab recorder.",
+        "description": "Extension description"
+    },
+    "actionDefaultTitle": {
+        "message": "Instant Tab Recorder\nClick to start recording.",
+        "description": "Tooltip shown when hovering the extension icon"
+    },
+    "commandStartRecording": {
+        "message": "Start recording",
+        "description": "Keyboard shortcut description for start recording"
+    },
+    "commandStopRecording": {
+        "message": "Stop recording",
+        "description": "Keyboard shortcut description for stop recording"
+    },
+    "commandToggleRecording": {
+        "message": "Toggle start/stop recording",
+        "description": "Keyboard shortcut description for toggle recording"
+    },
+    "commandTogglePauseRecording": {
+        "message": "Toggle pause/resume recording",
+        "description": "Keyboard shortcut description for toggle pause"
+    },
+    "commandOpenOptionPage": {
+        "message": "Open options page",
+        "description": "Keyboard shortcut description for opening options page"
+    },
+    "contextMenuStartRecording": {
+        "message": "Start Recording",
+        "description": "Context menu item to start recording"
+    },
+    "contextMenuStopRecording": {
+        "message": "Stop Recording",
+        "description": "Context menu item to stop recording"
+    },
+    "contextMenuPauseRecording": {
+        "message": "Pause Recording",
+        "description": "Context menu item to pause recording"
+    },
+    "contextMenuResumeRecording": {
+        "message": "Resume Recording",
+        "description": "Context menu item to resume recording"
+    },
+    "formatPaused": {
+        "message": "Paused ($TIME$)",
+        "description": "Recording status when paused",
+        "placeholders": {
+            "time": {
+                "content": "$1",
+                "example": "01:30"
+            }
+        }
+    },
+    "formatRecording": {
+        "message": "Recording ($TIME$)",
+        "description": "Recording status when recording",
+        "placeholders": {
+            "time": {
+                "content": "$1",
+                "example": "01:30"
+            }
+        }
+    },
+    "formatVideoAudioMic": {
+        "message": "video: $VIDEO$ / audio: $AUDIO$ / mic: $MIC$",
+        "description": "Recording mode status line in tooltip",
+        "placeholders": {
+            "video": {
+                "content": "$1",
+                "example": "on"
+            },
+            "audio": {
+                "content": "$2",
+                "example": "on"
+            },
+            "mic": {
+                "content": "$3",
+                "example": "off"
+            }
+        }
+    },
+    "formatTimerRemaining": {
+        "message": "Timer: $TIME$ remaining",
+        "description": "Timer countdown in tooltip",
+        "placeholders": {
+            "time": {
+                "content": "$1",
+                "example": "00:30"
+            }
+        }
+    },
+    "formatTimerPaused": {
+        "message": "Timer: paused ($TIME$ remaining)",
+        "description": "Timer paused status in tooltip",
+        "placeholders": {
+            "time": {
+                "content": "$1",
+                "example": "00:30"
+            }
+        }
+    },
+    "formatClickToStop": {
+        "message": "Click to stop recording.",
+        "description": "Instruction in recording tooltip"
+    },
+    "formatOn": {
+        "message": "on",
+        "description": "Status indicator for enabled feature"
+    },
+    "formatOff": {
+        "message": "off",
+        "description": "Status indicator for disabled feature"
+    },
+    "tabRecords": {
+        "message": "Records",
+        "description": "Tab label for records list"
+    },
+    "tabSettings": {
+        "message": "Settings",
+        "description": "Tab label for settings"
+    },
+    "tabCropping": {
+        "message": "Cropping",
+        "description": "Tab label for cropping"
+    },
+    "tabSupport": {
+        "message": "Support",
+        "description": "Tab label for support"
+    },
+    "alertDefaultHeadline": {
+        "message": "Alert",
+        "description": "Default alert dialog headline"
+    },
+    "alertOk": {
+        "message": "OK",
+        "description": "OK button in alert dialog"
+    },
+    "confirmDeleteHeadline": {
+        "message": "Permanently delete?",
+        "description": "Confirm dialog headline for deleting records"
+    },
+    "confirmDeleteDescription": {
+        "message": "The selected record will be removed permanently.",
+        "description": "Confirm dialog description"
+    },
+    "confirmDeleteRecords": {
+        "message": "record(s):",
+        "description": "Label before record list in delete confirmation"
+    },
+    "confirmDeleteButton": {
+        "message": "Delete",
+        "description": "Delete button in confirm dialog"
+    },
+    "confirmCancelButton": {
+        "message": "Cancel",
+        "description": "Cancel button in confirm dialog"
+    },
+    "confirmSizeLabel": {
+        "message": "size: $SIZE$ MB",
+        "description": "File size label in confirm dialog",
+        "placeholders": {
+            "size": {
+                "content": "$1",
+                "example": "2.50"
+            }
+        }
+    },
+    "timerStopHeadline": {
+        "message": "Stop recording?",
+        "description": "Timer stop confirmation headline"
+    },
+    "timerStopDescription": {
+        "message": "A recording timer is active. Are you sure you want to stop the recording now?",
+        "description": "Timer stop confirmation description"
+    },
+    "timerStopDontShowAgain": {
+        "message": "Don't show this again",
+        "description": "Checkbox label in timer stop confirmation"
+    },
+    "timerStopStopButton": {
+        "message": "Stop Recording",
+        "description": "Stop recording button in timer stop confirmation"
+    },
+    "timerStopContinueButton": {
+        "message": "Continue Recording",
+        "description": "Continue recording button in timer stop confirmation"
+    },
+    "settingsAppearance": {
+        "message": "Appearance",
+        "description": "Settings section: Appearance"
+    },
+    "settingsUITheme": {
+        "message": "UI Theme",
+        "description": "Settings label: UI Theme"
+    },
+    "settingsThemeClassic": {
+        "message": "Classic",
+        "description": "Theme option: Classic"
+    },
+    "settingsThemeLight": {
+        "message": "Light",
+        "description": "Theme option: Light"
+    },
+    "settingsThemeDark": {
+        "message": "Dark",
+        "description": "Theme option: Dark"
+    },
+    "settingsThemeAuto": {
+        "message": "Auto (System)",
+        "description": "Theme option: Auto (follow system)"
+    },
+    "settingsWindowSize": {
+        "message": "Window Size",
+        "description": "Settings section: Window Size"
+    },
+    "settingsWidth": {
+        "message": "width",
+        "description": "Label for width input field"
+    },
+    "settingsHeight": {
+        "message": "height",
+        "description": "Label for height input field"
+    },
+    "settingsResize": {
+        "message": "Resize",
+        "description": "Resize button text"
+    },
+    "settingsScreenRecordingSize": {
+        "message": "Screen Recording Size",
+        "description": "Settings section: Screen Recording Size"
+    },
+    "settingsAutoUseTabSize": {
+        "message": "Auto (Use tab size if available)",
+        "description": "Toggle label for auto screen recording size"
+    },
+    "settingsRecordingScale": {
+        "message": "recording scale",
+        "description": "Label for recording scale input"
+    },
+    "settingsVideoFormat": {
+        "message": "Video Format",
+        "description": "Settings section: Video Format"
+    },
+    "settingsRecordingMode": {
+        "message": "recording mode",
+        "description": "Label for recording mode select"
+    },
+    "settingsVideoAndAudio": {
+        "message": "Video and Audio",
+        "description": "Recording mode option"
+    },
+    "settingsVideoOnly": {
+        "message": "Video only",
+        "description": "Recording mode option"
+    },
+    "settingsAudioOnly": {
+        "message": "Audio only",
+        "description": "Recording mode option"
+    },
+    "settingsContainer": {
+        "message": "container",
+        "description": "Label for container format select"
+    },
+    "settingsAudioCodec": {
+        "message": "audio codec",
+        "description": "Label for audio codec select"
+    },
+    "settingsAudioSamplingRate": {
+        "message": "audio sampling rate",
+        "description": "Label for audio sampling rate input"
+    },
+    "settingsAudioBitrate": {
+        "message": "audio bitrate",
+        "description": "Label for audio bitrate preset select"
+    },
+    "settingsBitrateHigh": {
+        "message": "High",
+        "description": "Bitrate preset option"
+    },
+    "settingsBitrateMedium": {
+        "message": "Medium",
+        "description": "Bitrate preset option"
+    },
+    "settingsBitrateLow": {
+        "message": "Low",
+        "description": "Bitrate preset option"
+    },
+    "settingsBitrateCustom": {
+        "message": "Custom",
+        "description": "Bitrate preset option"
+    },
+    "settingsCustomAudioBitrate": {
+        "message": "custom audio bitrate",
+        "description": "Label for custom audio bitrate input"
+    },
+    "settingsVideoCodec": {
+        "message": "video codec",
+        "description": "Label for video codec select"
+    },
+    "settingsFrameRate": {
+        "message": "frame rate",
+        "description": "Label for frame rate input"
+    },
+    "settingsVideoBitrate": {
+        "message": "video bitrate",
+        "description": "Label for video bitrate preset select"
+    },
+    "settingsCustomVideoBitrate": {
+        "message": "custom video bitrate",
+        "description": "Label for custom video bitrate input"
+    },
+    "settingsMicrophone": {
+        "message": "Microphone",
+        "description": "Settings section: Microphone"
+    },
+    "settingsEnableMicrophone": {
+        "message": "Enable microphone recording",
+        "description": "Toggle label for microphone recording"
+    },
+    "settingsPermissionGranted": {
+        "message": "Permission granted",
+        "description": "Microphone permission status: granted"
+    },
+    "settingsPermissionRequired": {
+        "message": "Permission required",
+        "description": "Microphone permission status: required"
+    },
+    "settingsMicStatus": {
+        "message": "Status: $STATUS$",
+        "description": "Microphone permission status display",
+        "placeholders": {
+            "status": {
+                "content": "$1",
+                "example": "Permission granted"
+            }
+        }
+    },
+    "settingsMicDevice": {
+        "message": "Microphone device:",
+        "description": "Label for microphone device selection"
+    },
+    "settingsDefaultDevice": {
+        "message": "Default device",
+        "description": "Default microphone device option"
+    },
+    "settingsMicVolume": {
+        "message": "Microphone volume: x$GAIN$",
+        "description": "Label for microphone volume slider",
+        "placeholders": {
+            "gain": {
+                "content": "$1",
+                "example": "1.0"
+            }
+        }
+    },
+    "settingsAudioSeparation": {
+        "message": "Audio Separation",
+        "description": "Settings section: Audio Separation"
+    },
+    "settingsSaveAudioSeparation": {
+        "message": "Save separated audio files (tab / mic)",
+        "description": "Toggle label for saving separated audio files"
+    },
+    "settingsSaveAudioSeparationTitle": {
+        "message": "Save separated tab audio and microphone audio files alongside the main recording.",
+        "description": "Tooltip for audio separation toggle"
+    },
+    "settingsRecordingTimer": {
+        "message": "Recording Timer",
+        "description": "Settings section: Recording Timer"
+    },
+    "settingsEnableRecordingTimer": {
+        "message": "Enable recording timer",
+        "description": "Toggle label for recording timer"
+    },
+    "settingsEnableRecordingTimerTitle": {
+        "message": "Automatically stop recording after the specified duration.",
+        "description": "Tooltip for recording timer toggle"
+    },
+    "settingsDuration": {
+        "message": "duration",
+        "description": "Label for timer duration input"
+    },
+    "settingsTimerEstimate": {
+        "message": "If started now, recording will stop at ≈ $TIME$",
+        "description": "Estimated stop time for recording timer",
+        "placeholders": {
+            "time": {
+                "content": "$1",
+                "example": "14:30"
+            }
+        }
+    },
+    "settingsShowTimerStopConfirmation": {
+        "message": "Show timer stop confirmation",
+        "description": "Toggle label for timer stop confirmation"
+    },
+    "settingsShowTimerStopConfirmationTitle": {
+        "message": "Show a confirmation dialog when manually stopping a recording with an active timer.",
+        "description": "Tooltip for timer stop confirmation toggle"
+    },
+    "settingsOption": {
+        "message": "Option",
+        "description": "Settings section: Option"
+    },
+    "settingsOpenOptionPage": {
+        "message": "Open the option page after recording",
+        "description": "Toggle label for auto-open option page"
+    },
+    "settingsMuteRecordingTab": {
+        "message": "Mute recording Tab",
+        "description": "Toggle label for muting recording tab"
+    },
+    "settingsMuteRecordingTabTitle": {
+        "message": "If you want to focus on another task while recording.",
+        "description": "Tooltip for mute recording tab toggle"
+    },
+    "settingsSync": {
+        "message": "Sync",
+        "description": "Settings section: Sync"
+    },
+    "settingsFetchSyncedSettings": {
+        "message": "Fetch Synced Settings",
+        "description": "Button to fetch synced settings"
+    },
+    "settingsRestoreDefaults": {
+        "message": "Restore Default Settings",
+        "description": "Button to restore default settings"
+    },
+    "recordListStorage": {
+        "message": "Storage (total: $SIZE$ MB, $PERCENT$)",
+        "description": "Storage heading with usage info",
+        "placeholders": {
+            "size": {
+                "content": "$1",
+                "example": "150.5"
+            },
+            "percent": {
+                "content": "$2",
+                "example": "12.3%"
+            }
+        }
+    },
+    "recordListSelectAll": {
+        "message": "Select all",
+        "description": "Chip label to select all records"
+    },
+    "recordListSortAsc": {
+        "message": "ASC",
+        "description": "Sort order label for ascending"
+    },
+    "recordListSortDesc": {
+        "message": "DESC",
+        "description": "Sort order label for descending"
+    },
+    "recordListSave": {
+        "message": "Save",
+        "description": "Chip label to save selected records"
+    },
+    "recordListDelete": {
+        "message": "Delete",
+        "description": "Chip label to delete selected records"
+    },
+    "recordListNoEntry": {
+        "message": "no entry",
+        "description": "Message when no records exist"
+    },
+    "recordListTabAudio": {
+        "message": "Tab audio",
+        "description": "Label for tab audio sub-file"
+    },
+    "recordListMicAudio": {
+        "message": "Mic audio",
+        "description": "Label for mic audio sub-file"
+    },
+    "recordListDownloadLabel": {
+        "message": "Download $LABEL$",
+        "description": "Aria label for downloading sub-file",
+        "placeholders": {
+            "label": {
+                "content": "$1",
+                "example": "Tab audio"
+            }
+        }
+    },
+    "recordListSeparatedSize": {
+        "message": "$SIZE$ MB separated",
+        "description": "Separated audio file size label",
+        "placeholders": {
+            "size": {
+                "content": "$1",
+                "example": "1.50"
+            }
+        }
+    },
+    "recordListRecording": {
+        "message": "Recording",
+        "description": "Status label for active recording"
+    },
+    "recordListPaused": {
+        "message": "Paused",
+        "description": "Status label for paused recording"
+    },
+    "recordListTimerPaused": {
+        "message": "timer paused",
+        "description": "Timer status when recording is paused"
+    },
+    "recordListTimerStopsAt": {
+        "message": "stops at $TIME$",
+        "description": "Timer status showing when recording stops",
+        "placeholders": {
+            "time": {
+                "content": "$1",
+                "example": "14:30"
+            }
+        }
+    },
+    "recordListTitleFileSize": {
+        "message": "file size",
+        "description": "Tooltip for file size metadata"
+    },
+    "recordListTitleSeparatedSize": {
+        "message": "separated audio file size",
+        "description": "Tooltip for separated audio file size"
+    },
+    "recordListTitleRecordedAt": {
+        "message": "recorded at",
+        "description": "Tooltip for recording date"
+    },
+    "recordListTitleRecording": {
+        "message": "recording",
+        "description": "Tooltip for recording status"
+    },
+    "recordListTitleTimerStop": {
+        "message": "timer stop time",
+        "description": "Tooltip for timer stop time"
+    },
+    "recordListRecordingFailed": {
+        "message": "Recording Failed",
+        "description": "Alert headline when recording fails"
+    },
+    "supportReview": {
+        "message": "Review",
+        "description": "Support section: Review heading"
+    },
+    "supportReviewDescription": {
+        "message": "If you find this extension useful, please leave a review!",
+        "description": "Description text in review section"
+    },
+    "supportWriteReview": {
+        "message": "Write a Review",
+        "description": "Button to write a review"
+    },
+    "supportDevelopment": {
+        "message": "Support Development",
+        "description": "Support section: Development heading"
+    },
+    "supportDevelopmentDescription": {
+        "message": "Your support helps keep this extension maintained and improved. Every contribution motivates continued development!",
+        "description": "Description text in support development section"
+    },
+    "supportFeedback": {
+        "message": "Feedback",
+        "description": "Support section: Feedback heading"
+    },
+    "supportFeedbackDescription": {
+        "message": "Send feedback directly to the developer. Enabling Bug Tracking does not share any personal information.",
+        "description": "Description text in feedback section"
+    },
+    "supportBugTracking": {
+        "message": "Bug Tracking",
+        "description": "Toggle label for bug tracking"
+    },
+    "supportBugTrackingRequired": {
+        "message": "To send feedback, please enable Bug Tracking above.",
+        "description": "Warning when bug tracking is disabled"
+    },
+    "supportFeedbackType": {
+        "message": "Feedback Type",
+        "description": "Label for feedback type select"
+    },
+    "supportBugReport": {
+        "message": "Bug Report",
+        "description": "Feedback type option"
+    },
+    "supportFeatureRequest": {
+        "message": "Feature Request / Other",
+        "description": "Feedback type option"
+    },
+    "supportMessage": {
+        "message": "Message",
+        "description": "Label for feedback message textarea"
+    },
+    "supportCharCount": {
+        "message": "$COUNT$ / $MAX$ characters",
+        "description": "Character count display",
+        "placeholders": {
+            "count": {
+                "content": "$1",
+                "example": "42"
+            },
+            "max": {
+                "content": "$2",
+                "example": "1000"
+            }
+        }
+    },
+    "supportImportantNotice": {
+        "message": "Do not include any personal information in your message. We will not reply to feedback. All feedback is addressed on a best-effort basis.",
+        "description": "Important notice in feedback form"
+    },
+    "supportImportantLabel": {
+        "message": "Important:",
+        "description": "Bold label before important notice"
+    },
+    "supportSending": {
+        "message": "Sending...",
+        "description": "Button text while sending feedback"
+    },
+    "supportSendFeedback": {
+        "message": "Send Feedback",
+        "description": "Button to send feedback"
+    },
+    "supportThankYou": {
+        "message": "Thank you for your feedback!",
+        "description": "Success message after sending feedback"
+    },
+    "supportInformation": {
+        "message": "Information",
+        "description": "Alert headline for success"
+    },
+    "supportSendFailed": {
+        "message": "Failed to send feedback. Please make sure Bug Tracking is enabled.",
+        "description": "Error message when feedback send fails"
+    },
+    "supportSendError": {
+        "message": "Failed to send feedback. Please retry.",
+        "description": "Error message on unexpected error"
+    },
+    "croppingHeading": {
+        "message": "Cropping",
+        "description": "Cropping section heading"
+    },
+    "croppingEnable": {
+        "message": "Enable Cropping",
+        "description": "Switch label to enable cropping"
+    },
+    "croppingAudioOnlyWarning": {
+        "message": "Cropping is not available in Audio only mode.",
+        "description": "Warning when audio only mode is active"
+    },
+    "croppingRecordingWarning": {
+        "message": "Cannot enable or disable cropping during recording. You can still adjust the crop region.",
+        "description": "Warning shown during recording"
+    },
+    "croppingPreviewHeading": {
+        "message": "Preview",
+        "description": "Preview sub-section heading"
+    },
+    "croppingPreviewHint": {
+        "message": "Adjust the cropping area during a test recording, then apply to actual recordings.",
+        "description": "Hint text under preview heading"
+    },
+    "croppingPreviewMessage": {
+        "message": "Start recording to preview the cropping area.",
+        "description": "Message shown when no preview is available"
+    },
+    "croppingRegionHeading": {
+        "message": "Region",
+        "description": "Region sub-section heading"
+    },
+    "croppingRegionHint": {
+        "message": "Due to technical constraints, X and Y values must be even numbers.",
+        "description": "Hint for crop region inputs"
+    },
+    "croppingLabelWidth": {
+        "message": "Width",
+        "description": "Label for crop region width input"
+    },
+    "croppingLabelHeight": {
+        "message": "Height",
+        "description": "Label for crop region height input"
+    },
+    "settingsSuffixMin": {
+        "message": "min",
+        "description": "Suffix for minutes input field"
+    },
+    "settingsCodecNotAvailable": {
+        "message": "$CODEC_TYPE$ codec \"$CODEC_NAME$\" is not available in this browser with the current settings.",
+        "description": "Error when codec is not available",
+        "placeholders": {
+            "codec_type": {
+                "content": "$1",
+                "example": "Video"
+            },
+            "codec_name": {
+                "content": "$2",
+                "example": "VP9"
+            }
+        }
+    },
+    "settingsCodecCheckFailed": {
+        "message": "$CODEC_TYPE$ codec check failed: $ERROR$",
+        "description": "Error when codec check throws",
+        "placeholders": {
+            "codec_type": {
+                "content": "$1",
+                "example": "Video"
+            },
+            "error": {
+                "content": "$2",
+                "example": "NotSupportedError"
+            }
+        }
+    },
+    "settingsCodecTypeVideo": {
+        "message": "Video",
+        "description": "Codec type label: video"
+    },
+    "settingsCodecTypeAudio": {
+        "message": "Audio",
+        "description": "Codec type label: audio"
+    },
+    "settingsMicPermissionRequired": {
+        "message": "Microphone permission is required for recording.\nPlease allow access when prompted.",
+        "description": "Error message when microphone permission is denied"
+    }
+}

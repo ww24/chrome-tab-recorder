@@ -3,6 +3,7 @@ import { customElement, property, state, query } from 'lit/decorators.js'
 import { CropRegion } from '../configuration'
 import type { PreviewFrameMessage, } from '../message'
 import { roundToEven, clampCoordinate, clampDimension } from './util'
+import { t } from '../i18n'
 
 export interface CropRegionChangeEvent {
     region: CropRegion
@@ -379,7 +380,7 @@ export class CroppingPreview extends LitElement {
                         ${this.renderDimOverlays()}
                         ${this.renderCropOverlay()}
                     ` : html`
-                        <p class="preview-message">Start recording to preview the cropping area.</p>
+                        <p class="preview-message">${t('croppingPreviewMessage')}</p>
                     `}
                 </div>
             </div>

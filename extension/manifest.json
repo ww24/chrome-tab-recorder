@@ -1,8 +1,9 @@
 {
     "manifest_version": 3,
-    "name": "Instant Tab Recorder",
-    "short_name": "Tab Recorder",
-    "description": "Blazingly simple tab recorder.",
+    "name": "__MSG_appName__",
+    "short_name": "__MSG_appShortName__",
+    "description": "__MSG_appDescription__",
+    "default_locale": "en",
     "version": "1.6.1",
     "minimum_chrome_version": "140",
     "icons": {
@@ -12,7 +13,7 @@
     },
     "action": {
         "default_icon": "icons/not-recording.png",
-        "default_title": "Instant Tab Recorder\nClick to start recording."
+        "default_title": "__MSG_actionDefaultTitle__"
     },
     "background": {
         "service_worker": "dist/service_worker.js",
@@ -32,19 +33,19 @@
     },
     "commands": {
         "start-recording": {
-            "description": "Start recording"
+            "description": "__MSG_commandStartRecording__"
         },
         "stop-recording": {
-            "description": "Stop recording"
+            "description": "__MSG_commandStopRecording__"
         },
         "toggle-recording": {
-            "description": "Toggle start/stop recording"
+            "description": "__MSG_commandToggleRecording__"
         },
         "toggle-pause-recording": {
-            "description": "Toggle pause/resume recording"
+            "description": "__MSG_commandTogglePauseRecording__"
         },
         "open-option-page": {
-            "description": "Open options page"
+            "description": "__MSG_commandOpenOptionPage__"
         }
     }
 }

@@ -1,4 +1,5 @@
 import type { RecordingState } from './handler'
+import { t } from './i18n'
 
 /**
  * Format milliseconds as hh:mm for tooltip display.
@@ -24,21 +25,23 @@ export function buildRecordingTitle(appName: string, state: RecordingState, now:
     const currentPauseDuration = state.isPaused && state.pausedAtMs != null ? now - state.pausedAtMs : 0
     const totalPausedMs = (state.totalPausedMs ?? 0) + currentPauseDuration
     const elapsed = state.startAtMs != null ? formatHHMM(now - state.startAtMs - totalPausedMs) : '00:00'
-    const status = state.isPaused ? `Paused (${elapsed})` : `Recording (${elapsed})`
-    const video = state.recordingMode !== 'audio-only' ? 'on' : 'off'
-    const audio = state.recordingMode !== 'video-only' ? 'on' : 'off'
-    const mic = state.micEnabled ? 'on' : 'off'
+    const status = state.isPaused ? t('formatPaused', elapsed) : t('formatRecording', elapsed)
+    const on = t('formatOn')
+    const off = t('formatOff')
+    const video = state.recordingMode !== 'audio-only' ? on : off
+    const audio = state.recordingMode !== 'video-only' ? on : off
+    const mic = state.micEnabled ? on : off
     const timerLine = state.stopAtMs != null
         ? (state.isPaused
-            ? `Timer: paused (${formatHHMM(state.stopAtMs - (state.pausedAtMs ?? now), 'ceil')} remaining)`
-            : `Timer: ${formatHHMM(state.stopAtMs - now, 'ceil')} remaining`)
+            ? t('formatTimerPaused', formatHHMM(state.stopAtMs - (state.pausedAtMs ?? now), 'ceil'))
+            : t('formatTimerRemaining', formatHHMM(state.stopAtMs - now, 'ceil')))
         : null
     return [
         appName,
         status,
-        `video: ${video} / audio: ${audio} / mic: ${mic}`,
+        t('formatVideoAudioMic', [video, audio, mic]),
         ...(timerLine ? [timerLine] : []),
-        'Click to stop recording.',
+        t('formatClickToStop'),
     ].join('\n')
 }
 
