@@ -327,7 +327,6 @@ export class Configuration {
     }
     static filterForSync(config: Configuration): SyncConfiguration {
         // Exclude microphone and cropping from sync as it depends on device-specific information
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { microphone: _m, cropping: _c, ...rest } = config
         return { ...rest }
     }
@@ -336,12 +335,10 @@ export class Configuration {
         // Normalize values to reduce cardinality
         const videoFormat = VideoFormat.toReport(config.videoFormat, config.microphone.enabled)
         if (!cropping.enabled) {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { region: _, ...rest } = cropping
             cropping = { region: { x: 0, y: 0, width: 0, height: 0 }, ...rest }
         }
         if (!microphone.enabled) {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { gain: _, ...rest } = microphone
             microphone = { gain: 0, ...rest }
         }
