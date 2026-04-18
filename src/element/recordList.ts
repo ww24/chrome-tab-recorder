@@ -1,7 +1,7 @@
 import { html, css, LitElement } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { repeat } from 'lit/directives/repeat.js'
-import { formatNum, formatRate, checkFileHandlePermission } from './util'
+import { formatNum, checkFileHandlePermission } from './util'
 import '@material/web/list/list'
 import '@material/web/list/list-item'
 import '@material/web/divider/divider'
@@ -20,7 +20,6 @@ import type { ShowDirectoryPickerOptions } from '../type'
 import { Message, SaveConfigSyncMessage, RequestRecordingStateMessage } from '../message'
 import { sendException } from '../sentry'
 import { recordingApi } from '../api_client'
-import type { StorageEstimateInfo } from '../storage'
 import { Settings } from './settings'
 import { Configuration, RecordingSortOrder } from '../configuration'
 import { formatElapsedTime } from '../format'
@@ -131,9 +130,6 @@ export class RecordList extends LitElement {
         second: '2-digit',
     })
 
-    @property({ noAccessor: true })
-    private estimate: StorageEstimateInfo
-
     @property({ type: Array })
     private records: Array<RecordEntry>
 
@@ -154,7 +150,6 @@ export class RecordList extends LitElement {
 
     public constructor() {
         super()
-        this.estimate = { usage: 0, quota: 0 }
         this.records = []
         this.sortOrder = Settings.getConfiguration().recordingSortOrder
     }
@@ -165,7 +160,6 @@ export class RecordList extends LitElement {
         ;(async () => {
             await this.updateRecord()
             this.syncElapsedTimer()
-            await this.updateEstimate()
             await this.checkStoredRecordingError()
             // Request current recording state to get accurate pause info
             const msg: RequestRecordingStateMessage = { type: 'request-recording-state' }
@@ -203,7 +197,6 @@ export class RecordList extends LitElement {
                 this.stopElapsedTimer()
             }
             await this.updateRecord()
-            await this.updateEstimate()
             await this.checkStoredRecordingError()
         })().catch(e => {
             console.error(e)
@@ -300,14 +293,10 @@ export class RecordList extends LitElement {
                     </md-filled-icon-button>
                 </md-list-item>`
         }
-        const est = this.estimate
-        const usage = est.usage
-        const quota = est.quota || 1
+        const totalSize = this.records.reduce((sum, r) => sum + r.size + r.subFilesSize, 0)
         const sortIcon = this.sortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward'
         const sortLabel = this.sortOrder === 'asc' ? t('recordListSortAsc') : t('recordListSortDesc')
-        return html` <h2 class="storage-heading">
-                ${t('recordListStorage', [formatNum(usage / 1024 / 1024, 1), formatRate(usage / quota, 1)])}
-            </h2>
+        return html` <h2 class="storage-heading">${t('recordListStorage', [formatNum(totalSize / 1024 / 1024, 1)])}</h2>
             <md-chip-set class="selected-actions">
                 <md-filter-chip
                     label=${t('recordListSelectAll')}
@@ -383,11 +372,6 @@ export class RecordList extends LitElement {
         const oldVal = [...this.records]
         this.records = result
         this.requestUpdate('records', oldVal)
-    }
-    private async updateEstimate() {
-        const oldVal = this.estimate
-        this.estimate = await recordingApi.getStorageEstimate()
-        this.requestUpdate('estimate', oldVal)
     }
 
     private syncElapsedTimer() {
@@ -570,9 +554,6 @@ export class RecordList extends LitElement {
                             this.removeRecord(record)
                         }),
                     )
-
-                    // update UI
-                    this.updateEstimate()
                 } catch (e) {
                     sendException(e, { exceptionSource: 'option.recordList.delete.dialog' })
                 }

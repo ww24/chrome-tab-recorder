@@ -129,7 +129,7 @@ describe('record-list', () => {
         expect(chipSet).not.toBeNull()
     })
 
-    test('storage heading includes total and percentage', async () => {
+    test('storage heading includes total and MB', async () => {
         const screen = render(html`<record-list></record-list>`)
         const el = screen.container.querySelector('record-list')!
         await elementUpdated(el)
@@ -137,6 +137,51 @@ describe('record-list', () => {
         const heading = shadowQuery(el, '.storage-heading')
         expect(heading?.textContent).toContain('total:')
         expect(heading?.textContent).toContain('MB')
+        expect(heading?.textContent).not.toContain('%')
+    })
+
+    test('storage heading shows sum of record sizes including subFilesSize', async () => {
+        const ts1 = '1000000000000'
+        const ts2 = '1000000001000'
+        const recordings: RecordingMetadata[] = [
+            {
+                title: `video-${ts1}.webm`,
+                size: 5 * 1024 * 1024, // 5 MB
+                lastModified: Date.now(),
+                mimeType: 'video/webm',
+                recordedAt: Number(ts1),
+                isTemporary: false,
+            },
+            {
+                title: `video-${ts1}-tab.ogg`,
+                size: 1 * 1024 * 1024, // 1 MB (sub-file)
+                lastModified: Date.now(),
+                mimeType: 'audio/ogg',
+                recordedAt: Number(ts1),
+                isTemporary: false,
+            },
+            {
+                title: `video-${ts2}.webm`,
+                size: 3 * 1024 * 1024, // 3 MB
+                lastModified: Date.now(),
+                mimeType: 'video/webm',
+                recordedAt: Number(ts2),
+                isTemporary: false,
+            },
+        ]
+        listRecordingsMock.mockResolvedValue(recordings)
+
+        const screen = render(html`<record-list></record-list>`)
+        const el = screen.container.querySelector('record-list')!
+        await elementUpdated(el)
+
+        // Wait for async updateRecord to complete
+        await vi.waitFor(() => {
+            const heading = shadowQuery(el, '.storage-heading')
+            // Total = 5 MB (main) + 1 MB (sub, counted via subFilesSize) + 3 MB (main) = 9.0 MB
+            expect(heading?.textContent).toContain('9.0')
+            expect(heading?.textContent).toContain('MB')
+        })
     })
 
     test('connectedCallback sends request-recording-state message', async () => {
