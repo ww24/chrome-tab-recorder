@@ -103,9 +103,7 @@ describe('extension-confirm', () => {
         await elementUpdated(el)
 
         // size=1MB, subFilesSize=1MB → total 2MB → "2.00 MB"
-        const records = [
-            makeRecord({ title: 'test.webm', size: 1024 * 1024, subFilesSize: 1024 * 1024 }),
-        ]
+        const records = [makeRecord({ title: 'test.webm', size: 1024 * 1024, subFilesSize: 1024 * 1024 })]
         el.setRecords(records)
         await elementUpdated(el)
 

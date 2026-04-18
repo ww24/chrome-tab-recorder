@@ -22,7 +22,7 @@ const privacyPages = [
     { fileName: 'PRIVACY_JA.html', lang: 'ja', title: 'プライバシーポリシー', contentKey: 'privacyJa' as const },
 ]
 
-function renderPrivacyPage(templateHtml: string, page: typeof privacyPages[number], content: string): string {
+function renderPrivacyPage(templateHtml: string, page: (typeof privacyPages)[number], content: string): string {
     return templateHtml
         .replace(/<%=\s*lang\s*%>/g, () => page.lang)
         .replace(/<%=\s*title\s*%>/g, () => page.title)
@@ -81,7 +81,10 @@ function docsPlugin(): Plugin[] {
                     const templateHtml = readFileSync(privacyTemplate, 'utf-8')
                     const html = renderPrivacyPage(templateHtml, match, vars[match.contentKey])
                     // Inject Vite HMR client for hot reload
-                    const injected = html.replace('</head>', '  <script type="module" src="/@vite/client"></script>\n</head>')
+                    const injected = html.replace(
+                        '</head>',
+                        '  <script type="module" src="/@vite/client"></script>\n</head>',
+                    )
                     res.setHeader('Content-Type', 'text/html')
                     res.end(injected)
                     return
@@ -97,8 +100,12 @@ function docsPlugin(): Plugin[] {
             })
             // Watch markdown files and privacy template for reload
             server.watcher.add([privacyMdFiles.en, privacyMdFiles.ja, privacyTemplate])
-            server.watcher.on('change', (changedPath) => {
-                if (changedPath === privacyMdFiles.en || changedPath === privacyMdFiles.ja || changedPath === privacyTemplate) {
+            server.watcher.on('change', changedPath => {
+                if (
+                    changedPath === privacyMdFiles.en ||
+                    changedPath === privacyMdFiles.ja ||
+                    changedPath === privacyTemplate
+                ) {
                     server.ws.send({ type: 'full-reload' })
                 }
             })

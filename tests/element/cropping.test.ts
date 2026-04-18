@@ -67,7 +67,7 @@ describe('extension-cropping', () => {
         // Wait for async requestRecordingState to send
         await vi.waitFor(() => {
             expect(mock.runtime.sendMessage).toHaveBeenCalledWith(
-                expect.objectContaining({ type: 'request-recording-state' })
+                expect.objectContaining({ type: 'request-recording-state' }),
             )
         })
     })
@@ -122,10 +122,12 @@ describe('extension-cropping', () => {
         const el = screen.container.querySelector('extension-cropping')!
         await elementUpdated(el)
 
-        const xInput = shadowQueryAll(el, '.region-inputs md-filled-text-field')
-            .find(i => i.getAttribute('label') === 'X')
-        const yInput = shadowQueryAll(el, '.region-inputs md-filled-text-field')
-            .find(i => i.getAttribute('label') === 'Y')
+        const xInput = shadowQueryAll(el, '.region-inputs md-filled-text-field').find(
+            i => i.getAttribute('label') === 'X',
+        )
+        const yInput = shadowQueryAll(el, '.region-inputs md-filled-text-field').find(
+            i => i.getAttribute('label') === 'Y',
+        )
 
         expect(xInput?.getAttribute('step')).toBe('2')
         expect(yInput?.getAttribute('step')).toBe('2')

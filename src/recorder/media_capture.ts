@@ -6,7 +6,7 @@ export interface MediaDevicesProvider {
 }
 
 export class MediaCapture {
-    constructor(private readonly devices: MediaDevicesProvider) { }
+    constructor(private readonly devices: MediaDevicesProvider) {}
 
     /**
      * Capture tab media (video and/or audio) based on recording mode.
@@ -19,22 +19,26 @@ export class MediaCapture {
         audioSampleRate: number,
     ): Promise<MediaStream> {
         return this.devices.getUserMedia({
-            audio: hasAudio(recordingMode) ? {
-                mandatory: {
-                    chromeMediaSource: 'tab',
-                    chromeMediaSourceId: streamId,
-                    maxSampleRate: audioSampleRate,
-                },
-            } : undefined,
-            video: hasVideo(recordingMode) ? {
-                mandatory: {
-                    chromeMediaSource: 'tab',
-                    chromeMediaSourceId: streamId,
-                    maxWidth: recordingSize.width,
-                    maxHeight: recordingSize.height,
-                    maxFrameRate: frameRate,
-                },
-            } : undefined,
+            audio: hasAudio(recordingMode)
+                ? {
+                      mandatory: {
+                          chromeMediaSource: 'tab',
+                          chromeMediaSourceId: streamId,
+                          maxSampleRate: audioSampleRate,
+                      },
+                  }
+                : undefined,
+            video: hasVideo(recordingMode)
+                ? {
+                      mandatory: {
+                          chromeMediaSource: 'tab',
+                          chromeMediaSourceId: streamId,
+                          maxWidth: recordingSize.width,
+                          maxHeight: recordingSize.height,
+                          maxFrameRate: frameRate,
+                      },
+                  }
+                : undefined,
         })
     }
 
@@ -42,10 +46,7 @@ export class MediaCapture {
      * Capture microphone audio if enabled.
      * Returns null if microphone is disabled or access is denied.
      */
-    async captureMicrophone(
-        microphone: Microphone,
-        audioSampleRate: number,
-    ): Promise<MediaStream | null> {
+    async captureMicrophone(microphone: Microphone, audioSampleRate: number): Promise<MediaStream | null> {
         if (!microphone.enabled) return null
 
         try {

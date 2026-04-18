@@ -98,10 +98,7 @@ describe('MediaCapture', () => {
             const devices = createMockDevices()
             const capture = new MediaCapture(devices)
 
-            const result = await capture.captureMicrophone(
-                { enabled: false, gain: 1.0, deviceId: null },
-                44100,
-            )
+            const result = await capture.captureMicrophone({ enabled: false, gain: 1.0, deviceId: null }, 44100)
 
             expect(result).toBeNull()
             expect(devices.getUserMedia).not.toHaveBeenCalled()
@@ -111,10 +108,7 @@ describe('MediaCapture', () => {
             const devices = createMockDevices()
             const capture = new MediaCapture(devices)
 
-            await capture.captureMicrophone(
-                { enabled: true, gain: 1.0, deviceId: null },
-                48000,
-            )
+            await capture.captureMicrophone({ enabled: true, gain: 1.0, deviceId: null }, 48000)
 
             expect(devices.getUserMedia).toHaveBeenCalledWith({
                 audio: {
@@ -130,10 +124,7 @@ describe('MediaCapture', () => {
             const devices = createMockDevices()
             const capture = new MediaCapture(devices)
 
-            await capture.captureMicrophone(
-                { enabled: true, gain: 0.5, deviceId: 'default' },
-                44100,
-            )
+            await capture.captureMicrophone({ enabled: true, gain: 0.5, deviceId: 'default' }, 44100)
 
             expect(devices.getUserMedia).toHaveBeenCalledWith({
                 audio: {
@@ -149,10 +140,7 @@ describe('MediaCapture', () => {
             const devices = createMockDevices()
             const capture = new MediaCapture(devices)
 
-            await capture.captureMicrophone(
-                { enabled: true, gain: 1.0, deviceId: 'device-abc' },
-                44100,
-            )
+            await capture.captureMicrophone({ enabled: true, gain: 1.0, deviceId: 'device-abc' }, 44100)
 
             expect(devices.getUserMedia).toHaveBeenCalledWith({
                 audio: {
@@ -170,11 +158,8 @@ describe('MediaCapture', () => {
             devices.getUserMedia.mockRejectedValue(new Error('Permission denied'))
             const capture = new MediaCapture(devices)
 
-            const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => { })
-            const result = await capture.captureMicrophone(
-                { enabled: true, gain: 1.0, deviceId: null },
-                44100,
-            )
+            const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+            const result = await capture.captureMicrophone({ enabled: true, gain: 1.0, deviceId: null }, 44100)
 
             expect(result).toBeNull()
             expect(consoleSpy).toHaveBeenCalledWith('Microphone access denied:', expect.any(Error))

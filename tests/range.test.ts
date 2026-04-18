@@ -276,8 +276,12 @@ describe('buildMultipartByteRangesBody', () => {
         const partTrailer = '\r\n'
         const closing = `--${boundary}--\r\n`
         const expectedLength =
-            partHeader(0, 0).length + 1 + partTrailer.length +
-            partHeader(9, 9).length + 1 + partTrailer.length +
+            partHeader(0, 0).length +
+            1 +
+            partTrailer.length +
+            partHeader(9, 9).length +
+            1 +
+            partTrailer.length +
             closing.length
         expect(body.byteLength).toBe(expectedLength)
 

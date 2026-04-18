@@ -1,45 +1,45 @@
 import type { StartTrigger, Trigger } from './message'
 
 export interface ExceptionMetadata {
-    exceptionSource: string;
-    additionalMetadata?: Record<string, string>;
+    exceptionSource: string
+    additionalMetadata?: Record<string, string>
 }
 
-export type Event = StartRecordingEvent | StopRecordingEvent | UnexpectedStopEvent | ClickExternalLinkEvent;
+export type Event = StartRecordingEvent | StopRecordingEvent | UnexpectedStopEvent | ClickExternalLinkEvent
 
 export interface StartRecordingEvent {
-    type: 'start_recording';
+    type: 'start_recording'
     tags: {
-        trigger: StartTrigger,
+        trigger: StartTrigger
         state: {
-            opfsPersisted: boolean,
-        },
-    };
+            opfsPersisted: boolean
+        }
+    }
 }
 
 export interface StopRecordingEvent {
-    type: 'stop_recording';
+    type: 'stop_recording'
     metrics: {
-        trigger: Trigger,
+        trigger: Trigger
         recording: {
-            durationSec: number,
-            filesize: number,
-        },
-    };
+            durationSec: number
+            filesize: number
+        }
+    }
 }
 
 export interface UnexpectedStopEvent {
-    type: 'unexpected_stop';
+    type: 'unexpected_stop'
     metrics: {
         recording: {
-            durationSec: number,
-        },
-    };
+            durationSec: number
+        }
+    }
 }
 
 export interface ClickExternalLinkEvent {
-    type: 'click_external_link';
+    type: 'click_external_link'
     tags: {
-        link: 'support' | 'review',
-    };
+        link: 'support' | 'review'
+    }
 }

@@ -154,7 +154,10 @@ describe('resize-window', () => {
 
     it('ignores invalid data (null)', async () => {
         const deps = createMockDeps()
-        const result = handleMessage({ type: 'resize-window', data: null as unknown as { width: number; height: number } }, deps)
+        const result = handleMessage(
+            { type: 'resize-window', data: null as unknown as { width: number; height: number } },
+            deps,
+        )
         await result!.response
         expect(deps.resizeWindow).not.toHaveBeenCalled()
     })

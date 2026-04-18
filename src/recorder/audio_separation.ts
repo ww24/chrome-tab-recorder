@@ -19,7 +19,7 @@ export class AudioSeparationManager {
     constructor(
         private readonly fileManager: FileManager,
         private readonly outputManager: OutputManager,
-    ) { }
+    ) {}
 
     /**
      * Create separated audio output files for tab and/or microphone streams.
@@ -92,13 +92,10 @@ export class AudioSeparationManager {
      * All outputs are attempted even if one fails. Throws if any fail.
      */
     async finalizeAll(outputs: AudioSeparationOutputs): Promise<void> {
-        const results = await Promise.allSettled([
-            outputs.tabOutput?.finalize(),
-            outputs.micOutput?.finalize(),
-        ])
+        const results = await Promise.allSettled([outputs.tabOutput?.finalize(), outputs.micOutput?.finalize()])
         const errors = results
             .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
-            .map(r => r.reason instanceof Error ? r.reason : new Error(String(r.reason)))
+            .map(r => (r.reason instanceof Error ? r.reason : new Error(String(r.reason))))
         if (errors.length > 0) {
             throw new AggregateError(errors, 'Failed to finalize audio separation')
         }
@@ -109,13 +106,10 @@ export class AudioSeparationManager {
      * All outputs are attempted even if one fails. Throws if any fail.
      */
     async cancelAll(outputs: AudioSeparationOutputs): Promise<void> {
-        const results = await Promise.allSettled([
-            outputs.tabOutput?.cancel(),
-            outputs.micOutput?.cancel(),
-        ])
+        const results = await Promise.allSettled([outputs.tabOutput?.cancel(), outputs.micOutput?.cancel()])
         const errors = results
             .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
-            .map(r => r.reason instanceof Error ? r.reason : new Error(String(r.reason)))
+            .map(r => (r.reason instanceof Error ? r.reason : new Error(String(r.reason))))
         if (errors.length > 0) {
             throw new AggregateError(errors, 'Failed to cancel audio separation')
         }

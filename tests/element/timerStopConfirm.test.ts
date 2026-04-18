@@ -33,7 +33,7 @@ describe('extension-timer-stop-confirm', () => {
         expect(checkbox).not.toBeNull()
 
         const label = shadowQuery(el, 'label[for="dont-show"]')
-        expect(label?.textContent?.trim()).toBe('Don\'t show this again')
+        expect(label?.textContent?.trim()).toBe("Don't show this again")
     })
 
     test('renders Stop Recording and Continue Recording buttons', async () => {

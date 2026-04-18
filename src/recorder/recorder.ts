@@ -57,7 +57,7 @@ export class RecordingSession implements OffscreenSession {
         private readonly preview: Preview,
         private readonly crop: Crop,
         private readonly callbacks: RecorderCallbacks,
-    ) { }
+    ) {}
 
     get state(): RecorderState {
         return this._state
@@ -115,20 +115,25 @@ export class RecordingSession implements OffscreenSession {
 
             // Add tracks to main output
             const hasAudioTrack = hasAudio(videoFormat.recordingMode) || (microphone.enabled && micStream != null)
-            const { sources: mainSources, errorPromises } = this.outputManager.addTracks(this.mainOutput, media, videoFormat, hasAudioTrack)
+            const { sources: mainSources, errorPromises } = this.outputManager.addTracks(
+                this.mainOutput,
+                media,
+                videoFormat,
+                hasAudioTrack,
+            )
             this.allSources.push(...mainSources)
 
             // Collect all media tracks for cleanup
-            this.mediaTracks = [
-                ...tabMedia.getTracks(),
-                ...(micStream?.getTracks() ?? []),
-            ]
+            this.mediaTracks = [...tabMedia.getTracks(), ...(micStream?.getTracks() ?? [])]
 
             // Audio separation
             if (audioSeparation.enabled) {
                 try {
                     this.separationOutputs = await this.audioSeparation.createOutputs(
-                        startAtMs, tabMedia, micStream, videoFormat,
+                        startAtMs,
+                        tabMedia,
+                        micStream,
+                        videoFormat,
                     )
                     this.mediaTracks.push(...this.separationOutputs.clonedTracks)
                     this.allSources.push(...this.separationOutputs.sources)
@@ -145,12 +150,14 @@ export class RecordingSession implements OffscreenSession {
             }
 
             // Handle media source errors
-            Promise.all(errorPromises).catch(async e => {
-                await this.callbacks.onSourceError(e instanceof Error ? e : new Error(String(e)))
-            }).catch(e => {
-                console.error(e)
-                sendException(e, { exceptionSource: 'recorder.sourceErrorCallback' })
-            })
+            Promise.all(errorPromises)
+                .catch(async e => {
+                    await this.callbacks.onSourceError(e instanceof Error ? e : new Error(String(e)))
+                })
+                .catch(e => {
+                    console.error(e)
+                    sendException(e, { exceptionSource: 'recorder.sourceErrorCallback' })
+                })
 
             // Start outputs
             this.recordingStartTime = startAtMs
@@ -186,9 +193,9 @@ export class RecordingSession implements OffscreenSession {
             }
         } catch (e) {
             // Cancel any outputs that were created/started to prevent zombie recordings
-            await this.mainOutput?.cancel().catch(() => { })
+            await this.mainOutput?.cancel().catch(() => {})
             if (this.separationOutputs) {
-                await this.audioSeparation.cancelAll(this.separationOutputs).catch(() => { })
+                await this.audioSeparation.cancelAll(this.separationOutputs).catch(() => {})
             }
             this.cleanup()
             throw e

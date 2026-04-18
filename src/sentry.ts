@@ -14,9 +14,7 @@ import { Configuration } from './configuration'
 
 // filter integrations that use the global variable
 const integrations = getDefaultIntegrations({}).filter(defaultIntegration => {
-    return !['BrowserApiErrors', 'TryCatch', 'GlobalHandlers'].includes(
-        defaultIntegration.name
-    )
+    return !['BrowserApiErrors', 'TryCatch', 'GlobalHandlers'].includes(defaultIntegration.name)
 })
 
 // ref. https://docs.sentry.io/platforms/javascript/best-practices/shared-environments/
@@ -69,15 +67,19 @@ export function sendException(e: unknown, meta: ExceptionMetadata) {
 }
 
 export type FeedbackType = 'bug-report' | 'feature-request'
-export function sendFeedback(feedback: { feedbackType: FeedbackType, message: string }): boolean {
+export function sendFeedback(feedback: { feedbackType: FeedbackType; message: string }): boolean {
     const scope = getScope()
     if (scope == null) return false
     const { message, feedbackType } = feedback
     const config = Settings.getConfiguration()
-    captureFeedback({
-        message,
-        tags: { feedbackType, ...flatten(Configuration.filterForReport(config), 'config') },
-    }, {}, scope)
+    captureFeedback(
+        {
+            message,
+            tags: { feedbackType, ...flatten(Configuration.filterForReport(config), 'config') },
+        },
+        {},
+        scope,
+    )
     return true
 }
 
@@ -95,35 +97,44 @@ export function sendEvent(e: Event) {
     switch (e.type) {
         case 'start_recording':
             metrics.count(METRICS.START, 1, {
-                scope, attributes: { ...flatten(e.tags) },
+                scope,
+                attributes: { ...flatten(e.tags) },
             })
             const config = Settings.getConfiguration()
-            logger.info(e.type, {
-                ...flatten(e.tags),
-                ...flatten(Configuration.filterForReport(config), 'config')
-            }, { scope })
+            logger.info(
+                e.type,
+                {
+                    ...flatten(e.tags),
+                    ...flatten(Configuration.filterForReport(config), 'config'),
+                },
+                { scope },
+            )
             break
 
         case 'stop_recording':
             metrics.distribution(METRICS.DURATION, e.metrics.recording.durationSec, {
-                scope, unit: 'second',
+                scope,
+                unit: 'second',
             })
             metrics.distribution(METRICS.FILESIZE, e.metrics.recording.filesize, {
-                scope, unit: 'byte',
+                scope,
+                unit: 'byte',
             })
             logger.info(e.type, { ...flatten(e.metrics) }, { scope })
             break
 
         case 'unexpected_stop':
             metrics.distribution(METRICS.DURATION, e.metrics.recording.durationSec, {
-                scope, unit: 'second',
+                scope,
+                unit: 'second',
             })
             logger.info(e.type, { ...flatten(e.metrics) }, { scope })
             break
 
         case 'click_external_link':
             metrics.count(METRICS.EXTERNAL_LINK, 1, {
-                scope, attributes: { ...flatten(e.tags) },
+                scope,
+                attributes: { ...flatten(e.tags) },
             })
             logger.info(e.type, { ...flatten(e.tags) }, { scope })
             break

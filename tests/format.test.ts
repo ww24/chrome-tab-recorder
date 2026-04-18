@@ -112,12 +112,14 @@ describe('buildRecordingTitle', () => {
 
     it('shows video: on / audio: on / mic: off for video-and-audio mode', () => {
         const title = buildRecordingTitle(appName, baseState, 1000)
-        expect(title).toBe([
-            'Instant Tab Recorder',
-            'Recording (00:00)',
-            'video: on / audio: on / mic: off',
-            'Click to stop recording.',
-        ].join('\n'))
+        expect(title).toBe(
+            [
+                'Instant Tab Recorder',
+                'Recording (00:00)',
+                'video: on / audio: on / mic: off',
+                'Click to stop recording.',
+            ].join('\n'),
+        )
     })
 
     it('shows video: on / audio: off / mic: off for video-only mode', () => {
@@ -171,7 +173,13 @@ describe('buildRecordingTitle', () => {
     })
 
     it('shows Paused with correct elapsed time minus paused time', () => {
-        const state: RecordingState = { ...baseState, startAtMs: 0, isPaused: true, totalPausedMs: 10 * 60_000, pausedAtMs: 50 * 60_000 }
+        const state: RecordingState = {
+            ...baseState,
+            startAtMs: 0,
+            isPaused: true,
+            totalPausedMs: 10 * 60_000,
+            pausedAtMs: 50 * 60_000,
+        }
         const title = buildRecordingTitle(appName, state, 60 * 60_000)
         // 60 min wall - 10 min previous paused - 10 min current pause (60-50) = 40 min elapsed
         expect(title).toContain('Paused (00:40)')

@@ -27,13 +27,13 @@ import { formatElapsedTime } from '../format'
 import { t } from '../i18n'
 
 export interface RecordEntry {
-    title: string;
-    size: number;
-    selected: boolean;
-    recordedAt?: Date;
-    isRecording: boolean;
-    subFiles: string[];  // Related audio separation files (e.g. video-{ts}-tab.ogg, video-{ts}-mic.ogg)
-    subFilesSize: number; // Total size of sub-files in bytes
+    title: string
+    size: number
+    selected: boolean
+    recordedAt?: Date
+    isRecording: boolean
+    subFiles: string[] // Related audio separation files (e.g. video-{ts}-tab.ogg, video-{ts}-mic.ogg)
+    subFilesSize: number // Total size of sub-files in bytes
 }
 
 /**
@@ -100,7 +100,9 @@ export class RecordList extends LitElement {
             animation: blink 1s step-end infinite;
         }
         @keyframes blink {
-            50% { visibility: hidden; }
+            50% {
+                visibility: hidden;
+            }
         }
         @media (prefers-reduced-motion: reduce) {
             .elapsed-blink {
@@ -159,8 +161,8 @@ export class RecordList extends LitElement {
 
     override connectedCallback() {
         super.connectedCallback()
-        chrome.runtime.onMessage.addListener(this.handleMessage);
-        (async () => {
+        chrome.runtime.onMessage.addListener(this.handleMessage)
+        ;(async () => {
             await this.updateRecord()
             this.syncElapsedTimer()
             await this.updateEstimate()
@@ -183,8 +185,8 @@ export class RecordList extends LitElement {
     // NOTE: Must not return true or a truthy value (e.g. Promise from async function)
     // to avoid interfering with sendMessage responses from other contexts.
     private handleMessage = (message: Message) => {
-        if (message.type !== 'recording-state') return;
-        (async () => {
+        if (message.type !== 'recording-state') return
+        ;(async () => {
             const recordingState = message.data
             if (recordingState.isRecording && recordingState.startAtMs != null) {
                 this.recordingTotalPausedMs = recordingState.totalPausedMs ?? 0
@@ -235,53 +237,107 @@ export class RecordList extends LitElement {
         const row = (record: RecordEntry, idx: number) => {
             const fileUrl = getRecordingFileUrl(record.title)
             const downloadUrl = `${fileUrl}?download=true`
-            return html`
-            ${idx > 0 ? html`<md-divider></md-divider>` : ''}
-            <md-list-item class="list-item">
-                <md-checkbox touch-target="wrapper" slot="start" ?disabled=${record.isRecording} ?checked=${record.selected} @input=${this.selectRecord(record)}></md-checkbox>
-                ${record.isRecording
-                    ? html`<span aria-disabled="true">${record.title}</span>`
-                    : html`<a href="${downloadUrl}">${record.title}</a>`}
-                ${record.isRecording ? '' : record.subFiles.map(sub => {
-                        const subUrl = `${getRecordingFileUrl(sub)}?download=true`
-                        const label = sub.includes('-tab') ? t('recordListTabAudio') : t('recordListMicAudio')
-                        const icon = sub.includes('-tab') ? 'headphones' : 'mic'
-                        return html`<a href="${subUrl}" title="${label}" aria-label="${t('recordListDownloadLabel', label)}" class="sub-file-icon"><md-icon>${icon}</md-icon></a>`
-                    })}
-                <div class="meta" title=${t('recordListTitleFileSize')}><md-icon>storage</md-icon> ${formatNum((record.size + record.subFilesSize) / 1024 / 1024, 2)} MB ${record.subFilesSize > 0 ? html` <span class="separated-size" title=${t('recordListTitleSeparatedSize')}>(${t('recordListSeparatedSize', formatNum(record.subFilesSize / 1024 / 1024, 2))})</span>` : ''}</div>
-                ${record.recordedAt != null ? html`<div class="meta" title=${t('recordListTitleRecordedAt')}><md-icon>schedule</md-icon> ${RecordList.dateTimeFormat.format(record.recordedAt)}</div>` : ''}
-                ${record.isRecording ? html`<div class="meta recording" title=${t('recordListTitleRecording')}><md-icon>screen_record</md-icon> ${this.recordingPaused ? t('recordListPaused') : t('recordListRecording')} <span class="elapsed-time${this.recordingPaused ? ' elapsed-blink' : ''}">${this.elapsedTimeText}</span>${this.timerStopText ? html` <span title=${t('recordListTitleTimerStop')}>(⏱ ${this.recordingPaused ? t('recordListTimerPaused') : t('recordListTimerStopsAt', this.timerStopText)})</span>` : ''}</div>` : ''}
-                <md-filled-icon-button slot="end" ?disabled=${record.isRecording} @click=${this.playRecord(record)}>
-                    <md-icon>play_arrow</md-icon>
-                </md-filled-icon-button>
-            </md-list-item>`
+            return html` ${idx > 0 ? html`<md-divider></md-divider>` : ''}
+                <md-list-item class="list-item">
+                    <md-checkbox
+                        touch-target="wrapper"
+                        slot="start"
+                        ?disabled=${record.isRecording}
+                        ?checked=${record.selected}
+                        @input=${this.selectRecord(record)}></md-checkbox>
+                    ${record.isRecording
+                        ? html`<span aria-disabled="true">${record.title}</span>`
+                        : html`<a href="${downloadUrl}">${record.title}</a>`}
+                    ${record.isRecording
+                        ? ''
+                        : record.subFiles.map(sub => {
+                              const subUrl = `${getRecordingFileUrl(sub)}?download=true`
+                              const label = sub.includes('-tab') ? t('recordListTabAudio') : t('recordListMicAudio')
+                              const icon = sub.includes('-tab') ? 'headphones' : 'mic'
+                              return html`<a
+                                  href="${subUrl}"
+                                  title="${label}"
+                                  aria-label="${t('recordListDownloadLabel', label)}"
+                                  class="sub-file-icon"
+                                  ><md-icon>${icon}</md-icon></a
+                              >`
+                          })}
+                    <div class="meta" title=${t('recordListTitleFileSize')}>
+                        <md-icon>storage</md-icon> ${formatNum((record.size + record.subFilesSize) / 1024 / 1024, 2)} MB
+                        ${record.subFilesSize > 0
+                            ? html` <span class="separated-size" title=${t('recordListTitleSeparatedSize')}
+                                  >(${t(
+                                      'recordListSeparatedSize',
+                                      formatNum(record.subFilesSize / 1024 / 1024, 2),
+                                  )})</span
+                              >`
+                            : ''}
+                    </div>
+                    ${record.recordedAt != null
+                        ? html`<div class="meta" title=${t('recordListTitleRecordedAt')}>
+                              <md-icon>schedule</md-icon> ${RecordList.dateTimeFormat.format(record.recordedAt)}
+                          </div>`
+                        : ''}
+                    ${record.isRecording
+                        ? html`<div class="meta recording" title=${t('recordListTitleRecording')}>
+                              <md-icon>screen_record</md-icon> ${this.recordingPaused
+                                  ? t('recordListPaused')
+                                  : t('recordListRecording')}
+                              <span class="elapsed-time${this.recordingPaused ? ' elapsed-blink' : ''}"
+                                  >${this.elapsedTimeText}</span
+                              >${this.timerStopText
+                                  ? html` <span title=${t('recordListTitleTimerStop')}
+                                        >(⏱
+                                        ${this.recordingPaused
+                                            ? t('recordListTimerPaused')
+                                            : t('recordListTimerStopsAt', this.timerStopText)})</span
+                                    >`
+                                  : ''}
+                          </div>`
+                        : ''}
+                    <md-filled-icon-button slot="end" ?disabled=${record.isRecording} @click=${this.playRecord(record)}>
+                        <md-icon>play_arrow</md-icon>
+                    </md-filled-icon-button>
+                </md-list-item>`
         }
         const est = this.estimate
         const usage = est.usage
         const quota = est.quota || 1
         const sortIcon = this.sortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward'
         const sortLabel = this.sortOrder === 'asc' ? t('recordListSortAsc') : t('recordListSortDesc')
-        return html`
-        <h2 class="storage-heading">
-        ${t('recordListStorage', [formatNum(usage / 1024 / 1024, 1), formatRate(usage / quota, 1)])}
-        </h2>
-        <md-chip-set class="selected-actions">
-            <md-filter-chip label=${t('recordListSelectAll')} has-icon="true" ?disabled=${this.records.length === 0} ?selected=${this.records.length > 0 && this.records.every(isSelected)} @click=${this.selectAll}>
-                <md-icon slot="icon">check_box_outline_blank</md-icon>
-            </md-filter-chip>
-            <md-assist-chip class="sort-chip" label="${sortLabel}" has-icon="true" @click=${this.toggleSortOrder}>
-                <md-icon slot="icon">${sortIcon}</md-icon>
-            </md-assist-chip>
-            <md-assist-chip label=${t('recordListSave')} ?disabled=${!this.records.some(isSelected)} @click=${this.saveSelectedRecords}>
-                <md-icon slot="icon">save</md-icon>
-            </md-assist-chip>
-            <md-assist-chip label=${t('recordListDelete')} ?disabled=${!this.records.some(isSelected)} @click=${this.deleteSelectedRecords}>
-                <md-icon slot="icon">delete</md-icon>
-            </md-assist-chip>
-        </md-chip-set>
-        <md-list>
-            ${this.records.length === 0 ? html`<md-list-item>${t('recordListNoEntry')}</md-list-item>` : repeat(this.records, record => record.title, row)}
-        </md-list>`
+        return html` <h2 class="storage-heading">
+                ${t('recordListStorage', [formatNum(usage / 1024 / 1024, 1), formatRate(usage / quota, 1)])}
+            </h2>
+            <md-chip-set class="selected-actions">
+                <md-filter-chip
+                    label=${t('recordListSelectAll')}
+                    has-icon="true"
+                    ?disabled=${this.records.length === 0}
+                    ?selected=${this.records.length > 0 && this.records.every(isSelected)}
+                    @click=${this.selectAll}>
+                    <md-icon slot="icon">check_box_outline_blank</md-icon>
+                </md-filter-chip>
+                <md-assist-chip class="sort-chip" label="${sortLabel}" has-icon="true" @click=${this.toggleSortOrder}>
+                    <md-icon slot="icon">${sortIcon}</md-icon>
+                </md-assist-chip>
+                <md-assist-chip
+                    label=${t('recordListSave')}
+                    ?disabled=${!this.records.some(isSelected)}
+                    @click=${this.saveSelectedRecords}>
+                    <md-icon slot="icon">save</md-icon>
+                </md-assist-chip>
+                <md-assist-chip
+                    label=${t('recordListDelete')}
+                    ?disabled=${!this.records.some(isSelected)}
+                    @click=${this.deleteSelectedRecords}>
+                    <md-icon slot="icon">delete</md-icon>
+                </md-assist-chip>
+            </md-chip-set>
+            <md-list>
+                ${this.records.length === 0
+                    ? html`<md-list-item>${t('recordListNoEntry')}</md-list-item>`
+                    : repeat(this.records, record => record.title, row)}
+            </md-list>`
     }
 
     private removeRecord(record: RecordEntry) {
@@ -305,22 +361,24 @@ export class RecordList extends LitElement {
             }
         }
 
-        const result: Array<RecordEntry> = recordings.filter(meta => {
-            if (isSubFile(meta.title)) return false  // Exclude sub-files from main list
-            return !meta.isRecording || meta.isTemporary
-        }).map(meta => {
-            const m = meta.title.match(filePattern)
-            const ts = m?.[1]
-            return {
-                title: meta.title,
-                size: meta.size,
-                selected: false,
-                recordedAt: meta.recordedAt != null ? new Date(meta.recordedAt) : undefined,
-                isRecording: meta.isRecording ?? false,
-                subFiles: ts ? (subFileMap.get(ts) ?? []) : [],
-                subFilesSize: ts ? (subFileSizeMap.get(ts) ?? 0) : 0,
-            }
-        })
+        const result: Array<RecordEntry> = recordings
+            .filter(meta => {
+                if (isSubFile(meta.title)) return false // Exclude sub-files from main list
+                return !meta.isRecording || meta.isTemporary
+            })
+            .map(meta => {
+                const m = meta.title.match(filePattern)
+                const ts = m?.[1]
+                return {
+                    title: meta.title,
+                    size: meta.size,
+                    selected: false,
+                    recordedAt: meta.recordedAt != null ? new Date(meta.recordedAt) : undefined,
+                    isRecording: meta.isRecording ?? false,
+                    subFiles: ts ? (subFileMap.get(ts) ?? []) : [],
+                    subFilesSize: ts ? (subFileSizeMap.get(ts) ?? 0) : 0,
+                }
+            })
 
         const oldVal = [...this.records]
         this.records = result
@@ -384,7 +442,10 @@ export class RecordList extends LitElement {
             this.timerStopText = ''
             return
         }
-        this.timerStopText = new Date(this.recordingStopAtMs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        this.timerStopText = new Date(this.recordingStopAtMs).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+        })
     }
     private async toggleSortOrder() {
         const newOrder: RecordingSortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc'
@@ -493,20 +554,22 @@ export class RecordList extends LitElement {
             console.log('confirm-dialog:', dialog.returnValue)
             if (dialog.returnValue === 'delete') {
                 try {
-                    await Promise.all(selectedRecords.map(async record => {
-                        console.log('Delete:', record.title)
+                    await Promise.all(
+                        selectedRecords.map(async record => {
+                            console.log('Delete:', record.title)
 
-                        // Delete related sub-files first
-                        for (const subFile of record.subFiles) {
-                            console.log('Delete sub-file:', subFile)
-                            await recordingApi.deleteRecording(subFile)
-                        }
+                            // Delete related sub-files first
+                            for (const subFile of record.subFiles) {
+                                console.log('Delete sub-file:', subFile)
+                                await recordingApi.deleteRecording(subFile)
+                            }
 
-                        // Delete main file via API
-                        await recordingApi.deleteRecording(record.title)
-                        // remove from UI
-                        this.removeRecord(record)
-                    }))
+                            // Delete main file via API
+                            await recordingApi.deleteRecording(record.title)
+                            // remove from UI
+                            this.removeRecord(record)
+                        }),
+                    )
 
                     // update UI
                     this.updateEstimate()
@@ -525,6 +588,6 @@ export default RecordList
 
 declare global {
     interface HTMLElementTagNameMap {
-        'record-list': RecordList;
+        'record-list': RecordList
     }
 }

@@ -56,36 +56,36 @@ export class OptionTab extends LitElement {
 
     public override render() {
         return html`
-        <md-tabs @change=${OptionTab.changeTab}>
-            <md-primary-tab id="tab-main" aria-controls="panel-main" inline-icon active>
-                <md-icon slot="icon">video_library</md-icon>
-                ${t('tabRecords')}
-            </md-primary-tab>
-            <md-primary-tab id="tab-settings" aria-controls="panel-settings" inline-icon>
-                <md-icon slot="icon">settings</md-icon>
-                ${t('tabSettings')}
-            </md-primary-tab>
-            <md-primary-tab id="tab-cropping" aria-controls="panel-cropping" inline-icon>
-                <md-icon slot="icon">crop</md-icon>
-                ${t('tabCropping')}
-            </md-primary-tab>
-            <md-primary-tab id="tab-support" aria-controls="panel-support" inline-icon>
-                <md-icon slot="icon">support</md-icon>
-                ${t('tabSupport')}
-            </md-primary-tab>
-        </md-tabs>
-        <div role="tabpanel" id="panel-main" aria-labelledby="tab-main">
-            <slot name="panel-main"></slot>
-        </div>
-        <div role="tabpanel" id="panel-settings" aria-labelledby="tab-settings" hidden>
-            <slot name="panel-settings"></slot>
-        </div>
-        <div role="tabpanel" id="panel-cropping" aria-labelledby="tab-cropping" hidden>
-            <slot name="panel-cropping"></slot>
-        </div>
-        <div role="tabpanel" id="panel-support" aria-labelledby="tab-support" hidden>
-            <slot name="panel-support"></slot>
-        </div>
+            <md-tabs @change=${OptionTab.changeTab}>
+                <md-primary-tab id="tab-main" aria-controls="panel-main" inline-icon active>
+                    <md-icon slot="icon">video_library</md-icon>
+                    ${t('tabRecords')}
+                </md-primary-tab>
+                <md-primary-tab id="tab-settings" aria-controls="panel-settings" inline-icon>
+                    <md-icon slot="icon">settings</md-icon>
+                    ${t('tabSettings')}
+                </md-primary-tab>
+                <md-primary-tab id="tab-cropping" aria-controls="panel-cropping" inline-icon>
+                    <md-icon slot="icon">crop</md-icon>
+                    ${t('tabCropping')}
+                </md-primary-tab>
+                <md-primary-tab id="tab-support" aria-controls="panel-support" inline-icon>
+                    <md-icon slot="icon">support</md-icon>
+                    ${t('tabSupport')}
+                </md-primary-tab>
+            </md-tabs>
+            <div role="tabpanel" id="panel-main" aria-labelledby="tab-main">
+                <slot name="panel-main"></slot>
+            </div>
+            <div role="tabpanel" id="panel-settings" aria-labelledby="tab-settings" hidden>
+                <slot name="panel-settings"></slot>
+            </div>
+            <div role="tabpanel" id="panel-cropping" aria-labelledby="tab-cropping" hidden>
+                <slot name="panel-cropping"></slot>
+            </div>
+            <div role="tabpanel" id="panel-support" aria-labelledby="tab-support" hidden>
+                <slot name="panel-support"></slot>
+            </div>
         `
     }
 }

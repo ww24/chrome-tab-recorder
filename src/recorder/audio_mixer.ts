@@ -14,14 +14,16 @@ export class SingletonAudioContextFactory implements AudioContextFactory {
         if (this.audioCtx == null) {
             this.audioCtx = sampleRate > 0 ? new AudioContext({ sampleRate }) : new AudioContext()
         } else if (sampleRate > 0 && this.audioCtx.sampleRate !== sampleRate) {
-            console.warn(`AudioContext already created with sampleRate=${this.audioCtx.sampleRate}, ignoring requested sampleRate=${sampleRate}`)
+            console.warn(
+                `AudioContext already created with sampleRate=${this.audioCtx.sampleRate}, ignoring requested sampleRate=${sampleRate}`,
+            )
         }
         return this.audioCtx
     }
 }
 
 export class AudioMixer {
-    constructor(private readonly audioContextFactory: AudioContextFactory) { }
+    constructor(private readonly audioContextFactory: AudioContextFactory) {}
 
     /**
      * Mix tab audio and microphone audio streams into a single MediaStream.
@@ -44,10 +46,7 @@ export class AudioMixer {
                     dest.stream.getAudioTracks().forEach(track => track.stop())
                 })
 
-                return new MediaStream([
-                    ...dest.stream.getAudioTracks(),
-                    ...tabStream.getVideoTracks(),
-                ])
+                return new MediaStream([...dest.stream.getAudioTracks(), ...tabStream.getVideoTracks()])
             }
             return tabStream
         }
@@ -75,10 +74,7 @@ export class AudioMixer {
         micGainNode.connect(mixedOutput)
 
         // Combine mixed audio with video tracks
-        return new MediaStream([
-            ...mixedOutput.stream.getAudioTracks(),
-            ...tabStream.getVideoTracks(),
-        ])
+        return new MediaStream([...mixedOutput.stream.getAudioTracks(), ...tabStream.getVideoTracks()])
     }
 
     /**

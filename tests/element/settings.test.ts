@@ -10,24 +10,44 @@ import { Configuration } from '../../src/configuration'
 // Mock mediabunny to avoid actual codec detection
 vi.mock('mediabunny', () => {
     class MockWebMOutputFormat {
-        getSupportedVideoCodecs() { return ['vp8', 'vp9', 'av1'] }
-        getSupportedAudioCodecs() { return ['opus'] }
+        getSupportedVideoCodecs() {
+            return ['vp8', 'vp9', 'av1']
+        }
+        getSupportedAudioCodecs() {
+            return ['opus']
+        }
     }
     class MockMp4OutputFormat {
-        getSupportedVideoCodecs() { return ['avc', 'hevc'] }
-        getSupportedAudioCodecs() { return ['aac', 'opus'] }
+        getSupportedVideoCodecs() {
+            return ['avc', 'hevc']
+        }
+        getSupportedAudioCodecs() {
+            return ['aac', 'opus']
+        }
     }
     class MockOggOutputFormat {
-        getSupportedVideoCodecs() { return [] as string[] }
-        getSupportedAudioCodecs() { return ['opus'] }
+        getSupportedVideoCodecs() {
+            return [] as string[]
+        }
+        getSupportedAudioCodecs() {
+            return ['opus']
+        }
     }
     class MockAdtsOutputFormat {
-        getSupportedVideoCodecs() { return [] as string[] }
-        getSupportedAudioCodecs() { return ['aac'] }
+        getSupportedVideoCodecs() {
+            return [] as string[]
+        }
+        getSupportedAudioCodecs() {
+            return ['aac']
+        }
     }
     class MockFlacOutputFormat {
-        getSupportedVideoCodecs() { return [] as string[] }
-        getSupportedAudioCodecs() { return ['flac'] }
+        getSupportedVideoCodecs() {
+            return [] as string[]
+        }
+        getSupportedAudioCodecs() {
+            return ['flac']
+        }
     }
     return {
         canEncodeVideo: vi.fn().mockResolvedValue(true),
@@ -82,8 +102,8 @@ describe('extension-settings', () => {
         const el = screen.container.querySelector('extension-settings')!
         await elementUpdated(el)
 
-        const resizeBtn = shadowQueryAll(el, 'md-filled-tonal-button').find(
-            b => b.textContent?.trim().includes('Resize')
+        const resizeBtn = shadowQueryAll(el, 'md-filled-tonal-button').find(b =>
+            b.textContent?.trim().includes('Resize'),
         )
         expect(resizeBtn).not.toBeUndefined()
     })
@@ -223,7 +243,7 @@ describe('extension-settings', () => {
         await elementUpdated(el)
 
         const switches = shadowQueryAll(el, 'md-switch')
-        // At minimum: screen recording auto, microphone, audio separation, recording timer, 
+        // At minimum: screen recording auto, microphone, audio separation, recording timer,
         // timer stop confirm, open option page, mute recording tab
         expect(switches.length).toBeGreaterThanOrEqual(5)
     })

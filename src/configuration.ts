@@ -1,30 +1,42 @@
-import { WebMOutputFormat, Mp4OutputFormat, OggOutputFormat, AdtsOutputFormat, FlacOutputFormat, QUALITY_HIGH, QUALITY_MEDIUM, QUALITY_LOW, canEncodeAudio } from 'mediabunny'
+import {
+    WebMOutputFormat,
+    Mp4OutputFormat,
+    OggOutputFormat,
+    AdtsOutputFormat,
+    FlacOutputFormat,
+    QUALITY_HIGH,
+    QUALITY_MEDIUM,
+    QUALITY_LOW,
+    canEncodeAudio,
+} from 'mediabunny'
 import { registerFlacEncoder } from '@mediabunny/flac-encoder'
 import type { OutputFormat, Quality } from 'mediabunny'
 
 const isServiceWorker = typeof ServiceWorkerGlobalScope !== 'undefined' && self instanceof ServiceWorkerGlobalScope
 if (!isServiceWorker) {
     // Register encoder polyfills if browser doesn't natively support them
-    canEncodeAudio('flac').then(supported => {
-        if (!supported) registerFlacEncoder()
-    }).catch(e => {
-        console.error('failed to register flac encoder:', e)
-    })
+    canEncodeAudio('flac')
+        .then(supported => {
+            if (!supported) registerFlacEncoder()
+        })
+        .catch(e => {
+            console.error('failed to register flac encoder:', e)
+        })
 }
 
 export interface Resolution {
-    width: number;
-    height: number;
+    width: number
+    height: number
 }
 export interface CropRegion {
-    x: number;      // Top-left X coordinate (px)
-    y: number;      // Top-left Y coordinate (px)
-    width: number;  // Width (px)
-    height: number; // Height (px)
+    x: number // Top-left X coordinate (px)
+    y: number // Top-left Y coordinate (px)
+    width: number // Width (px)
+    height: number // Height (px)
 }
 export interface CroppingConfig {
-    enabled: boolean;   // Cropping feature ON/OFF
-    region: CropRegion; // Cropping region
+    enabled: boolean // Cropping feature ON/OFF
+    region: CropRegion // Cropping region
 }
 const containerFormats = ['webm', 'mp4', 'ogg', 'adts', 'flac'] as const
 export type ContainerFormat = (typeof containerFormats)[number]
@@ -50,16 +62,21 @@ export function isAudioCodec(v: unknown): v is AudioCodecType {
 
 export function createOutputFormat(container: ContainerFormat): OutputFormat {
     switch (container) {
-        case 'webm': return new WebMOutputFormat()
-        case 'mp4': return new Mp4OutputFormat({ fastStart: false })
-        case 'ogg': return new OggOutputFormat()
-        case 'adts': return new AdtsOutputFormat()
-        case 'flac': return new FlacOutputFormat()
+        case 'webm':
+            return new WebMOutputFormat()
+        case 'mp4':
+            return new Mp4OutputFormat({ fastStart: false })
+        case 'ogg':
+            return new OggOutputFormat()
+        case 'adts':
+            return new AdtsOutputFormat()
+        case 'flac':
+            return new FlacOutputFormat()
     }
 }
 
 /** Available codecs per container format (dynamically queried from mediabunny) */
-export function getContainerCodecs(container: ContainerFormat): { video: VideoCodecType[], audio: AudioCodecType[] } {
+export function getContainerCodecs(container: ContainerFormat): { video: VideoCodecType[]; audio: AudioCodecType[] } {
     const format = createOutputFormat(container)
     const video = format.getSupportedVideoCodecs().filter(isVideoCodec)
     const audio = format.getSupportedAudioCodecs().filter(isAudioCodec)
@@ -69,11 +86,16 @@ export function getContainerCodecs(container: ContainerFormat): { video: VideoCo
 /** Container format to file extension */
 export function containerExtension(container: ContainerFormat): string {
     switch (container) {
-        case 'webm': return '.webm'
-        case 'mp4': return '.mp4'
-        case 'ogg': return '.ogg'
-        case 'adts': return '.aac'
-        case 'flac': return '.flac'
+        case 'webm':
+            return '.webm'
+        case 'mp4':
+            return '.mp4'
+        case 'ogg':
+            return '.ogg'
+        case 'adts':
+            return '.aac'
+        case 'flac':
+            return '.flac'
     }
 }
 
@@ -85,10 +107,14 @@ export function isBitratePreset(v: unknown): v is BitratePreset {
 
 export function resolveBitrate(preset: BitratePreset, customValue: number): number | Quality {
     switch (preset) {
-        case 'high': return QUALITY_HIGH
-        case 'medium': return QUALITY_MEDIUM
-        case 'low': return QUALITY_LOW
-        case 'custom': return customValue
+        case 'high':
+            return QUALITY_HIGH
+        case 'medium':
+            return QUALITY_MEDIUM
+        case 'low':
+            return QUALITY_LOW
+        case 'custom':
+            return customValue
     }
 }
 
@@ -103,8 +129,8 @@ export class VideoFormat {
         public videoCodec: VideoCodecType,
         public videoBitratePreset: BitratePreset,
         public videoBitrate: number, // bps (used when videoBitratePreset is 'custom')
-        public frameRate: number // fps
-    ) { }
+        public frameRate: number, // fps
+    ) {}
 
     static toReport(vf: VideoFormat, micEnabled: boolean = false): VideoFormatReport {
         const report: VideoFormatReport = { ...vf }
@@ -137,22 +163,26 @@ export class VideoFormat {
 
 export type VideoFormatReport = Pick<VideoFormat, 'recordingMode' | 'container'> & {
     // audio
-    audioCodec?: AudioCodecType;
-    audioBitratePreset?: BitratePreset;
-    audioBitrate?: number; // bps (used when audioBitratePreset is 'custom')
-    audioSampleRate?: number; // Hz
+    audioCodec?: AudioCodecType
+    audioBitratePreset?: BitratePreset
+    audioBitrate?: number // bps (used when audioBitratePreset is 'custom')
+    audioSampleRate?: number // Hz
 
     // video
-    videoCodec?: VideoCodecType;
-    videoBitratePreset?: BitratePreset;
-    videoBitrate?: number; // bps (used when videoBitratePreset is 'custom')
-    frameRate?: number; // fps
+    videoCodec?: VideoCodecType
+    videoBitratePreset?: BitratePreset
+    videoBitrate?: number // bps (used when videoBitratePreset is 'custom')
+    frameRate?: number // fps
 }
 
 /**
  * Migrate legacy configuration that used mimeType string
  */
-export function migrateFromMimeType(mimeType: string): { container: ContainerFormat, videoCodec: VideoCodecType, audioCodec: AudioCodecType } {
+export function migrateFromMimeType(mimeType: string): {
+    container: ContainerFormat
+    videoCodec: VideoCodecType
+    audioCodec: AudioCodecType
+} {
     const base = mimeType.split(';')[0]
     const codecStr = mimeType.match(/codecs="?([^"]+)"?/)?.[1] ?? ''
     const codecs = codecStr.split(',').map(c => c.trim().toLowerCase())
@@ -161,25 +191,49 @@ export function migrateFromMimeType(mimeType: string): { container: ContainerFor
 
     let videoCodec: VideoCodecType = container === 'mp4' ? 'avc' : 'vp9'
     for (const c of codecs) {
-        if (c === 'vp9') { videoCodec = 'vp9'; break }
-        if (c === 'vp8') { videoCodec = 'vp8'; break }
-        if (c === 'av1' || c.startsWith('av01')) { videoCodec = 'av1'; break }
-        if (c.startsWith('avc') || c.startsWith('h264')) { videoCodec = 'avc'; break }
-        if (c.startsWith('hev') || c.startsWith('hvc') || c.startsWith('h265')) { videoCodec = 'hevc'; break }
+        if (c === 'vp9') {
+            videoCodec = 'vp9'
+            break
+        }
+        if (c === 'vp8') {
+            videoCodec = 'vp8'
+            break
+        }
+        if (c === 'av1' || c.startsWith('av01')) {
+            videoCodec = 'av1'
+            break
+        }
+        if (c.startsWith('avc') || c.startsWith('h264')) {
+            videoCodec = 'avc'
+            break
+        }
+        if (c.startsWith('hev') || c.startsWith('hvc') || c.startsWith('h265')) {
+            videoCodec = 'hevc'
+            break
+        }
     }
 
     let audioCodec: AudioCodecType = container === 'mp4' ? 'aac' : 'opus'
     for (const c of codecs) {
-        if (c === 'opus') { audioCodec = 'opus'; break }
-        if (c.startsWith('mp4a') || c === 'aac') { audioCodec = 'aac'; break }
-        if (c === 'flac') { audioCodec = 'flac'; break }
+        if (c === 'opus') {
+            audioCodec = 'opus'
+            break
+        }
+        if (c.startsWith('mp4a') || c === 'aac') {
+            audioCodec = 'aac'
+            break
+        }
+        if (c === 'flac') {
+            audioCodec = 'flac'
+            break
+        }
     }
 
     return { container, videoCodec, audioCodec }
 }
 export interface ScreenRecordingSize extends Resolution {
-    auto: boolean;
-    scale: number;
+    auto: boolean
+    scale: number
 }
 export interface Microphone {
     enabled: boolean
@@ -213,7 +267,7 @@ export function isUITheme(v: unknown): v is UITheme {
     return uiThemes.some(t => v === t)
 }
 const videoRecordingMode = ['video-and-audio', 'video-only', 'audio-only'] as const
-export type VideoRecordingMode = (typeof videoRecordingMode)[number];
+export type VideoRecordingMode = (typeof videoRecordingMode)[number]
 export function isVideoRecordingMode(v: unknown): v is VideoRecordingMode {
     return videoRecordingMode.some(m => v === m)
 }
@@ -236,21 +290,31 @@ export type SyncConfiguration = Omit<Configuration, 'microphone' | 'cropping'>
  */
 export function audioSeparationContainer(audioCodec: AudioCodecType): ContainerFormat {
     switch (audioCodec) {
-        case 'opus': return 'ogg'
-        case 'aac': return 'adts'
-        case 'flac': return 'flac'
-        default: return 'mp4'
+        case 'opus':
+            return 'ogg'
+        case 'aac':
+            return 'adts'
+        case 'flac':
+            return 'flac'
+        default:
+            return 'mp4'
     }
 }
 
 export type RecordingTimerReport = { enabled: boolean; durationMinutes?: number; skipStopConfirmation?: boolean }
 
-export type ConfigurationReport =
-    Pick<Configuration, 'windowSize' | 'screenRecordingSize' | 'openOptionPage' | 'muteRecordingTab' | 'recordingSortOrder' | 'audioSeparation' | 'uiTheme'>
-    & { videoFormat: VideoFormatReport }
-    & { microphone: Omit<Microphone, 'deviceId'> }
-    & { cropping: Pick<CroppingConfig, 'enabled'> & { region: Pick<CropRegion, 'width' | 'height'> } }
-    & { recordingTimer: RecordingTimerReport }
+export type ConfigurationReport = Pick<
+    Configuration,
+    | 'windowSize'
+    | 'screenRecordingSize'
+    | 'openOptionPage'
+    | 'muteRecordingTab'
+    | 'recordingSortOrder'
+    | 'audioSeparation'
+    | 'uiTheme'
+> & { videoFormat: VideoFormatReport } & { microphone: Omit<Microphone, 'deviceId'> } & {
+    cropping: Pick<CroppingConfig, 'enabled'> & { region: Pick<CropRegion, 'width' | 'height'> }
+} & { recordingTimer: RecordingTimerReport }
 
 export class Configuration {
     public static readonly key = 'settings'
@@ -347,7 +411,15 @@ export class Configuration {
             recordingTimer.durationMinutes = undefined
             recordingTimer.skipStopConfirmation = undefined
         }
-        const { windowSize, screenRecordingSize, openOptionPage, muteRecordingTab, recordingSortOrder, audioSeparation, uiTheme } = config
+        const {
+            windowSize,
+            screenRecordingSize,
+            openOptionPage,
+            muteRecordingTab,
+            recordingSortOrder,
+            audioSeparation,
+            uiTheme,
+        } = config
         return {
             windowSize,
             screenRecordingSize,
@@ -355,7 +427,10 @@ export class Configuration {
             openOptionPage,
             muteRecordingTab,
             microphone: { enabled: microphone.enabled, gain: microphone.gain },
-            cropping: { enabled: cropping.enabled, region: { width: cropping.region.width, height: cropping.region.height } },
+            cropping: {
+                enabled: cropping.enabled,
+                region: { width: cropping.region.width, height: cropping.region.height },
+            },
             recordingSortOrder,
             audioSeparation,
             recordingTimer,
@@ -385,8 +460,14 @@ export class Configuration {
         let migrated = false
 
         // Migrate legacy mimeType string to container/codec fields
-        const storedVideoFormat = (stored as { videoFormat?: { mimeType?: string; container?: string } } | null)?.videoFormat
-        if (storedVideoFormat && 'mimeType' in storedVideoFormat && storedVideoFormat.mimeType && !storedVideoFormat.container) {
+        const storedVideoFormat = (stored as { videoFormat?: { mimeType?: string; container?: string } } | null)
+            ?.videoFormat
+        if (
+            storedVideoFormat &&
+            'mimeType' in storedVideoFormat &&
+            storedVideoFormat.mimeType &&
+            !storedVideoFormat.container
+        ) {
             const m = migrateFromMimeType(storedVideoFormat.mimeType)
             config.videoFormat.container = m.container
             config.videoFormat.videoCodec = m.videoCodec
@@ -417,4 +498,4 @@ export class Configuration {
     static audioFilename(startAtMs: number, suffix: 'tab' | 'mic', ext: string) {
         return `video-${startAtMs}-${suffix}${ext}`
     }
-};
+}

@@ -62,9 +62,7 @@ describe('cropping-preview', () => {
     })
 
     test('accepts croppingEnabled property', async () => {
-        const screen = render(html`
-            <cropping-preview .croppingEnabled=${true}></cropping-preview>
-        `)
+        const screen = render(html` <cropping-preview .croppingEnabled=${true}></cropping-preview> `)
         const el = screen.container.querySelector('cropping-preview')! as CroppingPreview
         await elementUpdated(el)
 
@@ -73,9 +71,7 @@ describe('cropping-preview', () => {
 
     test('accepts cropRegion property', async () => {
         const region = { x: 100, y: 200, width: 800, height: 600 }
-        const screen = render(html`
-            <cropping-preview .cropRegion=${region}></cropping-preview>
-        `)
+        const screen = render(html` <cropping-preview .cropRegion=${region}></cropping-preview> `)
         const el = screen.container.querySelector('cropping-preview')! as CroppingPreview
         await elementUpdated(el)
 
@@ -83,9 +79,7 @@ describe('cropping-preview', () => {
     })
 
     test('accepts isRecording property', async () => {
-        const screen = render(html`
-            <cropping-preview .isRecording=${true}></cropping-preview>
-        `)
+        const screen = render(html` <cropping-preview .isRecording=${true}></cropping-preview> `)
         const el = screen.container.querySelector('cropping-preview')! as CroppingPreview
         await elementUpdated(el)
 
@@ -93,9 +87,7 @@ describe('cropping-preview', () => {
     })
 
     test('accepts canInteract property', async () => {
-        const screen = render(html`
-            <cropping-preview .canInteract=${false}></cropping-preview>
-        `)
+        const screen = render(html` <cropping-preview .canInteract=${false}></cropping-preview> `)
         const el = screen.container.querySelector('cropping-preview')! as CroppingPreview
         await elementUpdated(el)
 
@@ -125,11 +117,13 @@ describe('cropping-preview', () => {
 
         // Manually dispatch an event to verify the custom event interface
         const region = { x: 10, y: 20, width: 300, height: 200 }
-        el.dispatchEvent(new CustomEvent('crop-region-change', {
-            detail: { region },
-            bubbles: true,
-            composed: true,
-        }))
+        el.dispatchEvent(
+            new CustomEvent('crop-region-change', {
+                detail: { region },
+                bubbles: true,
+                composed: true,
+            }),
+        )
 
         expect(receivedEvent).not.toBeNull()
         expect(receivedEvent!.detail.region).toEqual(region)

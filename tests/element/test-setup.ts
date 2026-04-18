@@ -51,8 +51,8 @@ const chromeMock = {
     },
 }
 
-    // Always install chrome mock (in Chromium, window.chrome exists but lacks extension APIs)
-    ; (globalThis as Record<string, unknown>).chrome = chromeMock
+// Always install chrome mock (in Chromium, window.chrome exists but lacks extension APIs)
+;(globalThis as Record<string, unknown>).chrome = chromeMock
 
 beforeEach(() => {
     // Clear all listener arrays
@@ -71,7 +71,7 @@ beforeEach(() => {
  */
 export function simulateChromeMessage(message: unknown): void {
     for (const listener of [...messageListeners]) {
-        listener(message, {}, () => { })
+        listener(message, {}, () => {})
     }
 }
 
@@ -79,7 +79,10 @@ export function simulateChromeMessage(message: unknown): void {
  * Simulate a chrome.storage.onChanged dispatch.
  * Calls all registered storage change listeners.
  */
-export function simulateStorageChange(changes: Record<string, chrome.storage.StorageChange>, areaName: string = 'local'): void {
+export function simulateStorageChange(
+    changes: Record<string, chrome.storage.StorageChange>,
+    areaName: string = 'local',
+): void {
     for (const listener of [...storageListeners]) {
         listener(changes, areaName)
     }

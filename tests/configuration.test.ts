@@ -5,7 +5,14 @@ vi.mock('@mediabunny/flac-encoder', () => ({
     registerFlacEncoder: vi.fn(),
 }))
 
-import { migrateFromMimeType, VideoFormat, Configuration, audioSeparationContainer, isUITheme, type RecordingTimerReport } from '../src/configuration'
+import {
+    migrateFromMimeType,
+    VideoFormat,
+    Configuration,
+    audioSeparationContainer,
+    isUITheme,
+    type RecordingTimerReport,
+} from '../src/configuration'
 
 describe('migrateFromMimeType', () => {
     describe('WebM container', () => {
@@ -124,7 +131,12 @@ describe('VideoFormat.toReport', () => {
     }
 
     it('should include all fields for video-and-audio mode', () => {
-        const vf: VideoFormat = { ...base, recordingMode: 'video-and-audio', audioBitratePreset: 'custom', videoBitratePreset: 'custom' }
+        const vf: VideoFormat = {
+            ...base,
+            recordingMode: 'video-and-audio',
+            audioBitratePreset: 'custom',
+            videoBitratePreset: 'custom',
+        }
         expect(VideoFormat.toReport(vf)).toEqual({
             recordingMode: 'video-and-audio',
             container: 'webm',
@@ -188,7 +200,12 @@ describe('VideoFormat.toReport', () => {
     })
 
     it('should include custom audioBitrate when preset is custom', () => {
-        const vf: VideoFormat = { ...base, recordingMode: 'video-and-audio', audioBitratePreset: 'custom', audioBitrate: 128000 }
+        const vf: VideoFormat = {
+            ...base,
+            recordingMode: 'video-and-audio',
+            audioBitratePreset: 'custom',
+            audioBitrate: 128000,
+        }
         expect(VideoFormat.toReport(vf)).toEqual({
             recordingMode: 'video-and-audio',
             container: 'webm',
@@ -204,7 +221,12 @@ describe('VideoFormat.toReport', () => {
     })
 
     it('should include custom videoBitrate when preset is custom', () => {
-        const vf: VideoFormat = { ...base, recordingMode: 'video-and-audio', videoBitratePreset: 'custom', videoBitrate: 4000000 }
+        const vf: VideoFormat = {
+            ...base,
+            recordingMode: 'video-and-audio',
+            videoBitratePreset: 'custom',
+            videoBitrate: 4000000,
+        }
         expect(VideoFormat.toReport(vf)).toEqual({
             recordingMode: 'video-and-audio',
             container: 'webm',
@@ -327,14 +349,22 @@ describe('Configuration.recordingTimer', () => {
         const config = new Configuration()
         config.recordingTimer = { enabled: true, durationMinutes: 45, skipStopConfirmation: false }
         const report = Configuration.filterForReport(config)
-        expect(report.recordingTimer).toEqual({ enabled: true, durationMinutes: 45, skipStopConfirmation: false } satisfies RecordingTimerReport)
+        expect(report.recordingTimer).toEqual({
+            enabled: true,
+            durationMinutes: 45,
+            skipStopConfirmation: false,
+        } satisfies RecordingTimerReport)
     })
 
     it('should omit durationMinutes, skipStopConfirmation in report when disabled', () => {
         const config = new Configuration()
         config.recordingTimer = { enabled: false, durationMinutes: 45, skipStopConfirmation: true }
         const report = Configuration.filterForReport(config)
-        expect(report.recordingTimer).toEqual({ enabled: false, durationMinutes: undefined, skipStopConfirmation: undefined } satisfies RecordingTimerReport)
+        expect(report.recordingTimer).toEqual({
+            enabled: false,
+            durationMinutes: undefined,
+            skipStopConfirmation: undefined,
+        } satisfies RecordingTimerReport)
         expect(report.recordingTimer.durationMinutes).toBeUndefined()
     })
 

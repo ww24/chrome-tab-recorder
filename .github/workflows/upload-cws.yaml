@@ -1,62 +1,62 @@
 name: Upload Package to Chrome Web Store
 
 on:
-    workflow_dispatch:
+  workflow_dispatch:
 
 concurrency:
-    group: ${{ github.workflow }}
-    cancel-in-progress: false
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
 
 defaults:
-    run:
-        shell: bash
+  run:
+    shell: bash
 
 jobs:
-    upload:
-        # Only run on bump/v* branches
-        if: startsWith(github.ref, 'refs/heads/bump/v')
-        runs-on: ubuntu-22.04
-        timeout-minutes: 10
-        permissions:
-            contents: read
-            id-token: write
-        steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+  upload:
+    # Only run on bump/v* branches
+    if: startsWith(github.ref, 'refs/heads/bump/v')
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-            - name: Authenticate to Google Cloud
-              uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
-              with:
-                  workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-                  service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
-            - name: Use Node.js
-              uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-              with:
-                  node-version-file: "package.json"
+      - name: Use Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version-file: "package.json"
 
-            - name: Cache node modules
-              id: cache-npm
-              uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-              env:
-                  cache-name: cache-node-modules
-              with:
-                  path: ~/.npm
-                  key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
-                  restore-keys: |
-                      ${{ runner.os }}-build-${{ env.cache-name }}-
-                      ${{ runner.os }}-build-
-                      ${{ runner.os }}-
+      - name: Cache node modules
+        id: cache-npm
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        env:
+          cache-name: cache-node-modules
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
 
-            - name: Install dependencies
-              run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-            - name: Build
-              run: npm run build:prod
-              env:
-                  SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+      - name: Build
+        run: npm run build:prod
+        env:
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
-            - name: Upload Package to Chrome Web Store
-              run: node scripts/upload-cws.mjs
-              env:
-                  CWS_PUBLISHER_ID: ${{ secrets.CWS_PUBLISHER_ID }}
-                  CWS_ITEM_ID: ${{ secrets.CWS_ITEM_ID }}
+      - name: Upload Package to Chrome Web Store
+        run: node scripts/upload-cws.mjs
+        env:
+          CWS_PUBLISHER_ID: ${{ secrets.CWS_PUBLISHER_ID }}
+          CWS_ITEM_ID: ${{ secrets.CWS_ITEM_ID }}

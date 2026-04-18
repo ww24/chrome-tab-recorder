@@ -17,7 +17,7 @@ const preview = new Preview(async ({ image, width, height }) => {
     const msg: PreviewFrameMessage = {
         type: 'preview-frame',
         recordingSize: { width, height },
-        image: (new Uint8Array(await image.arrayBuffer())).toBase64(),
+        image: new Uint8Array(await image.arrayBuffer()).toBase64(),
     }
     await chrome.runtime.sendMessage(msg)
 })
@@ -50,33 +50,43 @@ const session = createRecordingSession(preview, crop, {
 })
 
 const handler = new OffscreenHandler({
-    getRecordingInfo: (tabSize) => Settings.getRecordingInfo(tabSize),
+    getRecordingInfo: tabSize => Settings.getRecordingInfo(tabSize),
     getConfiguration: () => Settings.getConfiguration(),
-    mergeRemoteConfiguration: (remote) => Settings.mergeRemoteConfiguration(remote),
+    mergeRemoteConfiguration: remote => Settings.mergeRemoteConfiguration(remote),
     session,
     checkStoragePersisted: () => navigator.storage.persisted(),
     sendEvent,
     sendException,
     flush,
-    sendRuntimeMessage: (msg) => chrome.runtime.sendMessage(msg),
+    sendRuntimeMessage: msg => chrome.runtime.sendMessage(msg),
     getLocationHash: () => window.location.hash,
-    setLocationHash: (hash) => { window.location.hash = hash },
+    setLocationHash: hash => {
+        window.location.hash = hash
+    },
 })
 
-chrome.runtime.onMessage.addListener((message: Message, _sender: chrome.runtime.MessageSender, sendResponse: (response?: StartRecordingResponse) => void) => {
-    const resultPromise = handler.handleMessage(message)
-    if (resultPromise == null) return
+chrome.runtime.onMessage.addListener(
+    (
+        message: Message,
+        _sender: chrome.runtime.MessageSender,
+        sendResponse: (response?: StartRecordingResponse) => void,
+    ) => {
+        const resultPromise = handler.handleMessage(message)
+        if (resultPromise == null) return
 
-    resultPromise.then(result => {
-        if (result != null) sendResponse(result)
-        else sendResponse()
-    }).catch(e => {
-        console.error(e)
-        sendException(e, {
-            exceptionSource: 'offscreen.onMessage',
-            additionalMetadata: { messageType: message.type },
-        })
-        sendResponse(undefined)
-    })
-    return true // asynchronous flag
-})
+        resultPromise
+            .then(result => {
+                if (result != null) sendResponse(result)
+                else sendResponse()
+            })
+            .catch(e => {
+                console.error(e)
+                sendException(e, {
+                    exceptionSource: 'offscreen.onMessage',
+                    additionalMetadata: { messageType: message.type },
+                })
+                sendResponse(undefined)
+            })
+        return true // asynchronous flag
+    },
+)

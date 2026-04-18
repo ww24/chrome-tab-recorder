@@ -47,6 +47,8 @@ jobs:
         run: npm ci
       - name: lint
         run: npm run lint
+      - name: fmt
+        run: npm run fmt:check
 
   test:
     needs: [lint]

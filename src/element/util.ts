@@ -17,8 +17,9 @@ export function formatRate(rate: number, dig: number) {
 
 export async function checkFileHandlePermission(handle: FileSystemHandle) {
     const options: FileSystemHandlePermissionDescriptor = { mode: 'readwrite' }
-    return (await handle.queryPermission(options) === 'granted')
-        || (await handle.requestPermission(options) === 'granted')
+    return (
+        (await handle.queryPermission(options)) === 'granted' || (await handle.requestPermission(options)) === 'granted'
+    )
 }
 
 /* eslint @typescript-eslint/no-explicit-any: 0 */

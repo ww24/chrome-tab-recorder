@@ -31,11 +31,12 @@ export function buildRecordingTitle(appName: string, state: RecordingState, now:
     const video = state.recordingMode !== 'audio-only' ? on : off
     const audio = state.recordingMode !== 'video-only' ? on : off
     const mic = state.micEnabled ? on : off
-    const timerLine = state.stopAtMs != null
-        ? (state.isPaused
-            ? t('formatTimerPaused', formatHHMM(state.stopAtMs - (state.pausedAtMs ?? now), 'ceil'))
-            : t('formatTimerRemaining', formatHHMM(state.stopAtMs - now, 'ceil')))
-        : null
+    const timerLine =
+        state.stopAtMs != null
+            ? state.isPaused
+                ? t('formatTimerPaused', formatHHMM(state.stopAtMs - (state.pausedAtMs ?? now), 'ceil'))
+                : t('formatTimerRemaining', formatHHMM(state.stopAtMs - now, 'ceil'))
+            : null
     return [
         appName,
         status,
