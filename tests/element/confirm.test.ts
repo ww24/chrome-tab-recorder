@@ -9,9 +9,11 @@ import type { RecordEntry } from '../../src/element/recordList'
 function makeRecord(overrides: Partial<RecordEntry> = {}): RecordEntry {
     return {
         title: 'video-123456.webm',
+        path: 'video-123456.webm',
         size: 1024 * 1024, // 1 MB
         selected: false,
         isRecording: false,
+        isCanceled: false,
         subFiles: [],
         subFilesSize: 0,
         ...overrides,

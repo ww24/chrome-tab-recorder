@@ -4,11 +4,13 @@ import { hasVideo, hasAudio } from '../configuration'
 import type { StartRecording, StartRecordingResponse } from '../message'
 import type { Preview } from '../preview'
 import type { Crop } from '../crop'
+import { getMimeTypeFromExtension } from '../mime'
 import type { AudioMixer } from './audio_mixer'
 import type { MediaCapture } from './media_capture'
 import type { OutputManager, PausableSource } from './output_manager'
 import type { AudioSeparationManager, AudioSeparationOutputs } from './audio_separation'
 import type { FileManager } from './file_manager'
+import type { SubFileInfo } from '../recording_db'
 import { sendException } from '../sentry'
 import type { OffscreenSession } from '../offscreen_handler'
 
@@ -27,6 +29,9 @@ export interface RecordingResult {
     startAtMs: number
     durationMs: number
     fileSize: number
+    mainFilePath: string
+    mimeType: string
+    subFiles: SubFileInfo[]
 }
 
 export interface RecorderCallbacks {
@@ -45,6 +50,8 @@ export class RecordingSession implements OffscreenSession {
     private totalPausedMs = 0
     private pausedAtMs = 0
     private recordingFileHandle: FileSystemFileHandle | undefined
+    private mainFileName = ''
+    private mainMimeType = ''
     private tickTimerId: ReturnType<typeof setInterval> | undefined
     private currentVideoTrack: MediaStreamTrack | null = null
 
@@ -76,6 +83,8 @@ export class RecordingSession implements OffscreenSession {
             // Prepare output file
             const fileHandle = await this.fileManager.createRecordingFile(startAtMs, videoFormat.container)
             this.recordingFileHandle = fileHandle
+            this.mainFileName = fileHandle.name
+            this.mainMimeType = getMimeTypeFromExtension(fileHandle.name)
             const writableStream = await fileHandle.createWritable()
 
             // Create main output
@@ -188,6 +197,8 @@ export class RecordingSession implements OffscreenSession {
 
             return {
                 startAtMs,
+                mainFilePath: this.mainFileName,
+                mimeType: this.mainMimeType,
                 recordingMode: videoFormat.recordingMode,
                 micEnabled: microphone.enabled && micStream != null,
             }
@@ -232,10 +243,18 @@ export class RecordingSession implements OffscreenSession {
             const duration = Date.now() - this.recordingStartTime - this.totalPausedMs
             console.info(`stopped: duration=${duration / 1000}s (paused: ${this.totalPausedMs / 1000}s)`)
 
+            // Collect sub-file info
+            const subFiles = this.separationOutputs
+                ? await this.audioSeparation.getSubFileInfos(this.separationOutputs)
+                : []
+
             return {
                 startAtMs: this.recordingStartTime,
                 durationMs: duration,
                 fileSize: file?.size ?? 0,
+                mainFilePath: this.mainFileName,
+                mimeType: this.mainMimeType,
+                subFiles,
             }
         } finally {
             this.cleanup()

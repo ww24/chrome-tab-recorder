@@ -6,12 +6,34 @@
  */
 
 import type { RecordingStorage } from './storage'
+import type { RecordingDB, RecordingRecord } from './recording_db'
+import { parseRecordedAt } from './recording_db'
 import { getMimeTypeFromExtension } from './mime'
 import { parseRangeHeader, resolveByteRange, generateBoundary, buildMultipartByteRangesBody } from './range'
 import type { ResolvedRange } from './range'
 import type { Resolution, VideoRecordingMode } from './configuration'
 
 const API_PREFIX = '/api/'
+
+/**
+ * Persist stale-record status fixes to IndexedDB (best-effort, fire-and-forget).
+ * Uses a simple flag so that concurrent list requests do not queue up duplicate writes.
+ */
+let stalePersistPromise: Promise<void> | null = null
+function persistStaleRecordFixes(recordingDB: RecordingDB, staleRecords: RecordingRecord[]): void {
+    if (stalePersistPromise != null) return
+    stalePersistPromise = Promise.all(staleRecords.map(r => recordingDB.put(r)))
+        .then(() => undefined)
+        .catch(e => console.error('Failed to persist stale record fixes:', e))
+        .finally(() => {
+            stalePersistPromise = null
+        })
+}
+
+/** Flush the in-flight stale-persist write (exposed for testing). */
+export function _flushStalePersist(): Promise<void> {
+    return stalePersistPromise ?? Promise.resolve()
+}
 
 /**
  * Parse API path and extract route information
@@ -68,15 +90,16 @@ export interface RecordingState {
  * Handle API requests for recording storage
  *
  * Supports:
- * - GET  /api/storage/estimate       - Storage quota info
- * - GET  /api/recordings             - List recordings
- * - GET  /api/recordings/:name       - Download recording (with Range Request support)
- * - DELETE /api/recordings/:name     - Delete recording
+ * - GET  /api/storage/estimate              - Storage quota info
+ * - GET  /api/recordings                    - List recordings (from IndexedDB)
+ * - GET  /api/recordings/:name              - Download recording (with Range Request support)
+ * - DELETE /api/recordings/:name            - Delete recording (cascade: IndexedDB + OPFS)
  */
 export async function handleApiRequest(
     request: Request,
     storage: RecordingStorage,
     state: RecordingState,
+    recordingDB: RecordingDB,
 ): Promise<Response> {
     const url = new URL(request.url)
     const parsed = parseApiPath(url.pathname)
@@ -111,13 +134,63 @@ export async function handleApiRequest(
                         headers: { 'Content-Type': 'application/json' },
                     })
                 }
-                // Parse sort query parameter
                 const sortParam = url.searchParams.get('sort')
                 const sort = sortParam === 'desc' ? 'desc' : 'asc'
-                const recordings = (await storage.list({ sort })).map(r => ({
-                    ...r,
-                    isRecording: state.isRecording && state.startAtMs != null && r.recordedAt === state.startAtMs,
-                }))
+
+                const records = await recordingDB.list(sort)
+                const staleRecords: typeof records = []
+                const recordings = await Promise.all(
+                    records.map(async r => {
+                        let fileSize = r.fileSize
+                        let { status } = r
+                        const isDbRecording = status === 'recording'
+                        // A record is the active recording only when the service worker
+                        // is recording AND this record's timestamp matches startAtMs.
+                        const isActiveRecording = isDbRecording && state.isRecording && state.startAtMs === r.recordedAt
+
+                        // Downgrade stale 'recording' entries that are not the active one
+                        if (isDbRecording && !isActiveRecording) {
+                            status = 'canceled'
+                            r.status = status
+                            staleRecords.push(r)
+                        }
+
+                        // For the active recording, get real-time file size from OPFS
+                        // Chrome writes to a .crswap swap file during recording
+                        if (isActiveRecording && r.mainFilePath) {
+                            const swapFile = await storage.getFile(`${r.mainFilePath}.crswap`)
+                            if (swapFile) {
+                                fileSize = swapFile.size
+                            } else {
+                                const file = await storage.getFile(r.mainFilePath)
+                                if (file) fileSize = file.size
+                            }
+                        }
+
+                        const subFilesSize = r.subFiles.reduce((sum, sf) => sum + sf.fileSize, 0)
+
+                        return {
+                            title: r.title || r.mainFilePath,
+                            path: r.mainFilePath,
+                            size: fileSize,
+                            lastModified: r.recordedAt,
+                            mimeType: r.mimeType,
+                            recordedAt: r.recordedAt,
+                            isRecording: isActiveRecording,
+                            isTemporary: false,
+                            durationMs: r.durationMs,
+                            status,
+                            subFiles: r.subFiles,
+                            subFilesSize,
+                        }
+                    }),
+                )
+
+                // Persist stale record fixes in the background (fire-and-forget, best-effort)
+                if (staleRecords.length > 0) {
+                    persistStaleRecordFixes(recordingDB, staleRecords)
+                }
+
                 return new Response(JSON.stringify(recordings), {
                     status: 200,
                     headers: { 'Content-Type': 'application/json' },
@@ -128,7 +201,36 @@ export async function handleApiRequest(
                 const name = parsed.name!
 
                 if (request.method === 'DELETE') {
-                    await storage.delete(name)
+                    // Look up IndexedDB record by timestamp for cascade delete
+                    const recordedAt = parseRecordedAt(name)
+                    const record = recordedAt != null ? await recordingDB.get(recordedAt) : undefined
+                    if (record) {
+                        // Verify that the requested file name matches the stored mainFilePath
+                        if (record.mainFilePath !== name) {
+                            return new Response(JSON.stringify({ error: 'Recording path mismatch' }), {
+                                status: 409,
+                                headers: { 'Content-Type': 'application/json' },
+                            })
+                        }
+                        if (record.status === 'recording') {
+                            return new Response(
+                                JSON.stringify({
+                                    error: 'This file cannot be deleted because it is currently being recorded.',
+                                }),
+                                { status: 409 },
+                            )
+                        }
+                        // Delete sub-files and main file from OPFS (idempotent)
+                        await Promise.all([
+                            ...record.subFiles.map(sub => storage.delete(sub.path)),
+                            storage.delete(record.mainFilePath),
+                        ])
+                        // Delete IndexedDB record
+                        await recordingDB.delete(record.recordedAt)
+                    } else {
+                        // Fallback: no IndexedDB record (sub-file or pre-migration)
+                        await storage.delete(name)
+                    }
                     return new Response(null, { status: 204 })
                 }
 
@@ -142,6 +244,18 @@ export async function handleApiRequest(
                 // GET /api/recordings/:name - return binary file
                 const file = await storage.getFile(name)
                 if (!file) {
+                    // Self-healing: clean up orphaned IndexedDB record
+                    const recordedAt = parseRecordedAt(name)
+                    if (recordedAt != null) {
+                        try {
+                            const orphan = await recordingDB.get(recordedAt)
+                            if (orphan && orphan.mainFilePath === name) {
+                                await recordingDB.delete(recordedAt)
+                            }
+                        } catch (e) {
+                            console.error('Failed to clean up orphaned recording record:', e)
+                        }
+                    }
                     return new Response(JSON.stringify({ error: 'Not Found' }), {
                         status: 404,
                         headers: { 'Content-Type': 'application/json' },

@@ -12,6 +12,7 @@ import { Preview } from './preview'
 import { Crop } from './crop'
 import { createRecordingSession } from './recorder'
 import { OffscreenHandler } from './offscreen_handler'
+import { RecordingDB } from './recording_db'
 
 const preview = new Preview(async ({ image, width, height }) => {
     const msg: PreviewFrameMessage = {
@@ -49,6 +50,8 @@ const session = createRecordingSession(preview, crop, {
     },
 })
 
+const recordingDB = new RecordingDB()
+
 const handler = new OffscreenHandler({
     getRecordingInfo: tabSize => Settings.getRecordingInfo(tabSize),
     getConfiguration: () => Settings.getConfiguration(),
@@ -63,6 +66,7 @@ const handler = new OffscreenHandler({
     setLocationHash: hash => {
         window.location.hash = hash
     },
+    recordingDB,
 })
 
 chrome.runtime.onMessage.addListener(

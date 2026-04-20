@@ -11,6 +11,7 @@ import { OffscreenHandler } from '../src/offscreen_handler'
 import type { OffscreenDeps, OffscreenSession } from '../src/offscreen_handler'
 import type { Message, StartRecordingResponse } from '../src/message'
 import { Configuration, VideoFormat } from '../src/configuration'
+import type { RecordingDB } from '../src/recording_db'
 
 // ---------- helpers ----------
 
@@ -18,6 +19,8 @@ function createMockSession(overrides: Partial<OffscreenSession> = {}): Offscreen
     return {
         start: vi.fn().mockResolvedValue({
             startAtMs: 1000,
+            mainFilePath: 'video-1000.webm',
+            mimeType: 'video/webm',
             recordingMode: 'video-and-audio',
             micEnabled: false,
         }),
@@ -25,6 +28,9 @@ function createMockSession(overrides: Partial<OffscreenSession> = {}): Offscreen
             startAtMs: 1000,
             durationMs: 5000,
             fileSize: 12345,
+            mainFilePath: 'video-1000.webm',
+            mimeType: 'video/webm',
+            subFiles: [],
         }),
         cancel: vi.fn().mockResolvedValue(3000),
         pause: vi.fn(),
@@ -36,6 +42,20 @@ function createMockSession(overrides: Partial<OffscreenSession> = {}): Offscreen
         updateCropRegion: vi.fn(),
         ...overrides,
     }
+}
+
+function createMockRecordingDB(): RecordingDB {
+    return {
+        put: vi.fn().mockResolvedValue(undefined),
+        get: vi.fn().mockResolvedValue(undefined),
+        list: vi.fn().mockResolvedValue([]),
+        delete: vi.fn().mockResolvedValue(undefined),
+        count: vi.fn().mockResolvedValue(0),
+        markStaleRecordingAsCanceled: vi.fn().mockResolvedValue(undefined),
+        needsMigration: vi.fn().mockResolvedValue({ needed: false }),
+        migrateFromOPFS: vi.fn().mockResolvedValue(0),
+        deleteDatabase: vi.fn().mockResolvedValue(undefined),
+    } as unknown as RecordingDB
 }
 
 function createMockDeps(overrides: Partial<OffscreenDeps> = {}): OffscreenDeps {
@@ -55,6 +75,7 @@ function createMockDeps(overrides: Partial<OffscreenDeps> = {}): OffscreenDeps {
         sendRuntimeMessage: vi.fn().mockResolvedValue(undefined),
         getLocationHash: vi.fn().mockReturnValue(''),
         setLocationHash: vi.fn(),
+        recordingDB: createMockRecordingDB(),
         ...overrides,
     }
 }
@@ -170,6 +191,8 @@ describe('start-recording', () => {
     it('returns StartRecordingResponse from session', async () => {
         const sessionResponse: StartRecordingResponse = {
             startAtMs: 2000,
+            mainFilePath: 'video-2000.webm',
+            mimeType: 'video/webm',
             recordingMode: 'audio-only',
             micEnabled: true,
         }
@@ -252,6 +275,21 @@ describe('start-recording', () => {
                 expect.objectContaining({ tags: expect.objectContaining({ trigger }) }),
             )
         }
+    })
+    it('calls markStaleRecordingAsCanceled before writing new record', async () => {
+        const deps = createMockDeps()
+        const handler = new OffscreenHandler(deps)
+        await handler.handleMessage({
+            type: 'start-recording',
+            data: { tabSize: { width: 1920, height: 1080 }, streamId: 'stream-1' },
+            trigger: 'action-icon',
+        })
+        expect(deps.recordingDB.markStaleRecordingAsCanceled).toHaveBeenCalled()
+        // markStaleRecordingAsCanceled should be called before put
+        const markOrder = (deps.recordingDB.markStaleRecordingAsCanceled as ReturnType<typeof vi.fn>).mock
+            .invocationCallOrder[0]
+        const putOrder = (deps.recordingDB.put as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0]
+        expect(markOrder).toBeLessThan(putOrder)
     })
 })
 
@@ -401,6 +439,22 @@ describe('cancel-recording', () => {
         expect(deps.setLocationHash).toHaveBeenCalledWith('')
         expect(deps.flush).toHaveBeenCalled()
     })
+
+    it('marks recording as canceled instead of deleting on cancel after start', async () => {
+        const deps = createMockDeps()
+        const handler = new OffscreenHandler(deps)
+        // Start a recording first to set currentRecordingStartAtMs
+        await handler.handleMessage({
+            type: 'start-recording',
+            data: { tabSize: { width: 1920, height: 1080 }, streamId: 'stream-1' },
+            trigger: 'action-icon',
+        })
+        await handler.handleMessage({ type: 'cancel-recording' })
+        // markStaleRecordingAsCanceled is called (once from start, once from cancel)
+        expect(deps.recordingDB.markStaleRecordingAsCanceled).toHaveBeenCalledTimes(2)
+        // delete should NOT be called
+        expect(deps.recordingDB.delete).not.toHaveBeenCalled()
+    })
 })
 
 // ---------- save-config-local ----------
@@ -519,6 +573,26 @@ describe('exception', () => {
         const deps = createMockDeps()
         const handler = new OffscreenHandler(deps)
         await expect(handler.handleMessage({ type: 'exception', data: 'string error' })).rejects.toBe('string error')
+    })
+})
+
+// ---------- sentry-event ----------
+
+describe('sentry-event', () => {
+    it('calls sendEvent with the event payload', async () => {
+        const deps = createMockDeps()
+        const handler = new OffscreenHandler(deps)
+        await handler.handleMessage({
+            type: 'sentry-event',
+            event: {
+                type: 'migration_start',
+                metrics: { opfsMainFileCount: 5, idbRecordCount: 3 },
+            },
+        })
+        expect(deps.sendEvent).toHaveBeenCalledWith({
+            type: 'migration_start',
+            metrics: { opfsMainFileCount: 5, idbRecordCount: 3 },
+        })
     })
 })
 

@@ -1,6 +1,7 @@
-import { parseApiPath, handleApiRequest } from '../src/handler'
+import { parseApiPath, handleApiRequest, _flushStalePersist } from '../src/handler'
 import { RecordingState } from '../src/handler'
-import type { RecordingStorage, RecordingMetadata } from '../src/storage'
+import type { RecordingStorage } from '../src/storage'
+import type { RecordingDB, RecordingRecord } from '../src/recording_db'
 
 // ---------- helpers ----------
 
@@ -12,6 +13,21 @@ function createMockStorage(overrides: Partial<RecordingStorage> = {}): Recording
         estimate: vi.fn().mockResolvedValue({ usage: 0, quota: 0 }),
         ...overrides,
     }
+}
+
+function createMockRecordingDB(overrides: Partial<RecordingDB> = {}): RecordingDB {
+    return {
+        put: vi.fn().mockResolvedValue(undefined),
+        get: vi.fn().mockResolvedValue(undefined),
+        list: vi.fn().mockResolvedValue([]),
+        delete: vi.fn().mockResolvedValue(undefined),
+        count: vi.fn().mockResolvedValue(0),
+        markStaleRecordingAsCanceled: vi.fn().mockResolvedValue(undefined),
+        needsMigration: vi.fn().mockResolvedValue({ needed: false }),
+        migrateFromOPFS: vi.fn().mockResolvedValue(0),
+        deleteDatabase: vi.fn().mockResolvedValue(undefined),
+        ...overrides,
+    } as unknown as RecordingDB
 }
 
 function createFile(content: string, name: string, type: string): File {
@@ -67,7 +83,8 @@ describe('handleApiRequest – storage-estimate', () => {
         })
         const req = new Request('https://ext.example/api/storage/estimate')
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
-        const res = await handleApiRequest(req, storage, recordingState)
+        const recordingDB = createMockRecordingDB()
+        const res = await handleApiRequest(req, storage, recordingState, recordingDB)
 
         expect(res.status).toBe(200)
         expect(res.headers.get('Content-Type')).toBe('application/json')
@@ -78,7 +95,8 @@ describe('handleApiRequest – storage-estimate', () => {
         const storage = createMockStorage()
         const req = new Request('https://ext.example/api/storage/estimate', { method: 'POST' })
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
-        const res = await handleApiRequest(req, storage, recordingState)
+        const recordingDB = createMockRecordingDB()
+        const res = await handleApiRequest(req, storage, recordingState, recordingDB)
 
         expect(res.status).toBe(405)
     })
@@ -87,81 +105,209 @@ describe('handleApiRequest – storage-estimate', () => {
 // ---------- handleApiRequest – recordings-list ----------
 
 describe('handleApiRequest – recordings-list', () => {
-    const recordings: RecordingMetadata[] = [
-        { title: 'a.webm', size: 100, lastModified: 1, mimeType: 'video/webm', recordedAt: 1, isTemporary: false },
-        { title: 'b.webm', size: 200, lastModified: 2, mimeType: 'video/webm', recordedAt: 2, isTemporary: false },
-        { title: 'c.webm', size: 0, lastModified: 3, mimeType: 'video/webm', recordedAt: 3, isTemporary: false },
-        { title: 'c.webm.crswap', size: 0, lastModified: 3, mimeType: 'video/webm', recordedAt: 3, isTemporary: true },
+    const records: RecordingRecord[] = [
+        {
+            recordedAt: 1,
+            mainFilePath: 'video-1.webm',
+            mimeType: 'video/webm',
+            title: 'video-1.webm',
+            status: 'completed',
+            durationMs: 5000,
+            fileSize: 100,
+            subFiles: [],
+        },
+        {
+            recordedAt: 2,
+            mainFilePath: 'video-2.webm',
+            mimeType: 'video/webm',
+            title: 'video-2.webm',
+            status: 'completed',
+            durationMs: 10000,
+            fileSize: 200,
+            subFiles: [{ path: 'video-2-tab.ogg', type: 'tab', fileSize: 50 }],
+        },
+        {
+            recordedAt: 3,
+            mainFilePath: 'video-3.webm',
+            mimeType: 'video/webm',
+            title: 'video-3.webm',
+            status: 'recording',
+            durationMs: null,
+            fileSize: 0,
+            subFiles: [],
+        },
     ]
     const recordingState: RecordingState = { isRecording: true, startAtMs: 3 }
-    const expected: RecordingMetadata[] = [
-        {
-            title: 'a.webm',
-            size: 100,
-            lastModified: 1,
-            mimeType: 'video/webm',
-            recordedAt: 1,
-            isTemporary: false,
-            isRecording: false,
-        },
-        {
-            title: 'b.webm',
-            size: 200,
-            lastModified: 2,
-            mimeType: 'video/webm',
-            recordedAt: 2,
-            isTemporary: false,
-            isRecording: false,
-        },
-        {
-            title: 'c.webm',
-            size: 0,
-            lastModified: 3,
-            mimeType: 'video/webm',
-            recordedAt: 3,
-            isTemporary: false,
-            isRecording: true,
-        },
-        {
-            title: 'c.webm.crswap',
-            size: 0,
-            lastModified: 3,
-            mimeType: 'video/webm',
-            recordedAt: 3,
-            isTemporary: true,
-            isRecording: true,
-        },
-    ]
 
-    it('should list recordings on GET', async () => {
-        const storage = createMockStorage({
-            list: vi.fn().mockResolvedValue(recordings),
-        })
+    it('should list recordings from IndexedDB on GET', async () => {
+        const recordingDB = createMockRecordingDB({ list: vi.fn().mockResolvedValue(records) })
+        const storage = createMockStorage()
         const req = new Request('https://ext.example/api/recordings')
-        const res = await handleApiRequest(req, storage, recordingState)
+        const res = await handleApiRequest(req, storage, recordingState, recordingDB)
 
         expect(res.status).toBe(200)
-        expect(await res.json()).toEqual(expected)
-        expect(storage.list).toHaveBeenCalledWith({ sort: 'asc' })
+        const body = await res.json()
+        expect(body).toHaveLength(3)
+        expect(body[0].title).toBe('video-1.webm')
+        expect(body[0].path).toBe('video-1.webm')
+        expect(body[0].durationMs).toBe(5000)
+        expect(body[1].subFilesSize).toBe(50)
+        expect(recordingDB.list).toHaveBeenCalledWith('asc')
+    })
+
+    it('should get live file size from OPFS .crswap for recording entries', async () => {
+        const recordingDB = createMockRecordingDB({ list: vi.fn().mockResolvedValue(records) })
+        const swapFile = createFile('x'.repeat(999), 'video-3.webm.crswap', 'video/webm')
+        const storage = createMockStorage({
+            getFile: vi.fn().mockImplementation((name: string) => {
+                if (name === 'video-3.webm.crswap') return Promise.resolve(swapFile)
+                return Promise.resolve(null)
+            }),
+        })
+        const req = new Request('https://ext.example/api/recordings')
+        const res = await handleApiRequest(req, storage, recordingState, recordingDB)
+
+        const body = await res.json()
+        const recordingEntry = body.find((r: { title: string }) => r.title === 'video-3.webm')
+        expect(recordingEntry.size).toBe(999)
+        expect(recordingEntry.isRecording).toBe(true)
+        expect(storage.getFile).toHaveBeenCalledWith('video-3.webm.crswap')
+    })
+
+    it('should fall back to main file when .crswap not found for recording entries', async () => {
+        const recordingDB = createMockRecordingDB({ list: vi.fn().mockResolvedValue(records) })
+        const mainFile = createFile('y'.repeat(500), 'video-3.webm', 'video/webm')
+        const storage = createMockStorage({
+            getFile: vi.fn().mockImplementation((name: string) => {
+                if (name === 'video-3.webm') return Promise.resolve(mainFile)
+                return Promise.resolve(null)
+            }),
+        })
+        const req = new Request('https://ext.example/api/recordings')
+        const res = await handleApiRequest(req, storage, recordingState, recordingDB)
+
+        const body = await res.json()
+        const recordingEntry = body.find((r: { title: string }) => r.title === 'video-3.webm')
+        expect(recordingEntry.size).toBe(500)
     })
 
     it('should pass sort=desc parameter', async () => {
-        const storage = createMockStorage({
-            list: vi.fn().mockResolvedValue(recordings),
-        })
+        const recordingDB = createMockRecordingDB({ list: vi.fn().mockResolvedValue([]) })
+        const storage = createMockStorage()
         const req = new Request('https://ext.example/api/recordings?sort=desc')
-        const res = await handleApiRequest(req, storage, recordingState)
+        const res = await handleApiRequest(req, storage, recordingState, recordingDB)
 
         expect(res.status).toBe(200)
-        expect(storage.list).toHaveBeenCalledWith({ sort: 'desc' })
+        expect(recordingDB.list).toHaveBeenCalledWith('desc')
     })
 
     it('should return 405 for DELETE', async () => {
         const storage = createMockStorage()
+        const recordingDB = createMockRecordingDB()
         const req = new Request('https://ext.example/api/recordings', { method: 'DELETE' })
-        const res = await handleApiRequest(req, storage, recordingState)
+        const res = await handleApiRequest(req, storage, recordingState, recordingDB)
 
         expect(res.status).toBe(405)
+    })
+
+    it('should fix stale recording status to canceled when not recording', async () => {
+        const staleRecord: RecordingRecord = {
+            recordedAt: 10,
+            mainFilePath: 'video-10.webm',
+            mimeType: 'video/webm',
+            title: 'video-10.webm',
+            status: 'recording',
+            durationMs: null,
+            fileSize: 0,
+            subFiles: [],
+        }
+        const putMock = vi.fn().mockResolvedValue(undefined)
+        const recordingDB = createMockRecordingDB({
+            list: vi.fn().mockResolvedValue([staleRecord]),
+            put: putMock,
+        })
+        const storage = createMockStorage()
+        const notRecordingState: RecordingState = { isRecording: false }
+        const req = new Request('https://ext.example/api/recordings')
+        const res = await handleApiRequest(req, storage, notRecordingState, recordingDB)
+
+        expect(res.status).toBe(200)
+        const body = await res.json()
+        expect(body[0].status).toBe('canceled')
+        expect(body[0].isRecording).toBe(false)
+        await _flushStalePersist()
+        expect(putMock).toHaveBeenCalledWith(expect.objectContaining({ recordedAt: 10, status: 'canceled' }))
+    })
+
+    it('should not fix recording status when actually recording', async () => {
+        const putMock = vi.fn().mockResolvedValue(undefined)
+        const recordingDB = createMockRecordingDB({
+            list: vi.fn().mockResolvedValue(records),
+            put: putMock,
+        })
+        const storage = createMockStorage()
+        const req = new Request('https://ext.example/api/recordings')
+        const res = await handleApiRequest(req, storage, recordingState, recordingDB)
+
+        expect(res.status).toBe(200)
+        const body = await res.json()
+        const recordingEntry = body.find((r: { path: string }) => r.path === 'video-3.webm')
+        expect(recordingEntry.status).toBe('recording')
+        expect(recordingEntry.isRecording).toBe(true)
+        await _flushStalePersist()
+        expect(putMock).not.toHaveBeenCalled()
+    })
+
+    it('should cancel stale recording records that do not match startAtMs', async () => {
+        const mixedRecords: RecordingRecord[] = [
+            {
+                recordedAt: 5,
+                mainFilePath: 'video-5.webm',
+                mimeType: 'video/webm',
+                title: 'video-5.webm',
+                status: 'recording',
+                durationMs: null,
+                fileSize: 0,
+                subFiles: [],
+            },
+            {
+                recordedAt: 10,
+                mainFilePath: 'video-10.webm',
+                mimeType: 'video/webm',
+                title: 'video-10.webm',
+                status: 'recording',
+                durationMs: null,
+                fileSize: 0,
+                subFiles: [],
+            },
+        ]
+        const putMock = vi.fn().mockResolvedValue(undefined)
+        const recordingDB = createMockRecordingDB({
+            list: vi.fn().mockResolvedValue(mixedRecords),
+            put: putMock,
+        })
+        const storage = createMockStorage()
+        const activeState: RecordingState = { isRecording: true, startAtMs: 10 }
+        const req = new Request('https://ext.example/api/recordings')
+        const res = await handleApiRequest(req, storage, activeState, recordingDB)
+
+        expect(res.status).toBe(200)
+        const body = await res.json()
+
+        // record 5 should be canceled (stale)
+        const stale = body.find((r: { path: string }) => r.path === 'video-5.webm')
+        expect(stale.status).toBe('canceled')
+        expect(stale.isRecording).toBe(false)
+
+        // record 10 should remain active
+        const active = body.find((r: { path: string }) => r.path === 'video-10.webm')
+        expect(active.status).toBe('recording')
+        expect(active.isRecording).toBe(true)
+
+        // only stale record should have been persisted
+        await _flushStalePersist()
+        expect(putMock).toHaveBeenCalledTimes(1)
+        expect(putMock).toHaveBeenCalledWith(expect.objectContaining({ recordedAt: 5, status: 'canceled' }))
     })
 })
 
@@ -175,7 +321,7 @@ describe('handleApiRequest – recording GET (full response)', () => {
         })
         const req = new Request('https://ext.example/api/recordings/test.webm')
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
-        const res = await handleApiRequest(req, storage, recordingState)
+        const res = await handleApiRequest(req, storage, recordingState, createMockRecordingDB())
 
         expect(res.status).toBe(200)
         expect(res.headers.get('Content-Type')).toBe('video/webm')
@@ -191,7 +337,7 @@ describe('handleApiRequest – recording GET (full response)', () => {
         })
         const req = new Request('https://ext.example/api/recordings/my%20video.mp4?download=true')
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
-        const res = await handleApiRequest(req, storage, recordingState)
+        const res = await handleApiRequest(req, storage, recordingState, createMockRecordingDB())
 
         expect(res.status).toBe(200)
         expect(res.headers.get('Content-Disposition')).toContain('attachment')
@@ -201,7 +347,7 @@ describe('handleApiRequest – recording GET (full response)', () => {
         const storage = createMockStorage()
         const req = new Request('https://ext.example/api/recordings/missing.webm')
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
-        const res = await handleApiRequest(req, storage, recordingState)
+        const res = await handleApiRequest(req, storage, recordingState, createMockRecordingDB())
 
         expect(res.status).toBe(404)
     })
@@ -210,7 +356,7 @@ describe('handleApiRequest – recording GET (full response)', () => {
         const storage = createMockStorage()
         const req = new Request('https://ext.example/api/recordings/test.webm', { method: 'PUT' })
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
-        const res = await handleApiRequest(req, storage, recordingState)
+        const res = await handleApiRequest(req, storage, recordingState, createMockRecordingDB())
 
         expect(res.status).toBe(405)
     })
@@ -219,14 +365,68 @@ describe('handleApiRequest – recording GET (full response)', () => {
 // ---------- handleApiRequest – recording DELETE ----------
 
 describe('handleApiRequest – recording DELETE', () => {
-    it('should return 204 on successful delete', async () => {
+    it('should return 204 on successful delete (no IndexedDB record fallback)', async () => {
         const storage = createMockStorage()
+        const recordingDB = createMockRecordingDB()
         const req = new Request('https://ext.example/api/recordings/test.webm', { method: 'DELETE' })
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
-        const res = await handleApiRequest(req, storage, recordingState)
+        const res = await handleApiRequest(req, storage, recordingState, recordingDB)
 
         expect(res.status).toBe(204)
         expect(storage.delete).toHaveBeenCalledWith('test.webm')
+    })
+
+    it('should cascade delete sub-files and IndexedDB record', async () => {
+        const record: RecordingRecord = {
+            recordedAt: 1000,
+            mainFilePath: 'video-1000.webm',
+            mimeType: 'video/webm',
+            title: 'video-1000.webm',
+            status: 'completed',
+            durationMs: 5000,
+            fileSize: 12345,
+            subFiles: [
+                { path: 'video-1000-tab.ogg', type: 'tab', fileSize: 100 },
+                { path: 'video-1000-mic.ogg', type: 'mic', fileSize: 200 },
+            ],
+        }
+        const recordingDB = createMockRecordingDB({
+            get: vi.fn().mockResolvedValue(record),
+        })
+        const storage = createMockStorage()
+        const req = new Request('https://ext.example/api/recordings/video-1000.webm', { method: 'DELETE' })
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState, recordingDB)
+
+        expect(res.status).toBe(204)
+        expect(storage.delete).toHaveBeenCalledWith('video-1000-tab.ogg')
+        expect(storage.delete).toHaveBeenCalledWith('video-1000-mic.ogg')
+        expect(storage.delete).toHaveBeenCalledWith('video-1000.webm')
+        expect(recordingDB.delete).toHaveBeenCalledWith(1000)
+    })
+
+    it('should return 409 when IndexedDB mainFilePath does not match requested name', async () => {
+        const record: RecordingRecord = {
+            recordedAt: 1000,
+            mainFilePath: 'video-1000.mp4',
+            mimeType: 'video/mp4',
+            title: 'video-1000.mp4',
+            status: 'completed',
+            durationMs: 5000,
+            fileSize: 12345,
+            subFiles: [],
+        }
+        const recordingDB = createMockRecordingDB({
+            get: vi.fn().mockResolvedValue(record),
+        })
+        const storage = createMockStorage()
+        const req = new Request('https://ext.example/api/recordings/video-1000.webm', { method: 'DELETE' })
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState, recordingDB)
+
+        expect(res.status).toBe(409)
+        expect(storage.delete).not.toHaveBeenCalled()
+        expect(recordingDB.delete).not.toHaveBeenCalled()
     })
 })
 
@@ -250,7 +450,7 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
             headers: { Range: 'bytes=0-4' },
         })
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
-        const res = await handleApiRequest(req, storage, recordingState)
+        const res = await handleApiRequest(req, storage, recordingState, createMockRecordingDB())
 
         expect(res.status).toBe(206)
         expect(res.headers.get('Content-Range')).toBe(`bytes 0-4/${file.size}`)
@@ -267,7 +467,7 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
             headers: { Range: 'bytes=-3' },
         })
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
-        const res = await handleApiRequest(req, storage, recordingState)
+        const res = await handleApiRequest(req, storage, recordingState, createMockRecordingDB())
 
         expect(res.status).toBe(206)
         expect(res.headers.get('Content-Range')).toBe(`bytes 7-9/${file.size}`)
@@ -282,7 +482,7 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
             headers: { Range: 'bytes=5-' },
         })
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
-        const res = await handleApiRequest(req, storage, recordingState)
+        const res = await handleApiRequest(req, storage, recordingState, createMockRecordingDB())
 
         expect(res.status).toBe(206)
         expect(res.headers.get('Content-Range')).toBe(`bytes 5-9/${file.size}`)
@@ -297,7 +497,7 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
             headers: { Range: 'bytes=0-99999' },
         })
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
-        const res = await handleApiRequest(req, storage, recordingState)
+        const res = await handleApiRequest(req, storage, recordingState, createMockRecordingDB())
 
         expect(res.status).toBe(206)
         expect(res.headers.get('Content-Range')).toBe(`bytes 0-9/${file.size}`)
@@ -309,7 +509,7 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
             headers: { Range: 'bytes=100-200' },
         })
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
-        const res = await handleApiRequest(req, storage, recordingState)
+        const res = await handleApiRequest(req, storage, recordingState, createMockRecordingDB())
 
         expect(res.status).toBe(416)
         expect(res.headers.get('Content-Range')).toBe(`bytes */${file.size}`)
@@ -320,7 +520,7 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
             headers: { Range: 'invalid' },
         })
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
-        const res = await handleApiRequest(req, storage, recordingState)
+        const res = await handleApiRequest(req, storage, recordingState, createMockRecordingDB())
 
         expect(res.status).toBe(200)
         expect(res.headers.get('Accept-Ranges')).toBe('bytes')
@@ -332,7 +532,7 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
             headers: { Range: 'items=0-5' },
         })
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
-        const res = await handleApiRequest(req, storage, recordingState)
+        const res = await handleApiRequest(req, storage, recordingState, createMockRecordingDB())
 
         expect(res.status).toBe(200)
     })
@@ -342,7 +542,7 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
             headers: { Range: 'bytes=0-4' },
         })
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
-        const res = await handleApiRequest(req, storage, recordingState)
+        const res = await handleApiRequest(req, storage, recordingState, createMockRecordingDB())
 
         expect(res.status).toBe(206)
         expect(res.headers.get('Content-Disposition')).toContain('attachment')
@@ -353,7 +553,7 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
             headers: { Range: 'bytes=0-0' },
         })
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
-        const res = await handleApiRequest(req, storage, recordingState)
+        const res = await handleApiRequest(req, storage, recordingState, createMockRecordingDB())
 
         expect(res.status).toBe(206)
         expect(res.headers.get('Content-Range')).toBe(`bytes 0-0/${file.size}`)
@@ -368,7 +568,7 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
             headers: { Range: 'bytes=9-9' },
         })
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
-        const res = await handleApiRequest(req, storage, recordingState)
+        const res = await handleApiRequest(req, storage, recordingState, createMockRecordingDB())
 
         expect(res.status).toBe(206)
         expect(res.headers.get('Content-Range')).toBe(`bytes 9-9/${file.size}`)
@@ -383,7 +583,7 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
             headers: { Range: 'bytes=0-2,5-7' },
         })
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
-        const res = await handleApiRequest(req, storage, recordingState)
+        const res = await handleApiRequest(req, storage, recordingState, createMockRecordingDB())
 
         expect(res.status).toBe(206)
         const contentType = res.headers.get('Content-Type')!
@@ -410,7 +610,7 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
             headers: { Range: 'bytes=0-1,4-5,8-9' },
         })
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
-        const res = await handleApiRequest(req, storage, recordingState)
+        const res = await handleApiRequest(req, storage, recordingState, createMockRecordingDB())
 
         expect(res.status).toBe(206)
         const contentType = res.headers.get('Content-Type')!
@@ -432,7 +632,7 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
             headers: { Range: 'bytes=100-200,300-400' },
         })
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
-        const res = await handleApiRequest(req, storage, recordingState)
+        const res = await handleApiRequest(req, storage, recordingState, createMockRecordingDB())
 
         expect(res.status).toBe(416)
         expect(res.headers.get('Content-Range')).toBe(`bytes */${file.size}`)
@@ -443,7 +643,7 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
             headers: { Range: 'bytes=0-2,100-200,7-9' },
         })
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
-        const res = await handleApiRequest(req, storage, recordingState)
+        const res = await handleApiRequest(req, storage, recordingState, createMockRecordingDB())
 
         expect(res.status).toBe(206)
         const contentType = res.headers.get('Content-Type')!
@@ -461,7 +661,7 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
             headers: { Range: 'bytes=0-2,100-200' },
         })
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
-        const res = await handleApiRequest(req, storage, recordingState)
+        const res = await handleApiRequest(req, storage, recordingState, createMockRecordingDB())
 
         expect(res.status).toBe(206)
         // Should be a single-range response, not multipart
@@ -478,7 +678,7 @@ describe('handleApiRequest – recording GET (Range Requests)', () => {
             headers: { Range: 'bytes=0-2,5-7' },
         })
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
-        const res = await handleApiRequest(req, storage, recordingState)
+        const res = await handleApiRequest(req, storage, recordingState, createMockRecordingDB())
 
         expect(res.status).toBe(206)
         expect(res.headers.get('Accept-Ranges')).toBe('bytes')
@@ -492,22 +692,69 @@ describe('handleApiRequest – not found', () => {
         const storage = createMockStorage()
         const req = new Request('https://ext.example/api/unknown')
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
-        const res = await handleApiRequest(req, storage, recordingState)
+        const res = await handleApiRequest(req, storage, recordingState, createMockRecordingDB())
 
         expect(res.status).toBe(404)
+    })
+})
+
+// ---------- handleApiRequest – self-healing GET ----------
+
+describe('handleApiRequest – recording GET (self-healing)', () => {
+    it('should delete orphaned IndexedDB record when OPFS file not found', async () => {
+        const orphanRecord: RecordingRecord = {
+            recordedAt: 1000,
+            mainFilePath: 'video-1000.webm',
+            mimeType: 'video/webm',
+            title: 'video-1000.webm',
+            status: 'completed',
+            durationMs: 5000,
+            fileSize: 100,
+            subFiles: [],
+        }
+        const recordingDB = createMockRecordingDB({ get: vi.fn().mockResolvedValue(orphanRecord) })
+        const storage = createMockStorage({ getFile: vi.fn().mockResolvedValue(null) })
+        const req = new Request('https://ext.example/api/recordings/video-1000.webm')
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState, recordingDB)
+
+        expect(res.status).toBe(404)
+        expect(recordingDB.delete).toHaveBeenCalledWith(1000)
+    })
+
+    it('should not delete IndexedDB record when mainFilePath does not match', async () => {
+        const mismatchRecord: RecordingRecord = {
+            recordedAt: 1000,
+            mainFilePath: 'video-1000.mp4',
+            mimeType: 'video/mp4',
+            title: 'video-1000.mp4',
+            status: 'completed',
+            durationMs: 5000,
+            fileSize: 100,
+            subFiles: [],
+        }
+        const recordingDB = createMockRecordingDB({ get: vi.fn().mockResolvedValue(mismatchRecord) })
+        const storage = createMockStorage({ getFile: vi.fn().mockResolvedValue(null) })
+        const req = new Request('https://ext.example/api/recordings/video-1000.webm')
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState, recordingDB)
+
+        expect(res.status).toBe(404)
+        expect(recordingDB.delete).not.toHaveBeenCalled()
     })
 })
 
 // ---------- handleApiRequest – internal error ----------
 
 describe('handleApiRequest – internal error', () => {
-    it('should return 500 when storage throws', async () => {
-        const storage = createMockStorage({
+    it('should return 500 when recordingDB throws', async () => {
+        const recordingDB = createMockRecordingDB({
             list: vi.fn().mockRejectedValue(new Error('disk error')),
         })
+        const storage = createMockStorage()
         const req = new Request('https://ext.example/api/recordings')
         const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
-        const res = await handleApiRequest(req, storage, recordingState)
+        const res = await handleApiRequest(req, storage, recordingState, recordingDB)
 
         expect(res.status).toBe(500)
         expect(await res.json()).toEqual({ error: 'Internal Server Error' })

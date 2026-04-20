@@ -151,14 +151,8 @@ describe('record-list', () => {
                 mimeType: 'video/webm',
                 recordedAt: Number(ts1),
                 isTemporary: false,
-            },
-            {
-                title: `video-${ts1}-tab.ogg`,
-                size: 1 * 1024 * 1024, // 1 MB (sub-file)
-                lastModified: Date.now(),
-                mimeType: 'audio/ogg',
-                recordedAt: Number(ts1),
-                isTemporary: false,
+                subFiles: [{ path: `video-${ts1}-tab.ogg`, type: 'tab' as const, fileSize: 1 * 1024 * 1024 }],
+                subFilesSize: 1 * 1024 * 1024, // 1 MB
             },
             {
                 title: `video-${ts2}.webm`,
@@ -167,6 +161,8 @@ describe('record-list', () => {
                 mimeType: 'video/webm',
                 recordedAt: Number(ts2),
                 isTemporary: false,
+                subFiles: [],
+                subFilesSize: 0,
             },
         ]
         listRecordingsMock.mockResolvedValue(recordings)
@@ -206,7 +202,7 @@ describe('record-list', () => {
             mimeType: 'video/webm',
             recordedAt: startAtMs,
             isRecording: true,
-            isTemporary: true,
+            isTemporary: false,
         }
         listRecordingsMock.mockResolvedValue([recordingMeta])
 
@@ -244,7 +240,7 @@ describe('record-list', () => {
             mimeType: 'video/webm',
             recordedAt: startAtMs,
             isRecording: true,
-            isTemporary: true,
+            isTemporary: false,
         }
         listRecordingsMock.mockResolvedValue([recordingMeta])
 
@@ -284,7 +280,7 @@ describe('record-list', () => {
                 mimeType: 'video/webm',
                 recordedAt: startAtMs,
                 isRecording: true,
-                isTemporary: true,
+                isTemporary: false,
             }
             listRecordingsMock.mockResolvedValue([recordingMeta])
 
