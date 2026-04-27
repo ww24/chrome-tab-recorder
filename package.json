@@ -31,7 +31,7 @@
     "@sentry/browser": "^10.49.0",
     "lit": "^3.3.2",
     "mediabunny": "^1.40.1",
-    "uuid": "^13.0.0"
+    "uuid": "^14.0.0"
   },
   "devDependencies": {
     "@googleapis/chromewebstore": "^2.0.2",
