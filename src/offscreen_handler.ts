@@ -10,6 +10,7 @@ import type {
 } from './message'
 import type { RecordingConfig, RecordingResult } from './recorder'
 import type { Event, ExceptionMetadata } from './sentry_event'
+import type { RecordingDB, RecordingRecord } from './recording_db'
 
 // ---------- dependency interfaces ----------
 
@@ -38,6 +39,7 @@ export interface OffscreenDeps {
     sendRuntimeMessage(msg: Message): Promise<unknown>
     getLocationHash(): string
     setLocationHash(hash: string): void
+    recordingDB: RecordingDB
 }
 
 // ---------- handler ----------
@@ -46,6 +48,7 @@ export class OffscreenHandler {
     private timerTimeoutId: ReturnType<typeof setTimeout> | null = null
     private timerStopAtMs: number | null = null
     private timerRemainingMs: number | null = null
+    private currentRecordingStartAtMs: number | null = null
 
     constructor(private readonly deps: OffscreenDeps) {}
 
@@ -67,6 +70,9 @@ export class OffscreenHandler {
                 return this.handleUpdateRecordingTimer(message.enabled, message.durationMinutes)
             case 'exception':
                 return Promise.reject(message.data)
+            case 'sentry-event':
+                this.deps.sendEvent(message.event)
+                return this.deps.flush()
             case 'preview-control':
                 return this.handlePreviewControl(message.action)
             case 'update-crop-region':
@@ -106,6 +112,34 @@ export class OffscreenHandler {
         }
 
         this.deps.setLocationHash('recording')
+
+        // Mark any leftover "recording" status record as "canceled"
+        try {
+            await this.deps.recordingDB.markStaleRecordingAsCanceled()
+        } catch (e) {
+            console.error('Failed to mark stale recording as canceled:', e)
+            this.deps.sendException(e, { exceptionSource: 'offscreen.startRecording.markStaleCanceled' })
+        }
+
+        // Write initial record to IndexedDB
+        this.currentRecordingStartAtMs = response.startAtMs
+        try {
+            const record: RecordingRecord = {
+                recordedAt: response.startAtMs,
+                mainFilePath: response.mainFilePath,
+                mimeType: response.mimeType,
+                title: response.mainFilePath,
+                status: 'recording',
+                durationMs: null,
+                fileSize: 0,
+                subFiles: [],
+            }
+            await this.deps.recordingDB.put(record)
+        } catch (e) {
+            console.error('Failed to write initial IndexedDB record:', e)
+            this.deps.sendException(e, { exceptionSource: 'offscreen.startRecording.indexedDB' })
+        }
+
         return response
     }
 
@@ -113,6 +147,23 @@ export class OffscreenHandler {
         try {
             const result = await this.deps.session.stop()
             if (result) {
+                // Update IndexedDB record with final metadata
+                try {
+                    const record: RecordingRecord = {
+                        recordedAt: result.startAtMs,
+                        mainFilePath: result.mainFilePath,
+                        mimeType: result.mimeType,
+                        title: result.mainFilePath,
+                        status: 'completed',
+                        durationMs: result.durationMs,
+                        fileSize: result.fileSize,
+                        subFiles: result.subFiles,
+                    }
+                    await this.deps.recordingDB.put(record)
+                } catch (e) {
+                    console.error('Failed to update IndexedDB record:', e)
+                    this.deps.sendException(e, { exceptionSource: 'offscreen.stopRecording.indexedDB' })
+                }
                 this.deps.sendEvent({
                     type: 'stop_recording',
                     metrics: {
@@ -128,6 +179,7 @@ export class OffscreenHandler {
             console.error(e)
             this.deps.sendException(e, { exceptionSource: 'offscreen.stopRecording' })
         } finally {
+            this.currentRecordingStartAtMs = null
             this.clearRecordingTimer()
             this.deps.setLocationHash('')
         }
@@ -149,6 +201,16 @@ export class OffscreenHandler {
             console.error(e)
             this.deps.sendException(e, { exceptionSource: 'offscreen.cancelRecording' })
         } finally {
+            // Mark the IndexedDB record for cancelled recording as canceled
+            if (this.currentRecordingStartAtMs != null) {
+                try {
+                    await this.deps.recordingDB.markStaleRecordingAsCanceled()
+                } catch (e) {
+                    console.error('Failed to mark cancelled recording as canceled:', e)
+                    this.deps.sendException(e, { exceptionSource: 'offscreen.cancelRecording.indexedDB' })
+                }
+                this.currentRecordingStartAtMs = null
+            }
             this.clearRecordingTimer()
             this.deps.setLocationHash('')
         }

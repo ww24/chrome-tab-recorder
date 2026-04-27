@@ -6,6 +6,7 @@ export const TIMER_STOP_TRIGGER_KEY = 'timerStopTrigger'
 
 export type Message =
     | ExceptionMessage
+    | SentryEventMessage
     | StartRecordingMessage
     | TabTrackEndedMessage
     | StopRecordingMessage
@@ -33,6 +34,11 @@ export interface ExceptionMessage {
     data: unknown
 }
 
+export interface SentryEventMessage {
+    type: 'sentry-event'
+    event: import('./sentry_event').Event
+}
+
 export type Trigger = 'action-icon' | 'context-menu' | 'keyboard-shortcut' | 'tab-track-ended' | 'timer'
 
 export type StartTrigger = Exclude<Trigger, 'tab-track-ended' | 'timer'>
@@ -48,6 +54,8 @@ export interface StartRecording {
 }
 export interface StartRecordingResponse {
     startAtMs: number
+    mainFilePath: string
+    mimeType: string
     recordingMode: VideoRecordingMode
     micEnabled: boolean
     stopAtMs?: number

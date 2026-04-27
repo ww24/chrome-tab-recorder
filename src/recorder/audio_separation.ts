@@ -3,6 +3,7 @@ import type { VideoFormat } from '../configuration'
 import { audioSeparationContainer, containerExtension, Configuration } from '../configuration'
 import type { FileManager } from './file_manager'
 import type { OutputManager, PausableSource } from './output_manager'
+import type { SubFileInfo } from '../recording_db'
 
 export interface AudioSeparationOutputs {
     tabOutput?: Output
@@ -13,6 +14,11 @@ export interface AudioSeparationOutputs {
     clonedTracks: MediaStreamTrack[]
     /** Error promises from audio track sources (for logging, non-fatal) */
     errorPromises: Promise<void>[]
+    /** File handles for retrieving sub-file info after finalize */
+    tabFileHandle?: FileSystemFileHandle
+    micFileHandle?: FileSystemFileHandle
+    tabFileName?: string
+    micFileName?: string
 }
 
 export class AudioSeparationManager {
@@ -59,6 +65,8 @@ export class AudioSeparationManager {
                 result.sources.push(...handle.sources)
                 result.clonedTracks.push(tabAudioTrack)
                 result.errorPromises.push(...handle.errorPromises)
+                result.tabFileHandle = tabFileHandle
+                result.tabFileName = tabFileName
             }
         }
 
@@ -81,6 +89,8 @@ export class AudioSeparationManager {
                 result.sources.push(...handle.sources)
                 result.clonedTracks.push(micAudioTrack)
                 result.errorPromises.push(...handle.errorPromises)
+                result.micFileHandle = micFileHandle
+                result.micFileName = micFileName
             }
         }
 
@@ -113,5 +123,29 @@ export class AudioSeparationManager {
         if (errors.length > 0) {
             throw new AggregateError(errors, 'Failed to cancel audio separation')
         }
+    }
+
+    /**
+     * Get sub-file info (path, type, size) after finalization.
+     */
+    async getSubFileInfos(outputs: AudioSeparationOutputs): Promise<SubFileInfo[]> {
+        const subFiles: SubFileInfo[] = []
+        if (outputs.tabFileHandle && outputs.tabFileName) {
+            try {
+                const file = await outputs.tabFileHandle.getFile()
+                subFiles.push({ path: outputs.tabFileName, type: 'tab', fileSize: file.size })
+            } catch {
+                console.error('Sub-file may have been cleaned up: tab file')
+            }
+        }
+        if (outputs.micFileHandle && outputs.micFileName) {
+            try {
+                const file = await outputs.micFileHandle.getFile()
+                subFiles.push({ path: outputs.micFileName, type: 'mic', fileSize: file.size })
+            } catch {
+                console.error('Sub-file may have been cleaned up: mic file')
+            }
+        }
+        return subFiles
     }
 }

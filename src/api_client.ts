@@ -41,7 +41,7 @@ export class RecordingApiClient {
     }
 
     /**
-     * Delete a recording (idempotent)
+     * Delete a recording (idempotent, cascade deletes sub-files and IndexedDB record)
      */
     async deleteRecording(name: string): Promise<void> {
         const encodedName = encodeURIComponent(name)

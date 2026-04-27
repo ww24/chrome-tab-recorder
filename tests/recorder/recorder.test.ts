@@ -101,11 +101,13 @@ function createMockAudioSeparation(): AudioSeparationManager {
         createOutputs: vi.fn().mockResolvedValue(outputs),
         finalizeAll: vi.fn().mockResolvedValue(undefined),
         cancelAll: vi.fn().mockResolvedValue(undefined),
+        getSubFileInfos: vi.fn().mockResolvedValue([]),
     } as unknown as AudioSeparationManager
 }
 
 function createMockFileManager(): FileManager {
     const mockFileHandle = {
+        name: 'video-123.webm',
         getFile: vi.fn().mockResolvedValue(new File(['data'], 'video-123.webm', { type: 'video/webm' })),
         createWritable: vi.fn().mockResolvedValue({}),
     }
@@ -216,6 +218,8 @@ describe('RecordingSession', () => {
             const response = await session.start(defaultRequest, config)
 
             expect(response.startAtMs).toBeGreaterThan(0)
+            expect(response.mainFilePath).toBe('video-123.webm')
+            expect(response.mimeType).toBe('video/webm')
             expect(response.recordingMode).toBe('video-and-audio')
             expect(response.micEnabled).toBe(true)
             expect(session.state).toBe('recording')

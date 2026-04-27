@@ -1,4 +1,5 @@
 import type { RecordingSortOrder } from './configuration'
+import type { SubFileInfo } from './recording_db'
 
 abstract class ConfigStorage {
     abstract set(key: string, value: object): void
@@ -10,12 +11,18 @@ abstract class ConfigStorage {
  */
 export interface RecordingMetadata {
     title: string
+    /** OPFS file path used as the stable identifier for download/delete operations */
+    path?: string
     size: number
     lastModified: number
     mimeType: string
     recordedAt?: number
     isRecording?: boolean
     isTemporary: boolean
+    durationMs?: number | null
+    status?: 'recording' | 'completed' | 'canceled'
+    subFiles?: SubFileInfo[]
+    subFilesSize?: number
 }
 
 /**

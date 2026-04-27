@@ -533,6 +533,10 @@
         "message": "recorded at",
         "description": "Tooltip for recording date"
     },
+    "recordListTitleDuration": {
+        "message": "duration",
+        "description": "Tooltip for record duration"
+    },
     "recordListTitleRecording": {
         "message": "recording",
         "description": "Tooltip for recording status"
@@ -540,6 +544,14 @@
     "recordListTitleTimerStop": {
         "message": "timer stop time",
         "description": "Tooltip for timer stop time"
+    },
+    "recordListCanceled": {
+        "message": "Canceled",
+        "description": "Status label for canceled recording"
+    },
+    "recordListTitleCanceled": {
+        "message": "canceled recording",
+        "description": "Tooltip for canceled recording status"
     },
     "recordListRecordingFailed": {
         "message": "Recording Failed",

@@ -13,6 +13,7 @@ import type {
     ExceptionMessage,
     RecordingStateMessage,
     CancelRecordingMessage,
+    SentryEventMessage,
 } from './message'
 import { TIMER_STOP_CONFIRM_PENDING_KEY, TIMER_STOP_TRIGGER_KEY } from './message'
 import { Configuration, Resolution } from './configuration'
@@ -23,6 +24,7 @@ import { handleApiRequest, RecordingState } from './handler'
 import { buildRecordingTitle } from './format'
 import { createMessageListener, type ServiceWorkerDeps } from './service_worker_handler'
 import { t } from './i18n'
+import { RecordingDB } from './recording_db'
 
 const recordingIcon = '/icons/recording.png'
 const recordingVideoOnlyIcon = '/icons/recording-video-only.png'
@@ -57,6 +59,40 @@ chrome.runtime.onInstalled.addListener(async () => {
         data: config as Configuration,
     }
     await chrome.runtime.sendMessage(msg)
+
+    // Migrate existing OPFS recordings to IndexedDB (before closing offscreen for Sentry logging)
+    try {
+        const status = await recordingDB.needsMigration(recordingStorage)
+        if (status.needed) {
+            const sentryStart: SentryEventMessage = {
+                type: 'sentry-event',
+                event: {
+                    type: 'migration_start',
+                    metrics: {
+                        opfsMainFileCount: status.opfsMainFileCount,
+                        idbRecordCount: status.idbRecordCount,
+                    },
+                },
+            }
+            await chrome.runtime.sendMessage(sentryStart)
+            const startTime = performance.now()
+            const inserted = await recordingDB.migrateFromOPFS(recordingStorage)
+            const durationMs = Math.round(performance.now() - startTime)
+            const sentryEnd: SentryEventMessage = {
+                type: 'sentry-event',
+                event: {
+                    type: 'migration_end',
+                    metrics: { inserted, durationMs },
+                },
+            }
+            await chrome.runtime.sendMessage(sentryEnd)
+            console.info('IndexedDB migration completed', { inserted, durationMs })
+        } else {
+            console.debug('IndexedDB migration skipped (already up to date)')
+        }
+    } catch (e) {
+        console.error('IndexedDB migration failed:', e)
+    }
 
     await chrome.offscreen.closeDocument()
 
@@ -467,6 +503,7 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
 // ============================================================================
 
 const recordingStorage = new OPFSStorage()
+const recordingDB = new RecordingDB()
 const API_PREFIX = '/api/'
 
 // Fetch event listener for REST API
@@ -479,7 +516,7 @@ self.addEventListener('fetch', (event: FetchEvent) => {
     if (url.origin === location.origin && url.pathname.startsWith(API_PREFIX)) {
         event.respondWith(
             (async () => {
-                return handleApiRequest(event.request, recordingStorage, await getRecordingState())
+                return handleApiRequest(event.request, recordingStorage, await getRecordingState(), recordingDB)
             })(),
         )
     }

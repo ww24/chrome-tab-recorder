@@ -16,7 +16,7 @@ export default defineConfig({
                 test: {
                     name: 'node',
                     include: ['tests/**/*.test.ts'],
-                    exclude: ['tests/element/**/*.test.ts'],
+                    exclude: ['tests/element/**/*.test.ts', 'tests/**/*.browser.test.ts'],
                     setupFiles: ['tests/test-setup.ts'],
                 },
             },
@@ -26,6 +26,19 @@ export default defineConfig({
                     name: 'browser',
                     include: ['tests/element/**/*.test.ts'],
                     setupFiles: ['tests/element/test-setup.ts'],
+                    browser: {
+                        enabled: true,
+                        provider: playwright(),
+                        headless: true,
+                        instances: [{ browser: 'chromium' }],
+                    },
+                },
+            },
+            {
+                extends: true,
+                test: {
+                    name: 'browser-integration',
+                    include: ['tests/**/*.browser.test.ts'],
                     browser: {
                         enabled: true,
                         provider: playwright(),

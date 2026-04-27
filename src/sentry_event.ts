@@ -5,7 +5,13 @@ export interface ExceptionMetadata {
     additionalMetadata?: Record<string, string>
 }
 
-export type Event = StartRecordingEvent | StopRecordingEvent | UnexpectedStopEvent | ClickExternalLinkEvent
+export type Event =
+    | StartRecordingEvent
+    | StopRecordingEvent
+    | UnexpectedStopEvent
+    | ClickExternalLinkEvent
+    | MigrationStartEvent
+    | MigrationEndEvent
 
 export interface StartRecordingEvent {
     type: 'start_recording'
@@ -41,5 +47,21 @@ export interface ClickExternalLinkEvent {
     type: 'click_external_link'
     tags: {
         link: 'support' | 'review'
+    }
+}
+
+export interface MigrationStartEvent {
+    type: 'migration_start'
+    metrics: {
+        opfsMainFileCount: number
+        idbRecordCount: number
+    }
+}
+
+export interface MigrationEndEvent {
+    type: 'migration_end'
+    metrics: {
+        inserted: number
+        durationMs: number
     }
 }

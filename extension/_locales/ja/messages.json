@@ -406,11 +406,20 @@
     "recordListTitleRecordedAt": {
         "message": "録画日時"
     },
+    "recordListTitleDuration": {
+        "message": "再生時間"
+    },
     "recordListTitleRecording": {
         "message": "録画中"
     },
     "recordListTitleTimerStop": {
         "message": "タイマー停止時刻"
+    },
+    "recordListCanceled": {
+        "message": "キャンセル"
+    },
+    "recordListTitleCanceled": {
+        "message": "キャンセルされた録画"
     },
     "recordListRecordingFailed": {
         "message": "録画に失敗しました"

@@ -138,6 +138,14 @@ export function sendEvent(e: Event) {
             })
             logger.info(e.type, { ...flatten(e.tags) }, { scope })
             break
+
+        case 'migration_start':
+            logger.info(e.type, { ...flatten(e.metrics) }, { scope })
+            break
+
+        case 'migration_end':
+            logger.info(e.type, { ...flatten(e.metrics) }, { scope })
+            break
     }
 }
 
