@@ -166,12 +166,12 @@
         "description": "Cancel button in confirm dialog"
     },
     "confirmSizeLabel": {
-        "message": "size: $SIZE$ MB",
+        "message": "size: $SIZE$",
         "description": "File size label in confirm dialog",
         "placeholders": {
             "size": {
                 "content": "$1",
-                "example": "2.50"
+                "example": "2.50 MB"
             }
         }
     },
@@ -438,12 +438,36 @@
         "description": "Button to restore default settings"
     },
     "recordListStorage": {
-        "message": "Storage (total: $SIZE$ MB)",
+        "message": "Storage - total: $COUNT_LABEL$, $SIZE$",
         "description": "Storage heading with usage info",
         "placeholders": {
-            "size": {
+            "count_label": {
                 "content": "$1",
-                "example": "150.5"
+                "example": "12 Records"
+            },
+            "size": {
+                "content": "$2",
+                "example": "150.50 MB"
+            }
+        }
+    },
+    "recordListRecordCountOne": {
+        "message": "$COUNT$ Record",
+        "description": "Singular record count label",
+        "placeholders": {
+            "count": {
+                "content": "$1",
+                "example": "1"
+            }
+        }
+    },
+    "recordListRecordCountOther": {
+        "message": "$COUNT$ Records",
+        "description": "Plural record count label",
+        "placeholders": {
+            "count": {
+                "content": "$1",
+                "example": "12"
             }
         }
     },
@@ -490,12 +514,12 @@
         }
     },
     "recordListSeparatedSize": {
-        "message": "$SIZE$ MB separated",
+        "message": "$SIZE$ separated",
         "description": "Separated audio file size label",
         "placeholders": {
             "size": {
                 "content": "$1",
-                "example": "1.50"
+                "example": "1.50 MB"
             }
         }
     },

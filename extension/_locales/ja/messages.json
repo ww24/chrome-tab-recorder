@@ -127,7 +127,7 @@
         "message": "キャンセル"
     },
     "confirmSizeLabel": {
-        "message": "サイズ: $SIZE$ MB",
+        "message": "サイズ: $SIZE$",
         "placeholders": {
             "size": {
                 "content": "$1"
@@ -333,9 +333,20 @@
         "message": "デフォルト設定に戻す"
     },
     "recordListStorage": {
-        "message": "ストレージ (合計: $SIZE$ MB)",
+        "message": "ストレージ - 合計: $COUNT_LABEL$, $SIZE$",
         "placeholders": {
+            "count_label": {
+                "content": "$1"
+            },
             "size": {
+                "content": "$2"
+            }
+        }
+    },
+    "recordListRecordCountOther": {
+        "message": "$COUNT$ 件",
+        "placeholders": {
+            "count": {
                 "content": "$1"
             }
         }
@@ -373,7 +384,7 @@
         }
     },
     "recordListSeparatedSize": {
-        "message": "分離された音声 $SIZE$ MB",
+        "message": "分離された音声 $SIZE$",
         "placeholders": {
             "size": {
                 "content": "$1"

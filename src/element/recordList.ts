@@ -1,7 +1,7 @@
 import { html, css, LitElement } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { repeat } from 'lit/directives/repeat.js'
-import { formatNum, checkFileHandlePermission } from './util'
+import { formatFileSize, checkFileHandlePermission } from './util'
 import '@material/web/list/list'
 import '@material/web/list/list-item'
 import '@material/web/divider/divider'
@@ -130,6 +130,14 @@ export class RecordList extends LitElement {
         second: '2-digit',
     })
 
+    private static readonly uiLanguage = chrome?.i18n?.getMessage?.('@@ui_locale') || 'en'
+    private static readonly pluralRules = new Intl.PluralRules(RecordList.uiLanguage)
+    private static formatRecordCount(count: number): string {
+        const category = RecordList.pluralRules.select(count)
+        const key = category === 'one' ? 'recordListRecordCountOne' : 'recordListRecordCountOther'
+        return t(key, count.toString())
+    }
+
     @property({ type: Array })
     private records: Array<RecordEntry>
 
@@ -256,13 +264,10 @@ export class RecordList extends LitElement {
                               >`
                           })}
                     <div class="meta" title=${t('recordListTitleFileSize')}>
-                        <md-icon>storage</md-icon> ${formatNum((record.size + record.subFilesSize) / 1024 / 1024, 2)} MB
+                        <md-icon>storage</md-icon> ${formatFileSize(record.size + record.subFilesSize)}
                         ${record.subFilesSize > 0
                             ? html` <span class="separated-size" title=${t('recordListTitleSeparatedSize')}
-                                  >(${t(
-                                      'recordListSeparatedSize',
-                                      formatNum(record.subFilesSize / 1024 / 1024, 2),
-                                  )})</span
+                                  >(${t('recordListSeparatedSize', formatFileSize(record.subFilesSize))})</span
                               >`
                             : ''}
                     </div>
@@ -306,7 +311,8 @@ export class RecordList extends LitElement {
         const totalSize = this.records.reduce((sum, r) => sum + r.size + r.subFilesSize, 0)
         const sortIcon = this.sortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward'
         const sortLabel = this.sortOrder === 'asc' ? t('recordListSortAsc') : t('recordListSortDesc')
-        return html` <h2 class="storage-heading">${t('recordListStorage', [formatNum(totalSize / 1024 / 1024, 1)])}</h2>
+        const countLabel = RecordList.formatRecordCount(this.records.length)
+        return html` <h2 class="storage-heading">${t('recordListStorage', [countLabel, formatFileSize(totalSize)])}</h2>
             <md-chip-set class="selected-actions">
                 <md-filter-chip
                     label=${t('recordListSelectAll')}
