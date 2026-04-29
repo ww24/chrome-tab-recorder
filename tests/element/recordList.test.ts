@@ -4,6 +4,7 @@ import { describe, test, expect, vi, beforeEach } from 'vitest'
 import { shadowQuery, elementUpdated } from './test-helpers'
 import { getChromeMock, getMessageListenersCount, simulateChromeMessage } from './test-setup'
 import '../../src/element/recordList'
+import '../../src/element/alert'
 import type { RecordingMetadata } from '../../src/storage'
 
 // Mock the api_client module used by RecordList
@@ -348,6 +349,59 @@ describe('record-list', () => {
             expect(elapsedSpan!.textContent).toBe(frozenText)
         } finally {
             vi.useRealTimers()
+        }
+    })
+
+    test('shows alert dialog when lastRecordingError is in storage on recording-state message', async () => {
+        const chromeMock = getChromeMock()
+        // connectedCallback also calls checkStoredRecordingError, so return no error initially
+        chromeMock.storage.local.get.mockResolvedValueOnce({})
+        // The recording-state handler path should find the error
+        chromeMock.storage.local.get.mockResolvedValueOnce({ lastRecordingError: 'test recording error' })
+
+        // Place extension-alert in the document (as option.html does)
+        const alertEl = document.createElement('extension-alert')
+        alertEl.id = 'alert-dialog'
+        document.body.appendChild(alertEl)
+
+        try {
+            const screen = render(html`<record-list></record-list>`)
+            const el = screen.container.querySelector('record-list')!
+            await elementUpdated(el)
+
+            // Wait for connectedCallback's async work to finish (consumes the first mock)
+            await vi.waitFor(() => {
+                expect(chromeMock.storage.local.get).toHaveBeenCalledTimes(1)
+            })
+            // Confirm no alert was opened from connectedCallback
+            const dialogBefore = alertEl.shadowRoot?.querySelector('md-dialog')
+            expect(dialogBefore?.hasAttribute('open')).not.toBe(true)
+
+            // Simulate a recording-state message (triggers checkStoredRecordingError)
+            simulateChromeMessage({
+                type: 'recording-state',
+                data: { isRecording: false },
+            })
+
+            await vi.waitFor(() => {
+                // Verify the error was read (twice total) and removed from storage
+                expect(chromeMock.storage.local.get).toHaveBeenCalledTimes(2)
+                expect(chromeMock.storage.local.get).toHaveBeenCalledWith('lastRecordingError')
+                expect(chromeMock.storage.local.remove).toHaveBeenCalledWith('lastRecordingError')
+
+                // Verify the alert dialog is open with the correct content
+                const dialog = alertEl.shadowRoot?.querySelector('md-dialog') as
+                    | (HTMLElement & { open?: boolean })
+                    | null
+                expect(dialog).not.toBeNull()
+                expect(dialog?.open).toBe(true)
+                const headline = alertEl.shadowRoot?.querySelector('[slot="headline"]')
+                expect(headline?.textContent).toBe('Recording Failed')
+                const content = alertEl.shadowRoot?.querySelector('[slot="content"]')
+                expect(content?.textContent).toContain('test recording error')
+            })
+        } finally {
+            alertEl.remove()
         }
     })
 })

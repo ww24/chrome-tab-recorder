@@ -327,6 +327,12 @@ async function cancelRecording(error: string) {
     const msg: CancelRecordingMessage = { type: 'cancel-recording' }
     await chrome.runtime.sendMessage(msg)
 
+    // Persist error BEFORE broadcasting state so that the option page
+    // (if already open) can read it when handling the recording-state message.
+    if (error !== '') {
+        await chrome.storage.local.set({ lastRecordingError: error })
+    }
+
     await broadcastRecordingState()
     await updateRecordingIndications()
 
@@ -334,8 +340,6 @@ async function cancelRecording(error: string) {
     await chrome.offscreen.closeDocument()
 
     if (error === '') return
-    // Persist error for option page to display
-    await chrome.storage.local.set({ lastRecordingError: error })
     // Open option page to show the error
     await chrome.runtime.openOptionsPage()
 }
