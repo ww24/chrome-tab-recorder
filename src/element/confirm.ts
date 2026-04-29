@@ -7,7 +7,7 @@ import '@material/web/button/filled-tonal-button'
 import '@material/web/list/list'
 import '@material/web/list/list-item'
 import '@material/web/divider/divider'
-import { formatNum } from './util'
+import { formatFileSize } from './util'
 import { RecordEntry } from './recordList'
 import { t } from '../i18n'
 
@@ -47,10 +47,7 @@ export default class Confirm extends LitElement {
                                 <md-list-item
                                     >${record.title}
                                     <div slot="end">
-                                        (${t(
-                                            'confirmSizeLabel',
-                                            formatNum((record.size + record.subFilesSize) / 1024 / 1024, 2),
-                                        )})
+                                        (${t('confirmSizeLabel', formatFileSize(record.size + record.subFilesSize))})
                                     </div></md-list-item
                                 >
                             `,

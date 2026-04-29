@@ -7,6 +7,17 @@ export function formatNum(num: number, dig: number) {
     })
 }
 
+export function formatFileSize(bytes: number, fractionDigits: number = 2): string {
+    const units = ['B', 'KB', 'MB', 'GB', 'TB']
+    let unitIndex = 0
+    let size = bytes
+    while (size >= 1024 && unitIndex < units.length - 1) {
+        size /= 1024
+        unitIndex++
+    }
+    return `${formatNum(size, unitIndex === 0 ? 0 : fractionDigits)} ${units[unitIndex]}`
+}
+
 export function formatRate(rate: number, dig: number) {
     return rate.toLocaleString('en-US', {
         style: 'percent',

@@ -1,4 +1,12 @@
-import { formatNum, formatRate, deepMerge, roundToEven, clampCoordinate, clampDimension } from '../../src/element/util'
+import {
+    formatNum,
+    formatRate,
+    formatFileSize,
+    deepMerge,
+    roundToEven,
+    clampCoordinate,
+    clampDimension,
+} from '../../src/element/util'
 
 describe('formatNum', () => {
     test('formats integer with specified decimal places', () => {
@@ -43,6 +51,37 @@ describe('formatRate', () => {
 
     test('formats negative rate', () => {
         expect(formatRate(-0.1, 1)).toBe('-10.0%')
+    })
+})
+
+describe('formatFileSize', () => {
+    test('formats bytes', () => {
+        expect(formatFileSize(0)).toBe('0 B')
+        expect(formatFileSize(500)).toBe('500 B')
+        expect(formatFileSize(1023)).toBe('1,023 B')
+    })
+
+    test('formats kilobytes', () => {
+        expect(formatFileSize(1024)).toBe('1.00 KB')
+        expect(formatFileSize(1536)).toBe('1.50 KB')
+    })
+
+    test('formats megabytes', () => {
+        expect(formatFileSize(1048576)).toBe('1.00 MB')
+        expect(formatFileSize(1572864)).toBe('1.50 MB')
+    })
+
+    test('formats gigabytes', () => {
+        expect(formatFileSize(1073741824)).toBe('1.00 GB')
+    })
+
+    test('formats terabytes', () => {
+        expect(formatFileSize(1099511627776)).toBe('1.00 TB')
+    })
+
+    test('respects custom fractionDigits', () => {
+        expect(formatFileSize(1048576, 1)).toBe('1.0 MB')
+        expect(formatFileSize(1572864, 3)).toBe('1.500 MB')
     })
 })
 

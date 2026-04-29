@@ -129,15 +129,41 @@ describe('record-list', () => {
         expect(chipSet).not.toBeNull()
     })
 
-    test('storage heading includes total and MB', async () => {
+    test('storage heading includes record count and file size', async () => {
         const screen = render(html`<record-list></record-list>`)
         const el = screen.container.querySelector('record-list')!
         await elementUpdated(el)
 
         const heading = shadowQuery(el, '.storage-heading')
         expect(heading?.textContent).toContain('total:')
-        expect(heading?.textContent).toContain('MB')
-        expect(heading?.textContent).not.toContain('%')
+        expect(heading?.textContent).toContain('0 Records')
+        expect(heading?.textContent).toContain('0 B')
+    })
+
+    test('storage heading shows singular record count for one recording', async () => {
+        const ts = '1000000000000'
+        listRecordingsMock.mockResolvedValue([
+            {
+                title: `video-${ts}.webm`,
+                size: 1024,
+                lastModified: Date.now(),
+                mimeType: 'video/webm',
+                recordedAt: Number(ts),
+                isTemporary: false,
+                subFiles: [],
+                subFilesSize: 0,
+            },
+        ])
+
+        const screen = render(html`<record-list></record-list>`)
+        const el = screen.container.querySelector('record-list')!
+        await elementUpdated(el)
+
+        await vi.waitFor(() => {
+            const heading = shadowQuery(el, '.storage-heading')
+            expect(heading?.textContent).toContain('1 Record')
+            expect(heading?.textContent).not.toContain('1 Records')
+        })
     })
 
     test('storage heading shows sum of record sizes including subFilesSize', async () => {
@@ -174,9 +200,10 @@ describe('record-list', () => {
         // Wait for async updateRecord to complete
         await vi.waitFor(() => {
             const heading = shadowQuery(el, '.storage-heading')
-            // Total = 5 MB (main) + 1 MB (sub, counted via subFilesSize) + 3 MB (main) = 9.0 MB
-            expect(heading?.textContent).toContain('9.0')
-            expect(heading?.textContent).toContain('MB')
+            // 2 recordings total
+            expect(heading?.textContent).toContain('2 Records')
+            // Total = 5 MB (main) + 1 MB (sub, counted via subFilesSize) + 3 MB (main) = 9.00 MB
+            expect(heading?.textContent).toContain('9.00 MB')
         })
     })
 
