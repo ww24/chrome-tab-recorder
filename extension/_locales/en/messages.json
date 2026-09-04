@@ -828,5 +828,175 @@
     "privacyPolicyUrl": {
         "message": "https://recorder.appcloud.info/PRIVACY.html",
         "description": "URL for privacy policy"
+    },
+    "settingsExperimental": {
+        "message": "Experimental Features",
+        "description": "Heading for experimental features section in settings"
+    },
+    "settingsEnableTranscription": {
+        "message": "Audio Transcription",
+        "description": "Label for transcription feature toggle"
+    },
+    "settingsEnableTranscriptionTitle": {
+        "message": "Generate subtitles locally from recording audio",
+        "description": "Tooltip for transcription feature toggle"
+    },
+    "settingsTranscriptionVad": {
+        "message": "Voice Activity Detection (VAD)",
+        "description": "Label for VAD toggle in transcription settings"
+    },
+    "settingsTranscriptionVadTitle": {
+        "message": "Detect speech segments before transcribing. When disabled, audio is split into fixed-length chunks.",
+        "description": "Tooltip for VAD toggle in transcription settings"
+    },
+    "settingsTranscriptionLanguage": {
+        "message": "Transcription Language",
+        "description": "Label for transcription language select"
+    },
+    "settingsTranscriptionDownloading": {
+        "message": "Downloading model...",
+        "description": "Status text while downloading transcription model"
+    },
+    "settingsTranscriptionStartingDownload": {
+        "message": "Starting download...",
+        "description": "Status text before model download begins"
+    },
+    "settingsTranscriptionDownloadHeadline": {
+        "message": "Download Transcription Model",
+        "description": "Headline for model download confirmation dialog"
+    },
+    "settingsTranscriptionDownloadDescription": {
+        "message": "The transcription feature requires downloading the Whisper Large v3 Turbo model (approx. 1.6GB). The model is stored on your device and runs completely offline. Do you want to proceed with the download?",
+        "description": "Description in model download confirmation dialog"
+    },
+    "settingsTranscriptionDownloadConfirm": {
+        "message": "Download",
+        "description": "Confirm button text to download model"
+    },
+    "settingsTranscriptionDownloadFailed": {
+        "message": "Failed to download model: $ERROR$",
+        "description": "Error message when model download fails",
+        "placeholders": {
+            "error": {
+                "content": "$1",
+                "example": "Network error"
+            }
+        }
+    },
+    "transcriptionLoadingModel": {
+        "message": "Loading model...",
+        "description": "Status text while loading the transcription model from local storage"
+    },
+    "recordListTranscribe": {
+        "message": "Transcribe",
+        "description": "Button label to start transcription on a recording"
+    },
+    "recordListTranscriptionStarting": {
+        "message": "Starting transcription...",
+        "description": "Status text while transcription is initializing"
+    },
+    "recordListTitleTranscribing": {
+        "message": "Transcription in progress",
+        "description": "Tooltip for transcription in progress status"
+    },
+    "recordListHasSubtitles": {
+        "message": "Subtitles available",
+        "description": "Badge tooltip for recording with subtitles"
+    },
+    "recordListDownloadVtt": {
+        "message": "Download WebVTT subtitle",
+        "description": "Tooltip for WebVTT download link"
+    },
+    "recordListDownloadSrt": {
+        "message": "Download SRT subtitle",
+        "description": "Tooltip for SRT download link"
+    },
+    "recordListTranscriptionFailed": {
+        "message": "Transcription failed",
+        "description": "Error dialog headline when transcription fails"
+    },
+    "recordListTranscribeAlreadyRunning": {
+        "message": "Cannot start transcription because another transcription is currently running.",
+        "description": "Error message when transcription cannot be started because another transcription is already in progress"
+    },
+    "transcriptionStatusLoadingModel": {
+        "message": "Loading model: $PERCENT$%",
+        "description": "Status text while model files are being loaded from storage",
+        "placeholders": {
+            "percent": {
+                "content": "$1"
+            }
+        }
+    },
+    "transcriptionStatusInitializingModel": {
+        "message": "Initializing model...",
+        "description": "Status text while initializing neural network session and shaders"
+    },
+    "transcriptionStatusExtractingAudio": {
+        "message": "Extracting audio: $PERCENT$%",
+        "description": "Status text while extracting and decoding audio from video",
+        "placeholders": {
+            "percent": {
+                "content": "$1"
+            }
+        }
+    },
+    "transcriptionStatusTranscribing": {
+        "message": "Transcribing...",
+        "description": "Status text while transcribing speech"
+    },
+    "transcriptionStatusTranscribingPercent": {
+        "message": "Transcribing: $PERCENT$%",
+        "description": "Status text while transcribing speech with progress percentage",
+        "placeholders": {
+            "percent": {
+                "content": "$1"
+            }
+        }
+    },
+    "transcriptionStatusTranscribingRange": {
+        "message": "Transcribing: $RANGE$",
+        "description": "Status text while transcribing a specific audio interval",
+        "placeholders": {
+            "range": {
+                "content": "$1"
+            }
+        }
+    },
+    "transcriptionWebGpuRequired": {
+        "message": "WebGPU is required for transcription. Please enable hardware acceleration in your browser settings.",
+        "description": "Error message when WebGPU is not supported or unavailable"
+    },
+    "playerSubtitles": {
+        "message": "Subtitles",
+        "description": "Label for subtitle switch in media player"
+    },
+    "playerSubtitlePosition": {
+        "message": "Position",
+        "description": "Label for subtitle position selector in media player"
+    },
+    "playerSubtitleBelow": {
+        "message": "Below video",
+        "description": "Option to display subtitles below the video"
+    },
+    "playerSubtitleOverlay": {
+        "message": "On video",
+        "description": "Option to display subtitles overlaid on the video"
+    },
+    "playerDeleteTranscript": {
+        "message": "Delete Transcript",
+        "description": "Label for delete transcript button in media player"
+    },
+    "playerDeleteTranscriptConfirmHeadline": {
+        "message": "Delete Transcript",
+        "description": "Headline for transcript deletion confirmation dialog"
+    },
+    "playerDeleteTranscriptConfirmDescription": {
+        "message": "Are you sure you want to delete the transcript? You can transcribe this recording again later.",
+        "description": "Description in transcript deletion confirmation dialog"
+    },
+    "playerDeleteTranscriptConfirmButton": {
+        "message": "Delete",
+        "description": "Confirm button text in transcript deletion confirmation dialog"
     }
 }

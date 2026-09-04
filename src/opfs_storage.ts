@@ -42,15 +42,25 @@ export class OPFSStorage implements RecordingStorage {
     }
 
     async delete(name: string): Promise<void> {
-        try {
-            const opfsRoot = await navigator.storage.getDirectory()
-            await opfsRoot.removeEntry(name)
-        } catch (e) {
-            // Idempotent: succeed silently if already deleted
-            if (e instanceof DOMException && e.name === 'NotFoundError') {
+        let attempts = 0
+        while (attempts < 3) {
+            attempts++
+            try {
+                const opfsRoot = await navigator.storage.getDirectory()
+                await opfsRoot.removeEntry(name)
                 return
+            } catch (e) {
+                // Idempotent: succeed silently if already deleted
+                if (e instanceof DOMException && e.name === 'NotFoundError') {
+                    return
+                }
+                // If file is temporarily locked, wait briefly and retry
+                if (e instanceof DOMException && e.name === 'NoModificationAllowedError' && attempts < 3) {
+                    await new Promise(resolve => setTimeout(resolve, 50 * attempts))
+                    continue
+                }
+                throw e
             }
-            throw e
         }
     }
 

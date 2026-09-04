@@ -79,6 +79,13 @@ describe('parseApiPath', () => {
             name: 'video-1000-thumbnail.webp',
         })
     })
+
+    it('should parse /api/recordings/:name/transcript', () => {
+        expect(parseApiPath('/api/recordings/video-1000.webm/transcript')).toEqual({
+            route: 'recording-transcript',
+            name: 'video-1000.webm',
+        })
+    })
 })
 
 // ---------- handleApiRequest – storage-estimate ----------
@@ -880,5 +887,122 @@ describe('handleApiRequest – recording-thumbnail', () => {
         const res = await handleApiRequest(req, storage, recordingState, recordingDB)
 
         expect(res.status).toBe(405)
+    })
+})
+
+// ---------- handleApiRequest – recording-transcript ----------
+
+describe('handleApiRequest – recording-transcript', () => {
+    it('should return 405 for non-DELETE methods', async () => {
+        const recordingDB = createMockRecordingDB()
+        const storage = createMockStorage()
+        const req = new Request('https://ext.example/api/recordings/video-1000.webm/transcript', {
+            method: 'GET',
+        })
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState, recordingDB)
+
+        expect(res.status).toBe(405)
+    })
+
+    it('should return 404 when record is not found', async () => {
+        const recordingDB = createMockRecordingDB({
+            get: vi.fn().mockResolvedValue(undefined),
+        })
+        const storage = createMockStorage()
+        const req = new Request('https://ext.example/api/recordings/video-1000.webm/transcript', {
+            method: 'DELETE',
+        })
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState, recordingDB)
+
+        expect(res.status).toBe(404)
+    })
+
+    it('should return 409 when recording path mismatches', async () => {
+        const record: RecordingRecord = {
+            recordedAt: 1000,
+            mainFilePath: 'video-1000.mp4',
+            mimeType: 'video/mp4',
+            title: 'Test',
+            status: 'completed',
+            durationMs: 5000,
+            fileSize: 1024,
+            subFiles: [],
+            transcriptFilePath: 'video-1000.vtt',
+        }
+        const recordingDB = createMockRecordingDB({
+            get: vi.fn().mockResolvedValue(record),
+        })
+        const storage = createMockStorage()
+        const req = new Request('https://ext.example/api/recordings/video-1000.webm/transcript', {
+            method: 'DELETE',
+        })
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState, recordingDB)
+
+        expect(res.status).toBe(409)
+    })
+
+    it('should return 409 when record is currently recording', async () => {
+        const record: RecordingRecord = {
+            recordedAt: 1000,
+            mainFilePath: 'video-1000.webm',
+            mimeType: 'video/webm',
+            title: 'Test',
+            status: 'recording',
+            durationMs: null,
+            fileSize: 0,
+            subFiles: [],
+        }
+        const recordingDB = createMockRecordingDB({
+            get: vi.fn().mockResolvedValue(record),
+        })
+        const storage = createMockStorage()
+        const req = new Request('https://ext.example/api/recordings/video-1000.webm/transcript', {
+            method: 'DELETE',
+        })
+        const recordingState: RecordingState = { isRecording: true, startAtMs: 1000 }
+        const res = await handleApiRequest(req, storage, recordingState, recordingDB)
+
+        expect(res.status).toBe(409)
+    })
+
+    it('should delete transcript files from OPFS and update record in DB on DELETE', async () => {
+        const record: RecordingRecord = {
+            recordedAt: 1000,
+            mainFilePath: 'video-1000.webm',
+            mimeType: 'video/webm',
+            title: 'Test',
+            status: 'completed',
+            durationMs: 5000,
+            fileSize: 1024,
+            subFiles: [],
+            transcriptFilePath: 'video-1000.vtt',
+        }
+        const putMock = vi.fn().mockResolvedValue(undefined)
+        const deleteStorageMock = vi.fn().mockResolvedValue(undefined)
+        const recordingDB = createMockRecordingDB({
+            get: vi.fn().mockResolvedValue(record),
+            put: putMock,
+        })
+        const storage = createMockStorage({
+            delete: deleteStorageMock,
+        })
+        const req = new Request('https://ext.example/api/recordings/video-1000.webm/transcript', {
+            method: 'DELETE',
+        })
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState, recordingDB)
+
+        expect(res.status).toBe(204)
+        expect(deleteStorageMock).toHaveBeenCalledWith('video-1000.vtt')
+        expect(putMock).toHaveBeenCalledWith(
+            expect.objectContaining({
+                recordedAt: 1000,
+                mainFilePath: 'video-1000.webm',
+            }),
+        )
+        expect(putMock.mock.calls[0][0].transcriptFilePath).toBeUndefined()
     })
 })

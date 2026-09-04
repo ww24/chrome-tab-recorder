@@ -396,3 +396,33 @@ describe('Configuration.hasAgreedTerms', () => {
         expect(restored.hasAgreedTerms).toBe(true)
     })
 })
+
+describe('Configuration.transcription', () => {
+    it('should default to disabled with vad true', () => {
+        const config = new Configuration()
+        expect(config.transcription.enabled).toBe(false)
+        expect(config.transcription.vad).toBe(true)
+    })
+
+    it('should include transcription in filterForSync', () => {
+        const config = new Configuration()
+        config.transcription = { enabled: true, language: 'japanese', vad: false }
+        const synced = Configuration.filterForSync(config)
+        expect(synced.transcription).toEqual({ enabled: true, language: 'japanese', vad: false })
+    })
+
+    it('should include transcription in filterForReport', () => {
+        const config = new Configuration()
+        config.transcription = { enabled: true, language: 'english', vad: false }
+        const report = Configuration.filterForReport(config)
+        expect(report.transcription).toEqual({ enabled: true, language: 'english', vad: false })
+    })
+
+    it('should reset transcription on restoreDefault', () => {
+        const config = new Configuration()
+        config.transcription = { enabled: true, language: 'english', vad: false }
+        const restored = Configuration.restoreDefault(config)
+        expect(restored.transcription.enabled).toBe(false)
+        expect(restored.transcription.vad).toBe(true)
+    })
+})

@@ -129,6 +129,23 @@ export class RecordingApiClient {
     }
 
     /**
+     * Delete transcript for a recording (IndexedDB + OPFS)
+     */
+    async deleteTranscript(name: string): Promise<void> {
+        await ensureControlled()
+        const encodedName = encodeURIComponent(name)
+        const response = await fetch(`${API_BASE}/recordings/${encodedName}/transcript`, {
+            method: 'DELETE',
+        })
+        if (response.status === 204) {
+            return
+        }
+        if (!response.ok) {
+            throw new Error(`Failed to delete transcript: ${response.status}`)
+        }
+    }
+
+    /**
      * Get storage estimate
      */
     async getStorageEstimate(): Promise<StorageEstimateInfo> {

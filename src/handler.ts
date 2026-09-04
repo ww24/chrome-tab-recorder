@@ -12,6 +12,7 @@ import { getMimeTypeFromExtension } from './mime'
 import { parseRangeHeader, resolveByteRange, generateBoundary, buildMultipartByteRangesBody } from './range'
 import type { ResolvedRange } from './range'
 import type { Resolution, VideoRecordingMode } from './configuration'
+import { vttToSrt } from './transcription/vtt'
 
 const API_PREFIX = '/api/'
 
@@ -51,6 +52,24 @@ export function parseApiPath(pathname: string): { route: string; name?: string }
     // GET /api/recordings
     if (path === 'recordings') {
         return { route: 'recordings-list' }
+    }
+
+    // /api/recordings/:name/transcript
+    const transcriptMatch = path.match(/^recordings\/(.+)\/transcript$/)
+    if (transcriptMatch) {
+        let name: string
+        try {
+            name = decodeURIComponent(transcriptMatch[1])
+        } catch {
+            // Malformed percent-encoding in recording name
+            return null
+        }
+
+        // Reject decoded names containing path separators
+        if (name.includes('/') || name.includes('\\')) {
+            return null
+        }
+        return { route: 'recording-transcript', name }
     }
 
     // /api/recordings/:name
@@ -95,6 +114,7 @@ export interface RecordingState {
  * - GET  /api/recordings/:name                    - Download recording (with Range Request support)
  * - GET  /api/recordings/video-{ts}-thumbnail.webp - Get recording thumbnail (served as WebP)
  * - DELETE /api/recordings/:name            - Delete recording (cascade: IndexedDB + OPFS)
+ * - DELETE /api/recordings/:name/transcript - Delete transcript for recording (IndexedDB + OPFS)
  */
 export async function handleApiRequest(
     request: Request,
@@ -184,6 +204,7 @@ export async function handleApiRequest(
                             status,
                             subFiles: r.subFiles,
                             subFilesSize,
+                            transcriptFilePath: r.transcriptFilePath,
                             ...(thumbnailFileName ? { thumbnailFileName } : {}),
                         }
                     }),
@@ -198,6 +219,62 @@ export async function handleApiRequest(
                     status: 200,
                     headers: { 'Content-Type': 'application/json' },
                 })
+            }
+
+            case 'recording-transcript': {
+                const name = parsed.name!
+                if (request.method !== 'DELETE') {
+                    return new Response(JSON.stringify({ error: 'Method Not Allowed' }), {
+                        status: 405,
+                        headers: { 'Content-Type': 'application/json' },
+                    })
+                }
+
+                const recordedAt = parseRecordedAt(name)
+                const record = recordedAt != null ? await recordingDB.get(recordedAt) : undefined
+                if (!record) {
+                    return new Response(JSON.stringify({ error: 'Not Found' }), {
+                        status: 404,
+                        headers: { 'Content-Type': 'application/json' },
+                    })
+                }
+
+                if (record.mainFilePath !== name) {
+                    return new Response(JSON.stringify({ error: 'Recording path mismatch' }), {
+                        status: 409,
+                        headers: { 'Content-Type': 'application/json' },
+                    })
+                }
+
+                if (record.status === 'recording') {
+                    return new Response(
+                        JSON.stringify({
+                            error: 'This file cannot be modified because it is currently being recorded.',
+                        }),
+                        { status: 409, headers: { 'Content-Type': 'application/json' } },
+                    )
+                }
+
+                // Delete transcript file from OPFS (unique file names, sequential execution)
+                const filesToDelete = new Set<string>()
+                if (record.transcriptFilePath) {
+                    filesToDelete.add(record.transcriptFilePath)
+                }
+                filesToDelete.add(`video-${record.recordedAt}.vtt`)
+
+                for (const file of filesToDelete) {
+                    try {
+                        await storage.delete(file)
+                    } catch (e) {
+                        console.warn(`Could not delete OPFS transcript file ${file}:`, e)
+                    }
+                }
+
+                // Remove transcriptFilePath from IndexedDB record
+                delete record.transcriptFilePath
+                await recordingDB.put(record)
+
+                return new Response(null, { status: 204 })
             }
 
             case 'recording': {
@@ -247,11 +324,24 @@ export async function handleApiRequest(
                                 { status: 409 },
                             )
                         }
-                        // Delete sub-files and main file from OPFS (idempotent)
-                        await Promise.all([
-                            ...record.subFiles.map(sub => storage.delete(sub.path)),
-                            storage.delete(record.mainFilePath),
-                        ])
+                        // Delete sub-files, transcript, and main file from OPFS (idempotent)
+                        const filesToDelete = new Set<string>()
+                        for (const sub of record.subFiles) {
+                            filesToDelete.add(sub.path)
+                        }
+                        filesToDelete.add(record.mainFilePath)
+                        if (record.transcriptFilePath) {
+                            filesToDelete.add(record.transcriptFilePath)
+                        }
+                        filesToDelete.add(`video-${record.recordedAt}.vtt`)
+
+                        for (const file of filesToDelete) {
+                            try {
+                                await storage.delete(file)
+                            } catch (e) {
+                                console.warn(`Could not delete OPFS file ${file}:`, e)
+                            }
+                        }
                         // Delete IndexedDB record
                         await recordingDB.delete(record.recordedAt)
                     } else {
@@ -268,8 +358,17 @@ export async function handleApiRequest(
                     })
                 }
 
-                // GET /api/recordings/:name - return binary file
-                const file = await storage.getFile(name)
+                // GET /api/recordings/:name - return binary file (with dynamic .srt support)
+                let file = await storage.getFile(name)
+                if (!file && name.endsWith('.srt')) {
+                    const vttName = name.replace(/\.srt$/, '.vtt')
+                    const vttFile = await storage.getFile(vttName)
+                    if (vttFile) {
+                        const vttText = await vttFile.text()
+                        const srtText = vttToSrt(vttText)
+                        file = new File([srtText], name, { type: 'application/x-subrip' })
+                    }
+                }
                 if (!file) {
                     // Self-healing: clean up orphaned IndexedDB record
                     const recordedAt = parseRecordedAt(name)
