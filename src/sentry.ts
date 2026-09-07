@@ -89,6 +89,7 @@ const METRICS = {
     FILESIZE: 'recording.filesize',
     EXTERNAL_LINK: 'external_link.click',
     AGREE_TERMS: 'terms.agree',
+    MODEL_DOWNLOAD_TOTAL: 'model_download.total',
 }
 
 export function sendEvent(e: Event) {
@@ -151,6 +152,38 @@ export function sendEvent(e: Event) {
         case 'agree_terms':
             metrics.count(METRICS.AGREE_TERMS, 1, { scope })
             logger.info(e.type, {}, { scope })
+            break
+
+        case 'transcription_complete':
+            metrics.distribution('transcription.total', e.metrics.totalMs, {
+                scope,
+                unit: 'millisecond',
+            })
+            metrics.distribution('transcription.inference', e.metrics.inferenceMs, {
+                scope,
+                unit: 'millisecond',
+            })
+            metrics.distribution('transcription.vad', e.metrics.vadMs, {
+                scope,
+                unit: 'millisecond',
+            })
+            metrics.distribution('transcription.model_load', e.metrics.modelLoadMs, {
+                scope,
+                unit: 'millisecond',
+            })
+            metrics.distribution('transcription.video_duration', e.metrics.videoDurationSec, {
+                scope,
+                unit: 'second',
+            })
+            logger.info(e.type, { ...flatten(e.metrics) }, { scope })
+            break
+
+        case 'model_download_complete':
+            metrics.distribution(METRICS.MODEL_DOWNLOAD_TOTAL, e.metrics.totalMs, {
+                scope,
+                unit: 'millisecond',
+            })
+            logger.info(e.type, { ...flatten(e.metrics) }, { scope })
             break
     }
 }

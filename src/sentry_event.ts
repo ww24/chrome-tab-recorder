@@ -13,6 +13,8 @@ export type Event =
     | MigrationStartEvent
     | MigrationEndEvent
     | AgreeTermsEvent
+    | TranscriptionCompleteEvent
+    | ModelDownloadCompleteEvent
 
 export interface AgreeTermsEvent {
     type: 'agree_terms'
@@ -68,5 +70,39 @@ export interface MigrationEndEvent {
     metrics: {
         inserted: number
         durationMs: number
+    }
+}
+
+export interface TranscriptionCompleteEvent {
+    type: 'transcription_complete'
+    metrics: {
+        /** Video duration in seconds */
+        videoDurationSec: number
+        /** Audio conversion time in milliseconds (Mediabunny PCM extraction) */
+        audioConversionMs: number
+        /** Model load time in milliseconds */
+        modelLoadMs: number
+        /** Loudness normalization time in milliseconds */
+        loudnessNormMs: number
+        /** VAD speech detection time in milliseconds */
+        vadMs: number
+        /** Audio speech recognition inference time in milliseconds */
+        inferenceMs: number
+        /** Total time in milliseconds */
+        totalMs: number
+        /** Model ID used for transcription */
+        modelId: string
+        /** Language used for transcription */
+        language: string
+        /** Number of generated segments */
+        segmentCount: number
+    }
+}
+
+export interface ModelDownloadCompleteEvent {
+    type: 'model_download_complete'
+    metrics: {
+        /** Total download time in milliseconds */
+        totalMs: number
     }
 }

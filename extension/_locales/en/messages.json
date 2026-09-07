@@ -828,5 +828,91 @@
     "privacyPolicyUrl": {
         "message": "https://recorder.appcloud.info/PRIVACY.html",
         "description": "URL for privacy policy"
+    },
+    "settingsExperimental": {
+        "message": "Experimental"
+    },
+    "settingsExperimentalBadge": {
+        "message": "EXPERIMENTAL"
+    },
+    "settingsExperimentalWarning": {
+        "message": "This feature is experimental and may contain errors."
+    },
+    "settingsTranscription": {
+        "message": "Transcription"
+    },
+    "settingsTranscriptionTitle": {
+        "message": "Enable AI-powered transcription (requires ~$SIZE$ model download)",
+        "description": "Tooltip for transcription switch",
+        "placeholders": {
+            "size": {
+                "content": "$1",
+                "example": "1.5 GB"
+            }
+        }
+    },
+    "settingsTranscriptionLanguage": {
+        "message": "Language"
+    },
+    "playerStartTranscription": {
+        "message": "Transcribe"
+    },
+    "playerDownloadTranscription": {
+        "message": "Download Subtitles"
+    },
+    "playerDeleteTranscription": {
+        "message": "Delete Transcription"
+    },
+    "playerDeleteTranscriptionHeadline": {
+        "message": "Delete Transcription"
+    },
+    "playerDeleteTranscriptionDescription": {
+        "message": "The transcription result will be permanently deleted. This cannot be undone."
+    },
+    "recordListHasTranscription": {
+        "message": "Transcription available"
+    },
+    "settingsTranscriptionEnableHint": {
+        "message": "When enabled, transcription works entirely within your local environment.\nApproximately $SIZE$ of model data will be downloaded, so please be mindful of your network environment.",
+        "description": "Hint shown near transcription toggle when disabled",
+        "placeholders": {
+            "size": {
+                "content": "$1",
+                "example": "1.5 GB"
+            }
+        }
+    },
+    "settingsTranscriptionDownloadingHint": {
+        "message": "Disabling will cancel the model data download.",
+        "description": "Hint shown near transcription toggle while model is downloading"
+    },
+    "settingsTranscriptionDisableWarning": {
+        "message": "Disabling will delete the cached model data (~$SIZE$).",
+        "description": "Warning shown near the transcription toggle",
+        "placeholders": {
+            "size": {
+                "content": "$1",
+                "example": "1.5 GB"
+            }
+        }
+    },
+    "settingsTranscriptionDownloadPending": {
+        "message": "Preparing download..."
+    },
+    "playerTranscriptionLoadingModel": {
+        "message": "Loading model",
+        "description": "Progress stage: loading model"
+    },
+    "playerTranscriptionPreprocessing": {
+        "message": "Analyzing audio",
+        "description": "Progress stage: preprocessing audio and voice detection"
+    },
+    "playerTranscriptionInProgress": {
+        "message": "Transcribing",
+        "description": "Progress stage: transcription inference"
+    },
+    "playerNoSpeechDetected": {
+        "message": "No speech detected.",
+        "description": "Message when transcription finds no segments"
     }
 }

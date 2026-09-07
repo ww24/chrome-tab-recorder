@@ -1,5 +1,6 @@
 import type { Resolution, Configuration, SyncConfiguration, CropRegion, VideoRecordingMode } from './configuration'
 import type { RecordingState } from './handler'
+import type { ModelDownloadProgress } from './transcription/model_downloader'
 
 export const TIMER_STOP_CONFIRM_PENDING_KEY = 'timerStopConfirmPending'
 export const TIMER_STOP_TRIGGER_KEY = 'timerStopTrigger'
@@ -29,6 +30,21 @@ export type Message =
     | ConfirmTimerStopMessage
     | UpdateRecordingTimerMessage
     | ClaimClientsMessage
+    | StartModelDownloadMessage
+    | ModelDownloadProgressMessage
+    | ModelDownloadCompleteMessage
+    | ModelDownloadErrorMessage
+    | CancelModelDownloadMessage
+    | QueryModelDownloadStatusMessage
+    | ModelDownloadStatusResponseMessage
+    | StartTranscriptionMessage
+    | TranscriptionProgressMessage
+    | TranscriptionCompleteMessage
+    | TranscriptionErrorMessage
+    | TranscriptionDeletedMessage
+    | QueryTranscriptionStatusMessage
+    | TranscriptionStatusResponseMessage
+    | CloseOffscreenIfIdleMessage
 
 export interface ExceptionMessage {
     type: 'exception'
@@ -171,4 +187,99 @@ export interface UpdateRecordingTimerMessage {
 // Request service worker to claim clients (option page → service_worker)
 export interface ClaimClientsMessage {
     type: 'claim-clients'
+}
+
+// Model download request (option page → service_worker → offscreen)
+export interface StartModelDownloadMessage {
+    type: 'start-model-download'
+}
+
+// Model download progress (offscreen → service_worker → option page)
+export interface ModelDownloadProgressMessage {
+    type: 'model-download-progress'
+    loaded: number
+    total: number
+    file: string
+    fileIndex?: number
+    totalFiles?: number
+}
+
+// Model download complete notification (offscreen → service_worker → option page)
+export interface ModelDownloadCompleteMessage {
+    type: 'model-download-complete'
+}
+
+// Model download error notification (offscreen → service_worker → option page)
+export interface ModelDownloadErrorMessage {
+    type: 'model-download-error'
+    error: string
+}
+
+// Model download cancel request (option page → service_worker → offscreen)
+export interface CancelModelDownloadMessage {
+    type: 'cancel-model-download'
+}
+
+// Query if model download is in progress (option page → service_worker → offscreen)
+export interface QueryModelDownloadStatusMessage {
+    type: 'query-model-download-status'
+}
+
+// Response for model download status query (offscreen → option page)
+export interface ModelDownloadStatusResponseMessage {
+    type: 'model-download-status-response'
+    isDownloading: boolean
+    progress?: ModelDownloadProgress | null
+}
+
+// Transcription start request (player → service_worker → offscreen)
+export interface StartTranscriptionMessage {
+    type: 'start-transcription'
+    path: string
+}
+
+// Transcription progress update (offscreen → service_worker → player)
+export interface TranscriptionProgressMessage {
+    type: 'transcription-progress'
+    path: string
+    stage?: 'model_load' | 'loudness' | 'vad' | 'inference'
+    loaded: number
+    total: number
+}
+
+// Transcription complete notification (offscreen → service_worker → player / record list)
+export interface TranscriptionCompleteMessage {
+    type: 'transcription-complete'
+    path: string
+}
+
+// Transcription error notification (offscreen → service_worker → player)
+export interface TranscriptionErrorMessage {
+    type: 'transcription-error'
+    path: string
+    error: string
+}
+
+// Transcription deleted notification (player / handler → record list)
+export interface TranscriptionDeletedMessage {
+    type: 'transcription-deleted'
+    path: string
+}
+
+// Query if transcription is in progress for a file (player → service_worker → offscreen)
+export interface QueryTranscriptionStatusMessage {
+    type: 'query-transcription-status'
+    path: string
+}
+
+// Response for transcription status query (offscreen → player)
+export interface TranscriptionStatusResponseMessage {
+    type: 'transcription-status-response'
+    path: string
+    isTranscribing: boolean
+}
+
+// Request offscreen document to close itself if no tasks are active (service_worker → offscreen)
+export interface CloseOffscreenIfIdleMessage {
+    type: 'close-offscreen-if-idle'
 }

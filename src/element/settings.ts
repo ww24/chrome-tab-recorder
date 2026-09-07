@@ -2,17 +2,20 @@ import { html, css, LitElement } from 'lit'
 import { live } from 'lit/directives/live.js'
 import { customElement, property } from 'lit/decorators.js'
 import '@material/web/icon/icon'
+import '@material/web/button/filled-button'
 import '@material/web/button/filled-tonal-button'
+import '@material/web/button/text-button'
 import '@material/web/switch/switch'
 import '@material/web/select/filled-select'
 import '@material/web/select/select-option'
 import '@material/web/slider/slider'
+import '@material/web/progress/linear-progress'
 import { MdFilledSelect } from '@material/web/select/filled-select'
 import { MdFilledTextField } from '@material/web/textfield/filled-text-field'
 import { MdSwitch } from '@material/web/switch/switch'
 import { MdSlider } from '@material/web/slider/slider'
 import { MdDialog } from '@material/web/dialog/dialog'
-import type { ResizeWindowMessage, SaveConfigSyncMessage, UpdateRecordingTimerMessage } from '../message'
+import type { ResizeWindowMessage, SaveConfigSyncMessage, UpdateRecordingTimerMessage, Message } from '../message'
 import {
     Configuration,
     Resolution,
@@ -42,6 +45,9 @@ import { applyTheme } from '../theme'
 import { t } from '../i18n'
 import { switchLabelStyle } from './switchStyle'
 import { registerFlacEncoder } from '@mediabunny/flac-encoder'
+import { OPFSModelCache } from '../transcription/opfs_model_cache'
+import { ModelDownloader } from '../transcription/model_downloader'
+import { TRANSCRIPTION_LANGUAGES } from '../transcription/languages'
 
 @customElement('extension-settings')
 export class Settings extends LitElement {
@@ -154,6 +160,50 @@ export class Settings extends LitElement {
                 display: block;
                 margin-bottom: 0.5rem;
             }
+            .experimental-section {
+                border: 1px dashed var(--theme-border, #d0d7de);
+                padding: 1rem;
+                border-radius: 8px;
+            }
+            .experimental-badge {
+                font-size: 0.75rem;
+                background-color: var(--theme-accent, #005fb8);
+                color: #fff;
+                padding: 2px 6px;
+                border-radius: 4px;
+                margin-left: 8px;
+                vertical-align: middle;
+            }
+            .experimental-warning {
+                font-size: 0.85rem;
+                color: var(--theme-text-secondary, #666);
+                margin-top: 0;
+                margin-bottom: 1rem;
+            }
+            .settings-hint {
+                font-size: 0.8rem;
+                color: var(--theme-text-secondary, #666);
+                margin-top: -0.5rem;
+                margin-bottom: 1rem;
+                white-space: pre-line;
+            }
+            .download-progress-area {
+                margin-top: 0.5rem;
+                margin-bottom: 0.5rem;
+            }
+            .download-progress-label {
+                font-size: 0.85rem;
+                color: var(--theme-text-secondary, #666);
+                margin: 0 0 0.5rem 0;
+                word-break: break-all;
+            }
+            .download-error-message {
+                font-size: 0.85rem;
+                color: var(--md-sys-color-error, #b3261e);
+                margin-top: 0.25rem;
+                margin-bottom: 0.5rem;
+                word-break: break-all;
+            }
         `,
     ]
 
@@ -168,6 +218,17 @@ export class Settings extends LitElement {
 
     @property()
     private encodeErrors: string[] = []
+
+    private readonly modelCache = new OPFSModelCache()
+
+    @property()
+    private isModelDownloading: boolean = false
+
+    @property()
+    private downloadProgress: { loaded: number; total: number; file: string } | null = null
+
+    @property()
+    private downloadError: string | null = null
 
     @property()
     private timerEstimateText: string = ''
@@ -583,6 +644,86 @@ export class Settings extends LitElement {
                 </div>
             </section>
 
+            <!-- Experimental Section -->
+            <section class="settings-section experimental-section">
+                <h2>
+                    ${t('settingsExperimental')}
+                    <span class="experimental-badge">${t('settingsExperimentalBadge')}</span>
+                </h2>
+                <p class="experimental-warning">${t('settingsExperimentalWarning')}</p>
+                <div class="settings-group">
+                    <label
+                        class="switch-label"
+                        title="${t('settingsTranscriptionTitle', ModelDownloader.getFormattedTotalSize())}">
+                        ${t('settingsTranscription')}
+                        <md-switch
+                            id="transcription-switch"
+                            ?selected=${live((this.config.transcription?.enabled ?? false) || this.isModelDownloading)}
+                            @input=${this.updateTranscriptionEnabled}></md-switch>
+                    </label>
+                    <p class="settings-hint">${this.transcriptionHintText}</p>
+
+                    ${
+                        this.isModelDownloading
+                            ? html`
+                                  <div class="download-progress-area">
+                                      <p class="download-progress-label">
+                                          ${
+                                              this.downloadProgress
+                                                  ? `${this.downloadProgress.file} (${
+                                                        this.downloadProgress.total > 0
+                                                            ? Math.round(
+                                                                  (this.downloadProgress.loaded /
+                                                                      this.downloadProgress.total) *
+                                                                      100,
+                                                              )
+                                                            : 0
+                                                    }%)`
+                                                  : t('settingsTranscriptionDownloadPending')
+                                          }
+                                      </p>
+                                      ${
+                                          this.downloadProgress && this.downloadProgress.total > 0
+                                              ? html`
+                                                    <md-linear-progress
+                                                        .value=${
+                                                            this.downloadProgress.loaded / this.downloadProgress.total
+                                                        }></md-linear-progress>
+                                                `
+                                              : html`<md-linear-progress indeterminate></md-linear-progress>`
+                                      }
+                                  </div>
+                              `
+                            : this.downloadError
+                              ? html` <p class="download-error-message">${this.downloadError}</p> `
+                              : ''
+                    }
+                    ${
+                        this.config.transcription?.enabled && !this.isModelDownloading
+                            ? html`
+                                  <div>
+                                      <label for="transcription-language" class="field-label">
+                                          ${t('settingsTranscriptionLanguage')}
+                                      </label>
+                                      <md-filled-select
+                                          id="transcription-language"
+                                          .value=${this.config.transcription.language}
+                                          @input=${this.updateProp('transcription', 'language')}>
+                                          ${TRANSCRIPTION_LANGUAGES.map(
+                                              lang => html`
+                                                  <md-select-option value=${lang.value}>
+                                                      <div slot="headline">${lang.label}</div>
+                                                  </md-select-option>
+                                              `,
+                                          )}
+                                      </md-filled-select>
+                                  </div>
+                              `
+                            : ''
+                    }
+                </div>
+            </section>
+
             <section class="settings-section">
                 <h2>${t('settingsSync')}</h2>
                 <div class="settings-group">
@@ -751,6 +892,15 @@ export class Settings extends LitElement {
                     this.config[key1] = e.target.value
                     applyTheme(e.target.value)
                     break
+                case 'transcription':
+                    if (key2 == null) return
+                    switch (key2) {
+                        case 'language':
+                            if (!(e.target instanceof MdFilledSelect)) return
+                            this.config[key1][key2] = e.target.value
+                            break
+                    }
+                    break
             }
 
             this.requestUpdate('config', oldVal)
@@ -770,6 +920,17 @@ export class Settings extends LitElement {
                 await this.validateEncoding()
             }
         }
+    }
+
+    private get transcriptionHintText(): string {
+        const modelSize = ModelDownloader.getFormattedTotalSize()
+        if (this.isModelDownloading) {
+            return t('settingsTranscriptionDownloadingHint')
+        }
+        if (this.config.transcription?.enabled) {
+            return t('settingsTranscriptionDisableWarning', modelSize)
+        }
+        return t('settingsTranscriptionEnableHint', modelSize)
     }
 
     private get audioSettingsEnabled(): boolean {
@@ -993,12 +1154,134 @@ export class Settings extends LitElement {
         this.timerEstimateIntervalId = setInterval(compute, 60_000)
     }
 
+    private messageListener?: (message: Message) => void
+
+    override connectedCallback() {
+        super.connectedCallback()
+
+        this.messageListener = (message: Message) => {
+            switch (message.type) {
+                case 'model-download-status-response':
+                    if (message.isDownloading) {
+                        this.isModelDownloading = true
+                        if (message.progress) {
+                            this.downloadProgress = {
+                                loaded: message.progress.loaded,
+                                total: message.progress.total,
+                                file: message.progress.file,
+                            }
+                        }
+                    } else if (this.isModelDownloading) {
+                        this.isModelDownloading = false
+                        this.downloadProgress = null
+                    }
+                    this.requestUpdate()
+                    break
+                case 'model-download-progress':
+                    this.downloadProgress = {
+                        loaded: message.loaded,
+                        total: message.total,
+                        file: message.file,
+                    }
+                    this.isModelDownloading = true
+                    this.requestUpdate()
+                    break
+                case 'model-download-complete':
+                    this.isModelDownloading = false
+                    this.downloadProgress = null
+                    this.config.transcription.enabled = true
+                    Settings.setConfiguration(this.config)
+                    Settings.syncConfiguration(this.config)
+                    this.requestUpdate()
+                    break
+                case 'model-download-error':
+                    this.isModelDownloading = false
+                    this.downloadProgress = null
+                    // ユーザーによる意図的なキャンセル（トグルOFF）の場合はエラーを抑制する
+                    if (!this.isUserCancellingDownload && message.error !== 'Model download aborted') {
+                        this.downloadError = message.error
+                    }
+                    this.isUserCancellingDownload = false
+                    this.config.transcription.enabled = false
+                    Settings.setConfiguration(this.config)
+                    Settings.syncConfiguration(this.config)
+                    this.requestUpdate()
+                    break
+            }
+        }
+        chrome.runtime.onMessage.addListener(this.messageListener)
+
+        this.checkModelDownloadStatus()
+    }
+
     override disconnectedCallback() {
         super.disconnectedCallback()
+        if (this.messageListener) {
+            chrome.runtime.onMessage.removeListener(this.messageListener)
+        }
         if (this.timerEstimateIntervalId != null) {
             clearInterval(this.timerEstimateIntervalId)
             this.timerEstimateIntervalId = null
         }
+    }
+
+    private async checkModelDownloadStatus() {
+        try {
+            await chrome.runtime.sendMessage({ type: 'query-model-download-status' })
+        } catch (e) {
+            console.warn('Failed to query model download status:', e)
+        }
+    }
+
+    /** ユーザーが意図的にトグルOFFでキャンセルしたことを示すフラグ（エラー抑制用） */
+    private isUserCancellingDownload = false
+
+    private async updateTranscriptionEnabled(e: Event) {
+        if (!(e.target instanceof MdSwitch)) return
+        const enabled = e.target.selected
+
+        if (enabled) {
+            // トグルON: モデルがキャッシュ済みならそのまま有効化、未キャッシュなら即ダウンロード開始
+            this.downloadError = null
+            const isCached = await this.modelCache.hasCache()
+            if (!isCached) {
+                this.isModelDownloading = true
+                this.downloadProgress = null
+                this.requestUpdate()
+                try {
+                    await chrome.runtime.sendMessage({ type: 'start-model-download' })
+                } catch (err) {
+                    console.warn('Failed to send start-model-download message:', err)
+                    this.isModelDownloading = false
+                    this.downloadProgress = null
+                    this.downloadError = err instanceof Error ? err.message : String(err)
+                    this.requestUpdate()
+                }
+                return
+            }
+        } else if (this.isModelDownloading) {
+            // トグルOFF（ダウンロード中）: ユーザーキャンセル
+            this.isUserCancellingDownload = true
+            this.isModelDownloading = false
+            this.downloadProgress = null
+            this.downloadError = null
+            this.requestUpdate()
+            try {
+                await chrome.runtime.sendMessage({ type: 'cancel-model-download' })
+            } catch (err) {
+                console.warn('Failed to send cancel-model-download message:', err)
+            }
+        } else {
+            // トグルOFF（キャッシュ済み or 無効状態）: キャッシュ削除
+            await this.modelCache.clear()
+            this.requestUpdate()
+        }
+
+        const oldVal = { ...this.config }
+        this.config.transcription.enabled = enabled
+        this.requestUpdate('config', oldVal)
+        Settings.setConfiguration(this.config)
+        await Settings.syncConfiguration(this.config)
     }
 }
 

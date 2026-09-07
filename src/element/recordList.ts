@@ -39,6 +39,7 @@ export interface RecordEntry {
     subFiles: SubFileInfo[] // Related audio separation files from IndexedDB
     subFilesSize: number // Total size of sub-files in bytes
     thumbnailFileName?: string
+    hasTranscription?: boolean
 }
 
 /**
@@ -141,6 +142,23 @@ export class RecordList extends LitElement {
             border-radius: 4px;
             flex-shrink: 0;
             overflow: hidden;
+            position: relative;
+        }
+        .cc-badge {
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            background: rgba(0, 0, 0, 0.75);
+            color: #ffffff;
+            font-size: 0.6875rem;
+            font-weight: 700;
+            padding: 2px 5px;
+            border-radius: 3px;
+            letter-spacing: 0.05em;
+            pointer-events: none;
+            line-height: 1;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            z-index: 1;
         }
         .thumbnail-container img {
             width: 100%;
@@ -243,6 +261,24 @@ export class RecordList extends LitElement {
     // NOTE: Must not return true or a truthy value (e.g. Promise from async function)
     // to avoid interfering with sendMessage responses from other contexts.
     private handleMessage = (message: Message) => {
+        if (message.type === 'transcription-complete') {
+            const target = this.records.find(r => r.path === message.path)
+            if (target) {
+                const oldVal = [...this.records]
+                target.hasTranscription = true
+                this.requestUpdate('records', oldVal)
+            }
+            return
+        }
+        if (message.type === 'transcription-deleted') {
+            const target = this.records.find(r => r.path === message.path)
+            if (target) {
+                const oldVal = [...this.records]
+                target.hasTranscription = false
+                this.requestUpdate('records', oldVal)
+            }
+            return
+        }
         if (message.type !== 'recording-state') return
         ;(async () => {
             const recordingState = message.data
@@ -321,6 +357,11 @@ export class RecordList extends LitElement {
                             ?checked=${record.selected}
                             @input=${this.selectRecord(record)}></md-checkbox>
                         <div class="thumbnail-container">
+                            ${
+                                record.hasTranscription
+                                    ? html`<span class="cc-badge" title="${t('recordListHasTranscription')}">CC</span>`
+                                    : ''
+                            }
                             ${
                                 record.isRecording
                                     ? html`<div class="thumbnail-recording">${t('recordListThumbnailRecording')}</div>`
@@ -416,7 +457,10 @@ export class RecordList extends LitElement {
                                 : ''
                         }
                     </div>
-                    <md-filled-icon-button slot="end" ?disabled=${record.isRecording} @click=${this.playRecord(record)}>
+                    <md-filled-icon-button
+                        slot="end"
+                        ?disabled=${record.isRecording || record.isCanceled}
+                        @click=${this.playRecord(record)}>
                         <md-icon>play_arrow</md-icon>
                     </md-filled-icon-button>
                 </md-list-item>`
@@ -498,6 +542,7 @@ export class RecordList extends LitElement {
             subFiles: meta.subFiles ?? [],
             subFilesSize: meta.subFilesSize ?? 0,
             thumbnailFileName: meta.thumbnailFileName,
+            hasTranscription: meta.hasTranscription ?? false,
         }))
 
         const oldVal = [...this.records]
@@ -592,8 +637,8 @@ export class RecordList extends LitElement {
     }
     private playRecord(record: RecordEntry) {
         return () => {
-            const fileUrl = getRecordingFileUrl(record.path)
-            window.open(fileUrl, '_blank', 'popup=true')
+            const playerUrl = chrome.runtime.getURL('player.html') + `?path=${encodeURIComponent(record.path ?? '')}`
+            window.open(playerUrl, '_blank', 'popup=true,width=1200,height=760')
         }
     }
     private selectRecord(record: RecordEntry) {

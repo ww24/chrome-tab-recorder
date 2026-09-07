@@ -12,6 +12,8 @@ import { getMimeTypeFromExtension } from './mime'
 import { parseRangeHeader, resolveByteRange, generateBoundary, buildMultipartByteRangesBody } from './range'
 import type { ResolvedRange } from './range'
 import type { Resolution, VideoRecordingMode } from './configuration'
+import { isTranscriptionResult } from './transcription/types'
+import { segmentsToVTT, segmentsToSRT } from './transcription/vtt'
 
 const API_PREFIX = '/api/'
 
@@ -38,7 +40,7 @@ export function flushStalePersist(): Promise<void> {
 /**
  * Parse API path and extract route information
  */
-export function parseApiPath(pathname: string): { route: string; name?: string } | null {
+export function parseApiPath(pathname: string): { route: string; name?: string; ext?: string | null } | null {
     if (!pathname.startsWith(API_PREFIX)) return null
 
     const path = pathname.slice(API_PREFIX.length)
@@ -51,6 +53,20 @@ export function parseApiPath(pathname: string): { route: string; name?: string }
     // GET /api/recordings
     if (path === 'recordings') {
         return { route: 'recordings-list' }
+    }
+
+    // /api/recordings/:name/transcription(\.vtt|\.srt)?
+    const transcriptionMatch = path.match(/^recordings\/(.+)\/transcription(\.vtt|\.srt)?$/)
+    if (transcriptionMatch) {
+        let name: string
+        try {
+            name = decodeURIComponent(transcriptionMatch[1])
+        } catch {
+            return null
+        }
+        if (name.includes('/') || name.includes('\\')) return null
+        const ext = transcriptionMatch[2] ?? null
+        return { route: 'transcription', name, ext }
     }
 
     // /api/recordings/:name
@@ -184,6 +200,7 @@ export async function handleApiRequest(
                             status,
                             subFiles: r.subFiles,
                             subFilesSize,
+                            hasTranscription: r.transcription != null,
                             ...(thumbnailFileName ? { thumbnailFileName } : {}),
                         }
                     }),
@@ -198,6 +215,108 @@ export async function handleApiRequest(
                     status: 200,
                     headers: { 'Content-Type': 'application/json' },
                 })
+            }
+
+            case 'transcription': {
+                const name = parsed.name!
+                const recordedAt = parseRecordedAt(name)
+                const record = recordedAt != null ? await recordingDB.get(recordedAt) : undefined
+                if (record == null || record.mainFilePath !== name) {
+                    return new Response(JSON.stringify({ error: 'Invalid recording name' }), {
+                        status: 404,
+                        headers: { 'Content-Type': 'application/json' },
+                    })
+                }
+
+                if (parsed.ext === '.vtt' || parsed.ext === '.srt') {
+                    if (request.method !== 'GET') {
+                        return new Response(JSON.stringify({ error: 'Method Not Allowed' }), {
+                            status: 405,
+                            headers: { 'Content-Type': 'application/json' },
+                        })
+                    }
+                    if (!record?.transcription) {
+                        return new Response(JSON.stringify({ error: 'Transcription not found' }), {
+                            status: 404,
+                            headers: { 'Content-Type': 'application/json' },
+                        })
+                    }
+
+                    const format = parsed.ext === '.vtt' ? 'vtt' : 'srt'
+                    const body =
+                        format === 'vtt'
+                            ? segmentsToVTT(record.transcription.segments)
+                            : segmentsToSRT(record.transcription.segments)
+
+                    const mimeType = format === 'vtt' ? 'text/vtt' : 'application/x-subrip'
+                    const headers: Record<string, string> = { 'Content-Type': `${mimeType}; charset=utf-8` }
+
+                    if (url.searchParams.get('download') === 'true') {
+                        const baseName = name.replace(/\.[^.]+$/, '')
+                        const fileName = `${baseName}.${format}`
+                        const encoded = encodeURIComponent(fileName).replace(/'/g, '%27')
+                        headers['Content-Disposition'] = `attachment; filename*=UTF-8''${encoded}`
+                    }
+
+                    return new Response(body, { status: 200, headers })
+                }
+
+                switch (request.method) {
+                    case 'GET': {
+                        if (!record?.transcription) {
+                            return new Response(JSON.stringify({ error: 'Transcription not found' }), {
+                                status: 404,
+                                headers: { 'Content-Type': 'application/json' },
+                            })
+                        }
+                        return new Response(JSON.stringify(record.transcription), {
+                            status: 200,
+                            headers: { 'Content-Type': 'application/json' },
+                        })
+                    }
+                    case 'PUT': {
+                        if (!record) {
+                            return new Response(JSON.stringify({ error: 'Recording not found' }), {
+                                status: 404,
+                                headers: { 'Content-Type': 'application/json' },
+                            })
+                        }
+                        let body: unknown
+                        try {
+                            body = await request.json()
+                        } catch {
+                            return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
+                                status: 400,
+                                headers: { 'Content-Type': 'application/json' },
+                            })
+                        }
+                        if (!isTranscriptionResult(body)) {
+                            return new Response(JSON.stringify({ error: 'Invalid transcription payload' }), {
+                                status: 400,
+                                headers: { 'Content-Type': 'application/json' },
+                            })
+                        }
+                        record.transcription = body
+                        await recordingDB.put(record)
+                        return new Response(null, { status: 204 })
+                    }
+                    case 'DELETE': {
+                        if (!record) {
+                            return new Response(JSON.stringify({ error: 'Recording not found' }), {
+                                status: 404,
+                                headers: { 'Content-Type': 'application/json' },
+                            })
+                        }
+                        record.transcription = undefined
+                        await recordingDB.put(record)
+                        return new Response(null, { status: 204 })
+                    }
+                    default:
+                        return new Response(JSON.stringify({ error: 'Method Not Allowed' }), {
+                            status: 405,
+                            headers: { 'Content-Type': 'application/json' },
+                        })
+                }
             }
 
             case 'recording': {

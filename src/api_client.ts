@@ -1,5 +1,6 @@
 import type { RecordingMetadata, StorageEstimateInfo, ListRecordingsOptions } from './storage'
 import type { ClaimClientsMessage } from './message'
+import type { TranscriptionResult } from './transcription/types'
 
 const API_BASE = '/api'
 const CLAIM_TIMEOUT_MS = 2000
@@ -77,6 +78,13 @@ async function ensureControlled(): Promise<void> {
  */
 export class RecordingApiClient {
     /**
+     * Ensure the page is controlled by the service worker
+     */
+    async ensureControlled(): Promise<void> {
+        await ensureControlled()
+    }
+
+    /**
      * List all recordings
      * @param options - Optional listing options including sort order
      */
@@ -126,6 +134,56 @@ export class RecordingApiClient {
         if (!response.ok) {
             throw new Error(`Failed to delete recording: ${response.status}`)
         }
+    }
+
+    /**
+     * Get transcription for a recording
+     */
+    async getTranscription(name: string): Promise<TranscriptionResult | null> {
+        await ensureControlled()
+        const encodedName = encodeURIComponent(name)
+        const response = await fetch(`${API_BASE}/recordings/${encodedName}/transcription`)
+        if (response.status === 404) {
+            return null
+        }
+        if (!response.ok) {
+            throw new Error(`Failed to get transcription: ${response.status}`)
+        }
+        return response.json()
+    }
+
+    /**
+     * Save transcription for a recording
+     */
+    async saveTranscription(name: string, transcription: TranscriptionResult): Promise<void> {
+        await ensureControlled()
+        const encodedName = encodeURIComponent(name)
+        const response = await fetch(`${API_BASE}/recordings/${encodedName}/transcription`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(transcription),
+        })
+        if (response.status === 204 || response.ok) {
+            return
+        }
+        throw new Error(`Failed to save transcription: ${response.status}`)
+    }
+
+    /**
+     * Delete transcription for a recording
+     */
+    async deleteTranscription(name: string): Promise<void> {
+        await ensureControlled()
+        const encodedName = encodeURIComponent(name)
+        const response = await fetch(`${API_BASE}/recordings/${encodedName}/transcription`, {
+            method: 'DELETE',
+        })
+        if (response.status === 204 || response.ok) {
+            return
+        }
+        throw new Error(`Failed to delete transcription: ${response.status}`)
     }
 
     /**

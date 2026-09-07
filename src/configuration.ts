@@ -9,6 +9,7 @@ import {
     QUALITY_LOW,
 } from 'mediabunny'
 import type { OutputFormat, Quality } from 'mediabunny'
+import { getDefaultTranscriptionLanguage } from './transcription/languages'
 
 export interface Resolution {
     width: number
@@ -268,7 +269,7 @@ export function isAudioOnly(mode: VideoRecordingMode): boolean {
 }
 
 // Configuration type for sync storage (excludes device-specific settings)
-export type SyncConfiguration = Omit<Configuration, 'microphone' | 'cropping'>
+export type SyncConfiguration = Omit<Configuration, 'microphone' | 'cropping' | 'transcription'>
 
 /**
  * Resolve the container format for separated audio files.
@@ -287,6 +288,11 @@ export function audioSeparationContainer(audioCodec: AudioCodecType): ContainerF
     }
 }
 
+export interface Transcription {
+    enabled: boolean
+    language: string
+}
+
 export type RecordingTimerReport = { enabled: boolean; durationMinutes?: number; skipStopConfirmation?: boolean }
 
 export type ConfigurationReport = Pick<
@@ -300,7 +306,7 @@ export type ConfigurationReport = Pick<
     | 'uiTheme'
 > & { videoFormat: VideoFormatReport } & { microphone: Omit<Microphone, 'deviceId'> } & {
     cropping: Pick<CroppingConfig, 'enabled'> & { region: Pick<CropRegion, 'width' | 'height'> }
-} & { recordingTimer: RecordingTimerReport }
+} & { recordingTimer: RecordingTimerReport } & { transcription: Transcription }
 
 export class Configuration {
     public static readonly key = 'settings'
@@ -319,6 +325,7 @@ export class Configuration {
     recordingTimer: RecordingTimer
     uiTheme: UITheme
     hasAgreedTerms: boolean
+    transcription: Transcription
     constructor() {
         this.windowSize = {
             width: 1920,
@@ -372,6 +379,10 @@ export class Configuration {
         }
         this.uiTheme = 'auto'
         this.hasAgreedTerms = false
+        this.transcription = {
+            enabled: false,
+            language: getDefaultTranscriptionLanguage(),
+        }
     }
     static restoreDefault({ userId, hasAgreedTerms }: Configuration): Configuration {
         const config = new Configuration()
@@ -379,7 +390,7 @@ export class Configuration {
     }
     static filterForSync(config: Configuration): SyncConfiguration {
         // Exclude microphone and cropping from sync as it depends on device-specific information
-        const { microphone: _m, cropping: _c, ...rest } = config
+        const { microphone: _m, cropping: _c, transcription: _t, ...rest } = config
         return { ...rest }
     }
     static filterForReport(config: Configuration): ConfigurationReport {
@@ -407,6 +418,7 @@ export class Configuration {
             recordingSortOrder,
             audioSeparation,
             uiTheme,
+            transcription,
         } = config
         return {
             windowSize,
@@ -423,6 +435,7 @@ export class Configuration {
             audioSeparation,
             recordingTimer,
             uiTheme,
+            transcription: { ...transcription },
         }
     }
     static screenRecordingSize(screenRecordingSize: ScreenRecordingSize, base: Resolution): Resolution {
