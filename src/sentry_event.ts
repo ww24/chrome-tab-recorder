@@ -51,7 +51,7 @@ export interface UnexpectedStopEvent {
 export interface ClickExternalLinkEvent {
     type: 'click_external_link'
     tags: {
-        link: 'support' | 'review'
+        link: 'support' | 'review' | 'terms' | 'privacy'
     }
 }
 
