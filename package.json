@@ -9,6 +9,7 @@
     "watch": "vite build --watch --mode development",
     "lint": "oxlint docs scripts src tests *.ts",
     "lint:fix": "npm run lint -- --fix",
+    "lint:ts": "npx tsc --noEmit --skipLibCheck",
     "fmt": "oxfmt docs scripts src tests *.ts",
     "fmt:check": "npm run fmt -- --check",
     "test": "vitest run --project node",
