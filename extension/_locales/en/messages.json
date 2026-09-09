@@ -842,7 +842,7 @@
         "message": "Transcription"
     },
     "settingsTranscriptionTitle": {
-        "message": "Enable AI-powered transcription (requires ~$SIZE$ model download)",
+        "message": "Enable transcription (requires ~$SIZE$ model download)",
         "description": "Tooltip for transcription switch",
         "placeholders": {
             "size": {

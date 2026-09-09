@@ -636,7 +636,7 @@
         "message": "文字起こし"
     },
     "settingsTranscriptionTitle": {
-        "message": "AI 文字起こし機能を有効化 (約$SIZE$のモデルダウンロードが必要)",
+        "message": "文字起こし機能を有効化 (約$SIZE$のモデルダウンロードが必要)",
         "placeholders": {
             "size": {
                 "content": "$1",
