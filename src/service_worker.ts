@@ -14,6 +14,7 @@ import type {
     RecordingStateMessage,
     CancelRecordingMessage,
     SentryEventMessage,
+    CloseOffscreenIfIdleMessage,
 } from './message'
 import { TIMER_STOP_CONFIRM_PENDING_KEY, TIMER_STOP_TRIGGER_KEY } from './message'
 import { Configuration, Resolution } from './configuration'
@@ -322,8 +323,9 @@ async function stopRecording(trigger: Trigger, skipConfirmation = false) {
     const config = await getConfiguration()
     if (config.openOptionPage) await chrome.runtime.openOptionsPage()
 
-    // Close offscreen document
-    await chrome.offscreen.closeDocument()
+    // Request offscreen document to close itself if no tasks (e.g. transcription) are active
+    const closeMsg: CloseOffscreenIfIdleMessage = { type: 'close-offscreen-if-idle' }
+    await chrome.runtime.sendMessage(closeMsg)
 }
 
 async function cancelRecording(error: string) {
@@ -340,8 +342,9 @@ async function cancelRecording(error: string) {
     await broadcastRecordingState()
     await updateRecordingIndications()
 
-    // Close offscreen document
-    await chrome.offscreen.closeDocument()
+    // Request offscreen document to close itself if no tasks (e.g. transcription) are active
+    const closeMsg: CloseOffscreenIfIdleMessage = { type: 'close-offscreen-if-idle' }
+    await chrome.runtime.sendMessage(closeMsg)
 
     if (error === '') return
     // Open option page to show the error
@@ -466,6 +469,11 @@ const messageHandlerDeps: ServiceWorkerDeps = {
     resizeWindow,
     storageSyncSet: (key, value) => storage.set(key, value),
     claimClients: () => self.clients.claim(),
+    isOffscreenDocumentOpen: async () => (await getOffscreenDocument()) != null,
+    ensureOffscreenDocument: async () => {
+        await createOffscreenDocument()
+    },
+    sendRuntimeMessage: msg => chrome.runtime.sendMessage(msg),
 }
 
 chrome.runtime.onMessage.addListener(

@@ -17,6 +17,9 @@ export interface ServiceWorkerDeps {
     resizeWindow: (resolution: Resolution) => Promise<void>
     storageSyncSet: (key: string, value: object) => Promise<void>
     claimClients: () => Promise<void>
+    isOffscreenDocumentOpen?: () => Promise<boolean>
+    ensureOffscreenDocument?: () => Promise<void>
+    sendRuntimeMessage?: (msg: Message) => Promise<unknown>
 }
 
 export type HandleMessageResult = {
@@ -48,8 +51,54 @@ export function handleMessage(message: Message, deps: ServiceWorkerDeps): Handle
             return { response: handleRequestRecordingState(deps), fireAndForget: true }
         case 'claim-clients':
             return { response: deps.claimClients(), fireAndForget: false }
+        case 'start-transcription':
+        case 'query-transcription-status':
+        case 'start-model-download':
+        case 'cancel-model-download':
+        case 'query-model-download-status':
+            return { response: handleForwardToOffscreen(message, deps), fireAndForget: true }
     }
     return null
+}
+
+async function handleForwardToOffscreen(message: Message, deps: ServiceWorkerDeps): Promise<void> {
+    if (!deps.ensureOffscreenDocument || !deps.isOffscreenDocumentOpen || !deps.sendRuntimeMessage) return
+    const isOpen = await deps.isOffscreenDocumentOpen()
+
+    switch (message.type) {
+        case 'start-transcription':
+        case 'start-model-download': {
+            if (!isOpen) {
+                await deps.ensureOffscreenDocument()
+                await deps.sendRuntimeMessage(message)
+            }
+            break
+        }
+        case 'query-transcription-status': {
+            if (!isOpen) {
+                await deps.sendRuntimeMessage({
+                    type: 'transcription-status-response',
+                    path: message.path,
+                    isTranscribing: false,
+                })
+            }
+            break
+        }
+        case 'query-model-download-status': {
+            if (!isOpen) {
+                await deps.sendRuntimeMessage({
+                    type: 'model-download-status-response',
+                    isDownloading: false,
+                    progress: null,
+                })
+            }
+            break
+        }
+        case 'cancel-model-download': {
+            // If offscreen document is not open, no download is active
+            break
+        }
+    }
 }
 
 async function handleResizeWindow(

@@ -60,3 +60,21 @@ export function formatElapsedTime(elapsedMs: number): string {
     const suffix = totalSeconds > MAX_SECONDS ? '+' : ''
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}${suffix}`
 }
+
+export function formatNum(num: number, dig: number): string {
+    return num.toLocaleString('en-US', {
+        maximumFractionDigits: dig,
+        minimumFractionDigits: dig,
+    })
+}
+
+export function formatFileSize(bytes: number, fractionDigits: number = 2): string {
+    const units = ['B', 'KB', 'MB', 'GB', 'TB']
+    let unitIndex = 0
+    let size = bytes
+    while (size >= 1024 && unitIndex < units.length - 1) {
+        size /= 1024
+        unitIndex++
+    }
+    return `${formatNum(size, unitIndex === 0 ? 0 : fractionDigits)} ${units[unitIndex]}`
+}

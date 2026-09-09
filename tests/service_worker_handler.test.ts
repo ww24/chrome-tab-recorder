@@ -327,3 +327,83 @@ describe('createMessageListener', () => {
         expect(sendResponse).not.toHaveBeenCalled()
     })
 })
+
+describe('handleForwardToOffscreen lifecycle', () => {
+    it('opens offscreen document and forwards start-transcription when not open', async () => {
+        const deps = createMockDeps({
+            isOffscreenDocumentOpen: vi.fn().mockResolvedValue(false),
+            ensureOffscreenDocument: vi.fn().mockResolvedValue(undefined),
+            sendRuntimeMessage: vi.fn().mockResolvedValue(undefined),
+        })
+        const msg: Message = { type: 'start-transcription', path: 'video-1000.webm' }
+        const result = handleMessage(msg, deps)
+        expect(result!.fireAndForget).toBe(true)
+        await result!.response
+
+        expect(deps.ensureOffscreenDocument).toHaveBeenCalledTimes(1)
+        expect(deps.sendRuntimeMessage).toHaveBeenCalledWith(msg)
+    })
+
+    it('does not call ensureOffscreenDocument for start-transcription when already open', async () => {
+        const deps = createMockDeps({
+            isOffscreenDocumentOpen: vi.fn().mockResolvedValue(true),
+            ensureOffscreenDocument: vi.fn().mockResolvedValue(undefined),
+            sendRuntimeMessage: vi.fn().mockResolvedValue(undefined),
+        })
+        const msg: Message = { type: 'start-transcription', path: 'video-1000.webm' }
+        const result = handleMessage(msg, deps)
+        await result!.response
+
+        expect(deps.ensureOffscreenDocument).not.toHaveBeenCalled()
+        expect(deps.sendRuntimeMessage).not.toHaveBeenCalled()
+    })
+
+    it('responds directly to query-transcription-status when offscreen document is not open', async () => {
+        const deps = createMockDeps({
+            isOffscreenDocumentOpen: vi.fn().mockResolvedValue(false),
+            ensureOffscreenDocument: vi.fn().mockResolvedValue(undefined),
+            sendRuntimeMessage: vi.fn().mockResolvedValue(undefined),
+        })
+        const msg: Message = { type: 'query-transcription-status', path: 'video-1000.webm' }
+        const result = handleMessage(msg, deps)
+        await result!.response
+
+        expect(deps.ensureOffscreenDocument).not.toHaveBeenCalled()
+        expect(deps.sendRuntimeMessage).toHaveBeenCalledWith({
+            type: 'transcription-status-response',
+            path: 'video-1000.webm',
+            isTranscribing: false,
+        })
+    })
+
+    it('responds directly to query-model-download-status when offscreen document is not open', async () => {
+        const deps = createMockDeps({
+            isOffscreenDocumentOpen: vi.fn().mockResolvedValue(false),
+            ensureOffscreenDocument: vi.fn().mockResolvedValue(undefined),
+            sendRuntimeMessage: vi.fn().mockResolvedValue(undefined),
+        })
+        const msg: Message = { type: 'query-model-download-status' }
+        const result = handleMessage(msg, deps)
+        await result!.response
+
+        expect(deps.ensureOffscreenDocument).not.toHaveBeenCalled()
+        expect(deps.sendRuntimeMessage).toHaveBeenCalledWith({
+            type: 'model-download-status-response',
+            isDownloading: false,
+            progress: null,
+        })
+    })
+
+    it('does not open offscreen document for cancel-model-download when not open', async () => {
+        const deps = createMockDeps({
+            isOffscreenDocumentOpen: vi.fn().mockResolvedValue(false),
+            ensureOffscreenDocument: vi.fn().mockResolvedValue(undefined),
+            sendRuntimeMessage: vi.fn().mockResolvedValue(undefined),
+        })
+        const msg: Message = { type: 'cancel-model-download' }
+        const result = handleMessage(msg, deps)
+        await result!.response
+
+        expect(deps.ensureOffscreenDocument).not.toHaveBeenCalled()
+    })
+})

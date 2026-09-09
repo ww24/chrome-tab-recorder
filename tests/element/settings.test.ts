@@ -270,4 +270,33 @@ describe('extension-settings', () => {
         const switchRows = shadowQueryAll(el, '.switch-label')
         expect(switchRows.length).toBeGreaterThanOrEqual(7)
     })
+
+    test('displays correct transcription hint text depending on state', async () => {
+        const screen = render(html`<extension-settings></extension-settings>`)
+        const el = screen.container.querySelector('extension-settings') as any
+        await elementUpdated(el)
+
+        // 1. Off state (default)
+        const expSection = shadowQuery(el, '.experimental-section')!
+        const hintEl = expSection.querySelector('.settings-hint')!
+        expect(hintEl.textContent?.trim()).toBe(
+            'When enabled, transcription works entirely within your local environment.\nApproximately 1.5 GB of model data will be downloaded, so please be mindful of your network environment.',
+        )
+
+        // 2. Downloading state
+        el.isModelDownloading = true
+        el.requestUpdate()
+        await elementUpdated(el)
+        expect(hintEl.textContent?.trim()).toBe('Disabling will cancel the model data download.')
+
+        // 3. Enabled & cached state
+        el.isModelDownloading = false
+        const config = Settings.getConfiguration()
+        config.transcription.enabled = true
+        Settings.setConfiguration(config)
+        el.config = config
+        el.requestUpdate()
+        await elementUpdated(el)
+        expect(hintEl.textContent?.trim()).toBe('Disabling will delete the cached model data (~1.5 GB).')
+    })
 })

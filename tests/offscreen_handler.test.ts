@@ -76,6 +76,7 @@ function createMockRecordingDB(): RecordingDB {
 function createMockDeps(overrides: Partial<OffscreenDeps> = {}): OffscreenDeps {
     const defaultConfig = new Configuration()
     const defaultVideoFile = new File(['video-data'], 'video-1000.webm', { type: 'video/webm' })
+    let locationHash = ''
     return {
         getRecordingInfo: vi.fn().mockReturnValue({
             videoFormat: defaultConfig.videoFormat,
@@ -89,10 +90,13 @@ function createMockDeps(overrides: Partial<OffscreenDeps> = {}): OffscreenDeps {
         sendException: vi.fn(),
         flush: vi.fn().mockResolvedValue(undefined),
         sendRuntimeMessage: vi.fn().mockResolvedValue(undefined),
-        getLocationHash: vi.fn().mockReturnValue(''),
-        setLocationHash: vi.fn(),
+        getLocationHash: vi.fn().mockImplementation(() => locationHash),
+        setLocationHash: vi.fn().mockImplementation(hash => {
+            locationHash = hash
+        }),
         recordingDB: createMockRecordingDB(),
         getVideoFile: vi.fn().mockResolvedValue(defaultVideoFile),
+        closeDocument: vi.fn(),
         ...overrides,
     }
 }
@@ -901,5 +905,339 @@ describe('pause/resume timer coordination', () => {
         await Promise.resolve()
 
         expect(deps.sendRuntimeMessage).toHaveBeenCalledWith({ type: 'timer-expired' })
+    })
+})
+
+// ---------- model download ----------
+
+describe('start-model-download', () => {
+    it('downloads model, logs duration to Sentry, and sends complete message', async () => {
+        const mockModelDownloader = {
+            download: vi.fn().mockImplementation(async (onProgress?: (p: any) => void) => {
+                onProgress?.({
+                    loaded: 50,
+                    total: 100,
+                    file: 'test.onnx',
+                    fileIndex: 1,
+                    totalFiles: 2,
+                })
+            }),
+            abort: vi.fn(),
+            clearCache: vi.fn().mockResolvedValue(undefined),
+            isDownloading: false,
+            getProgress: vi.fn().mockReturnValue(null),
+        }
+        const deps = createMockDeps({
+            modelDownloader: mockModelDownloader as any,
+        })
+        const handler = new OffscreenHandler(deps)
+
+        await handler.handleMessage({ type: 'start-model-download' })
+
+        expect(mockModelDownloader.download).toHaveBeenCalled()
+        expect(deps.sendRuntimeMessage).toHaveBeenCalledWith({
+            type: 'model-download-progress',
+            loaded: 50,
+            total: 100,
+            file: 'test.onnx',
+            fileIndex: 1,
+            totalFiles: 2,
+        })
+        expect(deps.sendEvent).toHaveBeenCalledWith({
+            type: 'model_download_complete',
+            metrics: {
+                totalMs: expect.any(Number),
+            },
+        })
+        expect(deps.sendRuntimeMessage).toHaveBeenCalledWith({
+            type: 'model-download-complete',
+        })
+    })
+
+    it('handles aborted model download without sending Sentry event', async () => {
+        const mockModelDownloader = {
+            download: vi.fn().mockRejectedValue(new Error('Model download aborted')),
+            abort: vi.fn(),
+            clearCache: vi.fn().mockResolvedValue(undefined),
+            isDownloading: false,
+            getProgress: vi.fn().mockReturnValue(null),
+        }
+        const deps = createMockDeps({
+            modelDownloader: mockModelDownloader as any,
+        })
+        const handler = new OffscreenHandler(deps)
+
+        await handler.handleMessage({ type: 'start-model-download' })
+
+        expect(mockModelDownloader.clearCache).toHaveBeenCalled()
+        expect(deps.sendEvent).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'model_download_complete' }))
+        expect(deps.sendRuntimeMessage).toHaveBeenCalledWith({
+            type: 'model-download-error',
+            error: 'Model download aborted',
+        })
+    })
+
+    it('handles model download failure with exception logging', async () => {
+        const downloadErr = new Error('Network error')
+        const mockModelDownloader = {
+            download: vi.fn().mockRejectedValue(downloadErr),
+            abort: vi.fn(),
+            clearCache: vi.fn().mockResolvedValue(undefined),
+            isDownloading: false,
+            getProgress: vi.fn().mockReturnValue(null),
+        }
+        const deps = createMockDeps({
+            modelDownloader: mockModelDownloader as any,
+        })
+        const handler = new OffscreenHandler(deps)
+
+        await handler.handleMessage({ type: 'start-model-download' })
+
+        expect(deps.sendException).toHaveBeenCalledWith(downloadErr, {
+            exceptionSource: 'offscreen.handleStartModelDownload',
+        })
+        expect(deps.sendRuntimeMessage).toHaveBeenCalledWith({
+            type: 'model-download-error',
+            error: 'Network error',
+        })
+    })
+
+    it('does nothing when modelDownloader is not provided', async () => {
+        const deps = createMockDeps({ modelDownloader: undefined })
+        const handler = new OffscreenHandler(deps)
+
+        await handler.handleMessage({ type: 'start-model-download' })
+
+        expect(deps.sendEvent).not.toHaveBeenCalled()
+        expect(deps.sendRuntimeMessage).not.toHaveBeenCalled()
+    })
+})
+
+describe('cancel-model-download', () => {
+    it('aborts download and clears cache', async () => {
+        const mockModelDownloader = {
+            download: vi.fn(),
+            abort: vi.fn(),
+            clearCache: vi.fn().mockResolvedValue(undefined),
+            isDownloading: false,
+            getProgress: vi.fn().mockReturnValue(null),
+        }
+        const deps = createMockDeps({
+            modelDownloader: mockModelDownloader as any,
+        })
+        const handler = new OffscreenHandler(deps)
+
+        await handler.handleMessage({ type: 'cancel-model-download' })
+
+        expect(mockModelDownloader.abort).toHaveBeenCalled()
+        expect(mockModelDownloader.clearCache).toHaveBeenCalled()
+    })
+})
+
+describe('query-model-download-status', () => {
+    it('responds with download status and progress', async () => {
+        const progress = {
+            loaded: 100,
+            total: 200,
+            file: 'test.onnx',
+            fileIndex: 1,
+            totalFiles: 1,
+        }
+        const mockModelDownloader = {
+            download: vi.fn(),
+            abort: vi.fn(),
+            clearCache: vi.fn(),
+            isDownloading: true,
+            getProgress: vi.fn().mockReturnValue(progress),
+        }
+        const deps = createMockDeps({
+            modelDownloader: mockModelDownloader as any,
+        })
+        const handler = new OffscreenHandler(deps)
+
+        await handler.handleMessage({ type: 'query-model-download-status' })
+
+        expect(deps.sendRuntimeMessage).toHaveBeenCalledWith({
+            type: 'model-download-status-response',
+            isDownloading: true,
+            progress: {
+                loaded: 100,
+                total: 200,
+                file: 'test.onnx',
+                fileIndex: 1,
+                totalFiles: 1,
+            },
+        })
+    })
+})
+
+describe('offscreen document lifecycle (closeDocument)', () => {
+    it('does NOT close document immediately on stop-recording, but closes on subsequent close-offscreen-if-idle', async () => {
+        const deps = createMockDeps()
+        deps.setLocationHash('#recording')
+        const handler = new OffscreenHandler(deps)
+
+        await handler.handleMessage({ type: 'stop-recording', trigger: 'action-icon' })
+        expect(deps.closeDocument).not.toHaveBeenCalled()
+
+        await handler.handleMessage({ type: 'close-offscreen-if-idle' })
+        expect(deps.closeDocument).toHaveBeenCalledTimes(1)
+    })
+
+    it('does NOT close document on close-offscreen-if-idle when transcription is in progress', async () => {
+        const mockTranscriptionSession = {
+            isTranscribing: vi.fn().mockReturnValue(true),
+            hasActiveTasks: vi.fn().mockReturnValue(true),
+            transcribe: vi.fn(),
+        }
+        const deps = createMockDeps({
+            transcriptionSession: mockTranscriptionSession as any,
+        })
+        deps.setLocationHash('#recording')
+        const handler = new OffscreenHandler(deps)
+
+        await handler.handleMessage({ type: 'stop-recording', trigger: 'action-icon' })
+        expect(deps.closeDocument).not.toHaveBeenCalled()
+
+        await handler.handleMessage({ type: 'close-offscreen-if-idle' })
+        expect(deps.closeDocument).not.toHaveBeenCalled()
+    })
+
+    it('does NOT close document on close-offscreen-if-idle when model download is in progress', async () => {
+        const mockModelDownloader = {
+            isDownloading: true,
+            download: vi.fn(),
+            abort: vi.fn(),
+            clearCache: vi.fn(),
+            getProgress: vi.fn().mockReturnValue(null),
+        }
+        const deps = createMockDeps({
+            modelDownloader: mockModelDownloader as any,
+        })
+        deps.setLocationHash('#recording')
+        const handler = new OffscreenHandler(deps)
+
+        await handler.handleMessage({ type: 'stop-recording', trigger: 'action-icon' })
+        expect(deps.closeDocument).not.toHaveBeenCalled()
+
+        await handler.handleMessage({ type: 'close-offscreen-if-idle' })
+        expect(deps.closeDocument).not.toHaveBeenCalled()
+    })
+
+    it('does NOT close document immediately on cancel-recording, but closes on subsequent close-offscreen-if-idle', async () => {
+        const deps = createMockDeps()
+        deps.setLocationHash('#recording')
+        const handler = new OffscreenHandler(deps)
+
+        await handler.handleMessage({ type: 'cancel-recording' })
+        expect(deps.closeDocument).not.toHaveBeenCalled()
+
+        await handler.handleMessage({ type: 'close-offscreen-if-idle' })
+        expect(deps.closeDocument).toHaveBeenCalledTimes(1)
+    })
+
+    it('does NOT close document on cancel-recording followed by close-offscreen-if-idle when transcription is in progress', async () => {
+        const mockTranscriptionSession = {
+            isTranscribing: vi.fn().mockReturnValue(true),
+            hasActiveTasks: vi.fn().mockReturnValue(true),
+            transcribe: vi.fn(),
+        }
+        const deps = createMockDeps({
+            transcriptionSession: mockTranscriptionSession as any,
+        })
+        deps.setLocationHash('#recording')
+        const handler = new OffscreenHandler(deps)
+
+        await handler.handleMessage({ type: 'cancel-recording' })
+        expect(deps.closeDocument).not.toHaveBeenCalled()
+
+        await handler.handleMessage({ type: 'close-offscreen-if-idle' })
+        expect(deps.closeDocument).not.toHaveBeenCalled()
+    })
+
+    it('closes document when transcription completes and no other tasks are active', async () => {
+        const mockTranscriptionSession = {
+            isTranscribing: vi.fn().mockReturnValue(false),
+            hasActiveTasks: vi.fn().mockReturnValue(false),
+            transcribe: vi.fn().mockResolvedValue(undefined),
+        }
+        const deps = createMockDeps({
+            transcriptionSession: mockTranscriptionSession as any,
+        })
+        const handler = new OffscreenHandler(deps)
+
+        await handler.handleMessage({ type: 'start-transcription', path: 'video-1000.webm' })
+
+        expect(mockTranscriptionSession.transcribe).toHaveBeenCalledWith('video-1000.webm')
+        expect(deps.closeDocument).toHaveBeenCalledTimes(1)
+    })
+
+    it('does NOT close document when transcription completes but recording is active', async () => {
+        const mockTranscriptionSession = {
+            isTranscribing: vi.fn().mockReturnValue(false),
+            hasActiveTasks: vi.fn().mockReturnValue(false),
+            transcribe: vi.fn().mockResolvedValue(undefined),
+        }
+        const deps = createMockDeps({
+            getLocationHash: vi.fn().mockReturnValue('#recording'),
+            transcriptionSession: mockTranscriptionSession as any,
+        })
+        const handler = new OffscreenHandler(deps)
+
+        await handler.handleMessage({ type: 'start-transcription', path: 'video-1000.webm' })
+
+        expect(deps.closeDocument).not.toHaveBeenCalled()
+    })
+
+    it('closes document when transcription fails and no other tasks are active', async () => {
+        const mockTranscriptionSession = {
+            isTranscribing: vi.fn().mockReturnValue(false),
+            hasActiveTasks: vi.fn().mockReturnValue(false),
+            transcribe: vi.fn().mockRejectedValue(new Error('GPU failed')),
+        }
+        const deps = createMockDeps({
+            transcriptionSession: mockTranscriptionSession as any,
+        })
+        const handler = new OffscreenHandler(deps)
+
+        await handler.handleMessage({ type: 'start-transcription', path: 'video-1000.webm' })
+
+        expect(deps.closeDocument).toHaveBeenCalledTimes(1)
+    })
+
+    it('closes document when model download completes and no other tasks are active', async () => {
+        const mockModelDownloader = {
+            isDownloading: false,
+            download: vi.fn().mockResolvedValue(undefined),
+            abort: vi.fn(),
+            clearCache: vi.fn(),
+            getProgress: vi.fn().mockReturnValue(null),
+        }
+        const deps = createMockDeps({
+            modelDownloader: mockModelDownloader as any,
+        })
+        const handler = new OffscreenHandler(deps)
+
+        await handler.handleMessage({ type: 'start-model-download' })
+
+        expect(deps.closeDocument).toHaveBeenCalledTimes(1)
+    })
+
+    it('closes document when model download is cancelled and no other tasks are active', async () => {
+        const mockModelDownloader = {
+            isDownloading: false,
+            download: vi.fn(),
+            abort: vi.fn(),
+            clearCache: vi.fn().mockResolvedValue(undefined),
+            getProgress: vi.fn().mockReturnValue(null),
+        }
+        const deps = createMockDeps({
+            modelDownloader: mockModelDownloader as any,
+        })
+        const handler = new OffscreenHandler(deps)
+
+        await handler.handleMessage({ type: 'cancel-model-download' })
+
+        expect(deps.closeDocument).toHaveBeenCalledTimes(1)
     })
 })

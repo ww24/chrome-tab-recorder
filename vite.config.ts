@@ -1,6 +1,6 @@
-import { readFileSync, writeFileSync } from 'fs'
+import { readFileSync, writeFileSync, existsSync, appendFileSync } from 'fs'
 import path from 'path'
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 
 const pkg = JSON.parse(readFileSync(path.resolve(import.meta.dirname, 'package.json'), 'utf-8'))
 const manifestPath = path.resolve(import.meta.dirname, 'extension/manifest.json')
@@ -20,7 +20,24 @@ if (!sentryDSN) {
     console.warn('WARNING: SENTRY_DSN environment variable is not set. Sentry error reporting will be disabled.')
 }
 
+function appendModelLicensesPlugin(): Plugin {
+    return {
+        name: 'append-model-licenses',
+        closeBundle() {
+            const licenseFile = path.resolve(import.meta.dirname, 'extension/dist/dependencies-licenses.md')
+            const modelLicensesFile = path.resolve(import.meta.dirname, 'licenses/models-licenses.md')
+            if (existsSync(licenseFile) && existsSync(modelLicensesFile)) {
+                const modelLicenses = readFileSync(modelLicensesFile, 'utf-8')
+                appendFileSync(licenseFile, '\n' + modelLicenses)
+                console.log('Appended model licenses to dependencies-licenses.md')
+            }
+        },
+    }
+}
+
 export default defineConfig(({ mode }) => ({
+    base: '/dist/',
+    plugins: [appendModelLicensesPlugin()],
     build: {
         outDir: 'extension/dist',
         emptyOutDir: true,
@@ -29,6 +46,8 @@ export default defineConfig(({ mode }) => ({
                 offscreen: path.resolve(import.meta.dirname, 'src/offscreen.ts'),
                 option: path.resolve(import.meta.dirname, 'src/option.ts'),
                 service_worker: path.resolve(import.meta.dirname, 'src/service_worker.ts'),
+                transcription_worker: path.resolve(import.meta.dirname, 'src/transcription/worker.ts'),
+                player: path.resolve(import.meta.dirname, 'src/player.ts'),
             },
             output: {
                 entryFileNames: '[name].js',

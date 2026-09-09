@@ -79,6 +79,30 @@ describe('parseApiPath', () => {
             name: 'video-1000-thumbnail.webp',
         })
     })
+
+    it('should parse /api/recordings/:name/transcription', () => {
+        expect(parseApiPath('/api/recordings/video-1000.webm/transcription')).toEqual({
+            route: 'transcription',
+            name: 'video-1000.webm',
+            ext: null,
+        })
+    })
+
+    it('should parse /api/recordings/:name/transcription.vtt', () => {
+        expect(parseApiPath('/api/recordings/video-1000.webm/transcription.vtt')).toEqual({
+            route: 'transcription',
+            name: 'video-1000.webm',
+            ext: '.vtt',
+        })
+    })
+
+    it('should parse /api/recordings/:name/transcription.srt', () => {
+        expect(parseApiPath('/api/recordings/video-1000.webm/transcription.srt')).toEqual({
+            route: 'transcription',
+            name: 'video-1000.webm',
+            ext: '.srt',
+        })
+    })
 })
 
 // ---------- handleApiRequest – storage-estimate ----------
@@ -880,5 +904,294 @@ describe('handleApiRequest – recording-thumbnail', () => {
         const res = await handleApiRequest(req, storage, recordingState, recordingDB)
 
         expect(res.status).toBe(405)
+    })
+})
+
+// ---------- handleApiRequest – transcription ----------
+
+describe('handleApiRequest – transcription', () => {
+    const mockTranscription = {
+        segments: [{ startSec: 1.0, endSec: 3.5, text: 'Hello world' }],
+        transcribedAt: 123456789,
+        modelId: 'test-model',
+        language: 'japanese',
+    }
+
+    const baseRecord: RecordingRecord = {
+        recordedAt: 1000,
+        mainFilePath: 'video-1000.webm',
+        mimeType: 'video/webm',
+        title: 'video-1000.webm',
+        status: 'completed',
+        durationMs: 5000,
+        fileSize: 100,
+        subFiles: [],
+        transcription: mockTranscription,
+    }
+
+    it('should return transcription JSON on GET', async () => {
+        const recordingDB = createMockRecordingDB({
+            get: vi.fn().mockResolvedValue(baseRecord),
+        })
+        const storage = createMockStorage()
+        const req = new Request('https://ext.example/api/recordings/video-1000.webm/transcription')
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState, recordingDB)
+
+        expect(res.status).toBe(200)
+        expect(res.headers.get('Content-Type')).toBe('application/json')
+        expect(await res.json()).toEqual(mockTranscription)
+    })
+
+    it('should return 404 when transcription does not exist on GET', async () => {
+        const recordWithoutTrans: RecordingRecord = { ...baseRecord, transcription: undefined }
+        const recordingDB = createMockRecordingDB({
+            get: vi.fn().mockResolvedValue(recordWithoutTrans),
+        })
+        const storage = createMockStorage()
+        const req = new Request('https://ext.example/api/recordings/video-1000.webm/transcription')
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState, recordingDB)
+
+        expect(res.status).toBe(404)
+    })
+
+    it('should save transcription on PUT', async () => {
+        const recordWithoutTrans: RecordingRecord = { ...baseRecord, transcription: undefined }
+        const putMock = vi.fn().mockResolvedValue(undefined)
+        const recordingDB = createMockRecordingDB({
+            get: vi.fn().mockResolvedValue(recordWithoutTrans),
+            put: putMock,
+        })
+        const storage = createMockStorage()
+        const req = new Request('https://ext.example/api/recordings/video-1000.webm/transcription', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(mockTranscription),
+        })
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState, recordingDB)
+
+        expect(res.status).toBe(204)
+        expect(putMock).toHaveBeenCalledWith(
+            expect.objectContaining({
+                recordedAt: 1000,
+                transcription: mockTranscription,
+            }),
+        )
+    })
+
+    it('should save transcription with empty segments on PUT', async () => {
+        const recordWithoutTrans: RecordingRecord = { ...baseRecord, transcription: undefined }
+        const putMock = vi.fn().mockResolvedValue(undefined)
+        const recordingDB = createMockRecordingDB({
+            get: vi.fn().mockResolvedValue(recordWithoutTrans),
+            put: putMock,
+        })
+        const storage = createMockStorage()
+        const emptySegmentsTranscription = {
+            ...mockTranscription,
+            segments: [],
+        }
+        const req = new Request('https://ext.example/api/recordings/video-1000.webm/transcription', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(emptySegmentsTranscription),
+        })
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState, recordingDB)
+
+        expect(res.status).toBe(204)
+        expect(putMock).toHaveBeenCalledWith(
+            expect.objectContaining({
+                recordedAt: 1000,
+                transcription: emptySegmentsTranscription,
+            }),
+        )
+    })
+
+    it('should return 400 when body is invalid JSON on PUT', async () => {
+        const recordingDB = createMockRecordingDB({
+            get: vi.fn().mockResolvedValue(baseRecord),
+        })
+        const storage = createMockStorage()
+        const req = new Request('https://ext.example/api/recordings/video-1000.webm/transcription', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: '{ invalid json',
+        })
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState, recordingDB)
+
+        expect(res.status).toBe(400)
+        expect(await res.json()).toEqual({ error: 'Invalid JSON' })
+    })
+
+    it('should return 400 when body is not an object on PUT', async () => {
+        const recordingDB = createMockRecordingDB({
+            get: vi.fn().mockResolvedValue(baseRecord),
+        })
+        const storage = createMockStorage()
+        const req = new Request('https://ext.example/api/recordings/video-1000.webm/transcription', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify('plain-string'),
+        })
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState, recordingDB)
+
+        expect(res.status).toBe(400)
+        expect(await res.json()).toEqual({ error: 'Invalid transcription payload' })
+    })
+
+    it('should return 400 when segments is missing or not an array on PUT', async () => {
+        const recordingDB = createMockRecordingDB({
+            get: vi.fn().mockResolvedValue(baseRecord),
+        })
+        const storage = createMockStorage()
+        const req = new Request('https://ext.example/api/recordings/video-1000.webm/transcription', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                transcribedAt: 123456789,
+                modelId: 'test-model',
+                language: 'japanese',
+            }),
+        })
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState, recordingDB)
+
+        expect(res.status).toBe(400)
+        expect(await res.json()).toEqual({ error: 'Invalid transcription payload' })
+    })
+
+    it('should return 400 when a segment has invalid time range on PUT', async () => {
+        const recordingDB = createMockRecordingDB({
+            get: vi.fn().mockResolvedValue(baseRecord),
+        })
+        const storage = createMockStorage()
+        const invalidPayload = {
+            ...mockTranscription,
+            segments: [{ startSec: 5.0, endSec: 2.0, text: 'end before start' }],
+        }
+        const req = new Request('https://ext.example/api/recordings/video-1000.webm/transcription', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(invalidPayload),
+        })
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState, recordingDB)
+
+        expect(res.status).toBe(400)
+        expect(await res.json()).toEqual({ error: 'Invalid transcription payload' })
+    })
+
+    it('should return 400 when modelId or language is empty on PUT', async () => {
+        const recordingDB = createMockRecordingDB({
+            get: vi.fn().mockResolvedValue(baseRecord),
+        })
+        const storage = createMockStorage()
+        const invalidPayload = {
+            ...mockTranscription,
+            modelId: '',
+        }
+        const req = new Request('https://ext.example/api/recordings/video-1000.webm/transcription', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(invalidPayload),
+        })
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState, recordingDB)
+
+        expect(res.status).toBe(400)
+        expect(await res.json()).toEqual({ error: 'Invalid transcription payload' })
+    })
+
+    it('should return 400 when transcribedAt is negative or invalid on PUT', async () => {
+        const recordingDB = createMockRecordingDB({
+            get: vi.fn().mockResolvedValue(baseRecord),
+        })
+        const storage = createMockStorage()
+        const invalidPayload = {
+            ...mockTranscription,
+            transcribedAt: -1,
+        }
+        const req = new Request('https://ext.example/api/recordings/video-1000.webm/transcription', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(invalidPayload),
+        })
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState, recordingDB)
+
+        expect(res.status).toBe(400)
+        expect(await res.json()).toEqual({ error: 'Invalid transcription payload' })
+    })
+
+    it('should delete transcription on DELETE', async () => {
+        const putMock = vi.fn().mockResolvedValue(undefined)
+        const recordingDB = createMockRecordingDB({
+            get: vi.fn().mockResolvedValue({ ...baseRecord }),
+            put: putMock,
+        })
+        const storage = createMockStorage()
+        const req = new Request('https://ext.example/api/recordings/video-1000.webm/transcription', {
+            method: 'DELETE',
+        })
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState, recordingDB)
+
+        expect(res.status).toBe(204)
+        expect(putMock).toHaveBeenCalledWith(
+            expect.objectContaining({
+                recordedAt: 1000,
+                transcription: undefined,
+            }),
+        )
+    })
+
+    it('should serve WebVTT on GET .vtt', async () => {
+        const recordingDB = createMockRecordingDB({
+            get: vi.fn().mockResolvedValue(baseRecord),
+        })
+        const storage = createMockStorage()
+        const req = new Request('https://ext.example/api/recordings/video-1000.webm/transcription.vtt')
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState, recordingDB)
+
+        expect(res.status).toBe(200)
+        expect(res.headers.get('Content-Type')).toBe('text/vtt; charset=utf-8')
+        const text = await res.text()
+        expect(text).toContain('WEBVTT')
+        expect(text).toContain('Hello world')
+    })
+
+    it('should serve WebVTT with Content-Disposition on download=true', async () => {
+        const recordingDB = createMockRecordingDB({
+            get: vi.fn().mockResolvedValue(baseRecord),
+        })
+        const storage = createMockStorage()
+        const req = new Request('https://ext.example/api/recordings/video-1000.webm/transcription.vtt?download=true')
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState, recordingDB)
+
+        expect(res.status).toBe(200)
+        expect(res.headers.get('Content-Disposition')).toContain('attachment;')
+        expect(res.headers.get('Content-Disposition')).toContain('video-1000.vtt')
+    })
+
+    it('should serve SRT on GET .srt', async () => {
+        const recordingDB = createMockRecordingDB({
+            get: vi.fn().mockResolvedValue(baseRecord),
+        })
+        const storage = createMockStorage()
+        const req = new Request('https://ext.example/api/recordings/video-1000.webm/transcription.srt')
+        const recordingState: RecordingState = { isRecording: false, startAtMs: 0 }
+        const res = await handleApiRequest(req, storage, recordingState, recordingDB)
+
+        expect(res.status).toBe(200)
+        expect(res.headers.get('Content-Type')).toBe('application/x-subrip; charset=utf-8')
+        const text = await res.text()
+        expect(text).toContain('1\n00:00:01,000 --> 00:00:03,500\nHello world')
     })
 })

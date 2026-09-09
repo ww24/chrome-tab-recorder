@@ -396,3 +396,73 @@ describe('Configuration.hasAgreedTerms', () => {
         expect(restored.hasAgreedTerms).toBe(true)
     })
 })
+
+describe('Configuration.transcription', () => {
+    const originalChrome = globalThis.chrome
+
+    afterEach(() => {
+        Object.defineProperty(globalThis, 'chrome', {
+            value: originalChrome,
+            writable: true,
+            configurable: true,
+        })
+    })
+
+    it('should default language to japanese when browser language is ja', () => {
+        ;(globalThis as Record<string, unknown>).chrome = {
+            i18n: {
+                getMessage: () => '',
+                getUILanguage: () => 'ja',
+            },
+        }
+        const config = new Configuration()
+        expect(config.transcription).toEqual({
+            enabled: false,
+            language: 'japanese',
+        })
+    })
+
+    it('should default language to english when browser language is en', () => {
+        ;(globalThis as Record<string, unknown>).chrome = {
+            i18n: {
+                getMessage: () => '',
+                getUILanguage: () => 'en-US',
+            },
+        }
+        const config = new Configuration()
+        expect(config.transcription).toEqual({
+            enabled: false,
+            language: 'english',
+        })
+    })
+
+    it('should include transcription in filterForReport', () => {
+        const config = new Configuration()
+        config.transcription = { enabled: true, language: 'french' }
+        const report = Configuration.filterForReport(config)
+        expect(report.transcription).toEqual({ enabled: true, language: 'french' })
+    })
+
+    it('should exclude transcription from filterForSync', () => {
+        const config = new Configuration()
+        config.transcription = { enabled: true, language: 'german' }
+        const synced = Configuration.filterForSync(config)
+        expect('transcription' in synced).toBe(false)
+    })
+
+    it('should reset transcription on restoreDefault with browser language', () => {
+        ;(globalThis as Record<string, unknown>).chrome = {
+            i18n: {
+                getMessage: () => '',
+                getUILanguage: () => 'ja',
+            },
+        }
+        const config = new Configuration()
+        config.transcription = { enabled: true, language: 'french' }
+        const restored = Configuration.restoreDefault(config)
+        expect(restored.transcription).toEqual({
+            enabled: false,
+            language: 'japanese',
+        })
+    })
+})

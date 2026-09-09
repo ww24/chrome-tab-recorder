@@ -1,8 +1,11 @@
 import type { RecordingSortOrder } from './configuration'
 import type { RecordingStorage } from './storage'
+import type { TranscriptionResult } from './transcription/types'
+
+export type { TranscriptionResult }
 
 const DB_NAME = 'instant-tab-recorder'
-const DB_VERSION = 1
+const DB_VERSION = 2
 const STORE_NAME = 'recordings'
 
 const timestampRegex = /^video-([0-9]+)\./
@@ -45,14 +48,17 @@ export interface RecordingRecord {
     subFiles: SubFileInfo[]
     /** WebP thumbnail blob, null when generation failed, undefined for legacy records */
     thumbnail?: Blob | null
+    /** Transcription result */
+    transcription?: TranscriptionResult
 }
 
 function openDB(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
         const request = indexedDB.open(DB_NAME, DB_VERSION)
-        request.addEventListener('upgradeneeded', () => {
+        request.addEventListener('upgradeneeded', event => {
             const db = request.result
-            if (!db.objectStoreNames.contains(STORE_NAME)) {
+            const oldVersion = (event as IDBVersionChangeEvent).oldVersion
+            if (oldVersion < 1 && !db.objectStoreNames.contains(STORE_NAME)) {
                 db.createObjectStore(STORE_NAME, { keyPath: 'recordedAt' })
             }
         })

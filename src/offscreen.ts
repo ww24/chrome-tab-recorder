@@ -12,7 +12,9 @@ import { Preview } from './preview'
 import { Crop } from './crop'
 import { createRecordingSession } from './recorder'
 import { OffscreenHandler } from './offscreen_handler'
-import { RecordingDB } from './recording_db'
+import { TranscriptionSession } from './transcription/session'
+import { ModelDownloader } from './transcription/model_downloader'
+import { RecordingDB, parseRecordedAt } from './recording_db'
 import { errorToString } from './error'
 
 const preview = new Preview(async ({ image, width, height }) => {
@@ -53,6 +55,36 @@ const session = createRecordingSession(preview, crop, {
 
 const recordingDB = new RecordingDB()
 
+const getVideoFile = async (path: string) => {
+    const dirHandle = await navigator.storage.getDirectory()
+    const fileHandle = await dirHandle.getFileHandle(path)
+    return await fileHandle.getFile()
+}
+
+const transcriptionSession = new TranscriptionSession({
+    getVideoFile,
+    saveTranscription: async (path, result) => {
+        const recordedAt = parseRecordedAt(path)
+        if (recordedAt == null) throw new Error(`Invalid recording path: ${path}`)
+        const record = await recordingDB.get(recordedAt)
+        if (!record) throw new Error(`Recording record not found for: ${path}`)
+        record.transcription = result
+        await recordingDB.put(record)
+    },
+    sendEvent,
+    broadcastMessage: msg => chrome.runtime.sendMessage(msg),
+    createWorker: () => {
+        const workerUrl = chrome.runtime.getURL('dist/transcription_worker.js')
+        return new Worker(workerUrl, { type: 'module' })
+    },
+    getLanguage: async () => {
+        const config = Settings.getConfiguration()
+        return config.transcription?.language || 'english'
+    },
+})
+
+const modelDownloader = new ModelDownloader()
+
 const handler = new OffscreenHandler({
     getRecordingInfo: tabSize => Settings.getRecordingInfo(tabSize),
     getConfiguration: () => Settings.getConfiguration(),
@@ -68,10 +100,13 @@ const handler = new OffscreenHandler({
         window.location.hash = hash
     },
     recordingDB,
-    getVideoFile: async (path: string) => {
-        const dirHandle = await navigator.storage.getDirectory()
-        const fileHandle = await dirHandle.getFileHandle(path)
-        return await fileHandle.getFile()
+    getVideoFile,
+    transcriptionSession,
+    modelDownloader,
+    closeDocument: () => {
+        setTimeout(() => {
+            window.close()
+        }, 0)
     },
 })
 

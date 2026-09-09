@@ -12,6 +12,8 @@ import type { RecordingConfig, RecordingResult } from './recorder'
 import type { Event, ExceptionMetadata } from './sentry_event'
 import type { RecordingDB, RecordingRecord } from './recording_db'
 import { generateThumbnail, NoVideoError } from './thumbnail'
+import type { TranscriptionSession } from './transcription/session'
+import type { ModelDownloader } from './transcription/model_downloader'
 
 // ---------- dependency interfaces ----------
 
@@ -42,6 +44,9 @@ export interface OffscreenDeps {
     setLocationHash(hash: string): void
     recordingDB: RecordingDB
     getVideoFile(path: string): Promise<File>
+    transcriptionSession?: TranscriptionSession
+    modelDownloader?: ModelDownloader
+    closeDocument?: () => void
 }
 
 // ---------- handler ----------
@@ -53,6 +58,25 @@ export class OffscreenHandler {
     private currentRecordingStartAtMs: number | null = null
 
     constructor(private readonly deps: OffscreenDeps) {}
+
+    /**
+     * Returns true if there are active recording, transcription, or model download tasks.
+     */
+    isBusy(): boolean {
+        const isRecording = this.currentRecordingStartAtMs !== null || this.deps.getLocationHash() === '#recording'
+        const isTranscribing = this.deps.transcriptionSession?.hasActiveTasks() ?? false
+        const isDownloading = this.deps.modelDownloader?.isDownloading ?? false
+        return isRecording || isTranscribing || isDownloading
+    }
+
+    /**
+     * Closes the offscreen document if no tasks are active.
+     */
+    private maybeClose(): void {
+        if (!this.isBusy()) {
+            this.deps.closeDocument?.()
+        }
+    }
 
     handleMessage(message: Message): Promise<StartRecordingResponse | void> | null {
         switch (message.type) {
@@ -79,6 +103,19 @@ export class OffscreenHandler {
                 return this.handlePreviewControl(message.action)
             case 'update-crop-region':
                 return this.handleUpdateCropRegion(message.region)
+            case 'start-transcription':
+                return this.handleStartTranscription(message.path)
+            case 'query-transcription-status':
+                return this.handleQueryTranscriptionStatus(message.path)
+            case 'start-model-download':
+                return this.handleStartModelDownload()
+            case 'cancel-model-download':
+                return this.handleCancelModelDownload()
+            case 'query-model-download-status':
+                return this.handleQueryModelDownloadStatus()
+            case 'close-offscreen-if-idle':
+                this.maybeClose()
+                return null
         }
         return null
     }
@@ -332,5 +369,97 @@ export class OffscreenHandler {
         } catch (e) {
             console.error('Failed to send timer-updated message:', e)
         }
+    }
+
+    // ---------- transcription helpers ----------
+
+    private async handleStartTranscription(path: string): Promise<void> {
+        if (!this.deps.transcriptionSession) {
+            this.maybeClose()
+            return
+        }
+        try {
+            await this.deps.transcriptionSession.transcribe(path)
+        } catch (e) {
+            console.error('Transcription failed in offscreen handler:', e)
+            this.deps.sendException(e, {
+                exceptionSource: 'offscreen.handleStartTranscription',
+                additionalMetadata: { path },
+            })
+        } finally {
+            this.maybeClose()
+        }
+    }
+
+    private async handleQueryTranscriptionStatus(path: string): Promise<void> {
+        const isTranscribing = this.deps.transcriptionSession?.isTranscribing(path) ?? false
+        await this.deps.sendRuntimeMessage({
+            type: 'transcription-status-response',
+            path,
+            isTranscribing,
+        })
+    }
+
+    private async handleStartModelDownload(): Promise<void> {
+        if (!this.deps.modelDownloader) {
+            this.maybeClose()
+            return
+        }
+        if (this.deps.modelDownloader.isDownloading) {
+            return
+        }
+        try {
+            const startAt = performance.now()
+            await this.deps.modelDownloader.download(progress => {
+                this.deps
+                    .sendRuntimeMessage({
+                        type: 'model-download-progress',
+                        loaded: progress.loaded,
+                        total: progress.total,
+                        file: progress.file,
+                        fileIndex: progress.fileIndex,
+                        totalFiles: progress.totalFiles,
+                    })
+                    .catch(() => {})
+            })
+            const totalMs = Math.round(performance.now() - startAt)
+            this.deps.sendEvent({
+                type: 'model_download_complete',
+                metrics: {
+                    totalMs,
+                },
+            })
+            await this.deps.sendRuntimeMessage({ type: 'model-download-complete' })
+        } catch (e) {
+            const errorMsg = e instanceof Error ? e.message : String(e)
+            const isAborted = errorMsg === 'Model download aborted' || (this.deps.modelDownloader?.aborted ?? false)
+            if (isAborted) {
+                console.log('Model download aborted by user.')
+                await this.deps.modelDownloader?.clearCache().catch(() => {})
+                await this.deps.sendRuntimeMessage({ type: 'model-download-error', error: 'Model download aborted' })
+                return
+            }
+            console.error('Model download failed in offscreen handler:', e)
+            this.deps.sendException(e, { exceptionSource: 'offscreen.handleStartModelDownload' })
+            await this.deps.sendRuntimeMessage({ type: 'model-download-error', error: errorMsg })
+        } finally {
+            this.maybeClose()
+        }
+    }
+
+    private async handleCancelModelDownload(): Promise<void> {
+        this.deps.modelDownloader?.abort()
+        await this.deps.modelDownloader?.clearCache().catch(() => {})
+        this.maybeClose()
+    }
+
+    private async handleQueryModelDownloadStatus(): Promise<void> {
+        const isDownloading = this.deps.modelDownloader?.isDownloading ?? false
+        const progress = this.deps.modelDownloader?.getProgress() ?? null
+        await this.deps.sendRuntimeMessage({
+            type: 'model-download-status-response',
+            isDownloading,
+            progress,
+        })
     }
 }

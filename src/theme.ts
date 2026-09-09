@@ -2,14 +2,15 @@ import type { UITheme } from './configuration'
 
 const THEME_STYLE_ID = 'ui-theme-style'
 
-const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)')
+const darkModeQuery = typeof window !== 'undefined' ? window.matchMedia('(prefers-color-scheme: dark)') : null
 let mediaQueryListener: ((e: MediaQueryListEvent) => void) | null = null
 
 function resolveAutoTheme(): 'light' | 'dark' {
-    return darkModeQuery.matches ? 'dark' : 'light'
+    return darkModeQuery?.matches ? 'dark' : 'light'
 }
 
 function setThemeAttribute(resolved: 'classic' | 'light' | 'dark') {
+    if (typeof document === 'undefined') return
     if (resolved === 'classic') {
         document.documentElement.removeAttribute('data-theme')
     } else {
@@ -18,8 +19,10 @@ function setThemeAttribute(resolved: 'classic' | 'light' | 'dark') {
 }
 
 export function applyTheme(theme: UITheme) {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return
+
     // Clean up previous matchMedia listener
-    if (mediaQueryListener) {
+    if (mediaQueryListener && darkModeQuery) {
         darkModeQuery.removeEventListener('change', mediaQueryListener)
         mediaQueryListener = null
     }
@@ -30,14 +33,14 @@ export function applyTheme(theme: UITheme) {
     if (theme === 'auto') {
         setThemeAttribute(resolveAutoTheme())
         mediaQueryListener = () => setThemeAttribute(resolveAutoTheme())
-        darkModeQuery.addEventListener('change', mediaQueryListener)
+        darkModeQuery?.addEventListener('change', mediaQueryListener)
     } else {
         setThemeAttribute(theme)
     }
 }
 
 function injectThemeStyles() {
-    if (document.getElementById(THEME_STYLE_ID)) return
+    if (typeof document === 'undefined' || document.getElementById(THEME_STYLE_ID)) return
 
     const style = document.createElement('style')
     style.id = THEME_STYLE_ID
